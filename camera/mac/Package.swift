@@ -1,3 +1,4 @@
+// swift-tools-version: 5.7
 // Copyright (C) 2026 Arun Venkataswamy
 //
 // This file is part of PushNav.
@@ -14,8 +15,6 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with PushNav. If not, see <https://www.gnu.org/licenses/>.
-
-// swift-tools-version: 5.7
 import PackageDescription
 
 let package = Package(
