@@ -20,7 +20,13 @@
 ; Expects the assembled release dir at build\PushNav-windows\
 
 #define MyAppName "PushNav"
-#define MyAppVersion "0.1.0"
+#ifndef APP_VERSION
+  #define APP_VERSION GetEnv('APP_VERSION')
+  #if APP_VERSION == ""
+    #define APP_VERSION "0.0.0-dev"
+  #endif
+#endif
+#define MyAppVersion APP_VERSION
 #define MyAppPublisher "PushNav"
 #define MyAppExeName "evf.exe"
 
