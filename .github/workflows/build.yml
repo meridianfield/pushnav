@@ -6,6 +6,12 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      platform:
+        description: 'Platform to build'
+        required: false
+        default: 'all'
+        type: choice
+        options: [all, macos, linux, windows]
       create_release:
         description: 'Create a GitHub release with artifacts'
         required: false
@@ -24,6 +30,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-macos:
     runs-on: macos-latest
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'macos'
     steps:
       - uses: actions/checkout@v4
 
@@ -202,6 +209,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-linux:
     runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'linux'
     steps:
       - uses: actions/checkout@v4
 
@@ -358,6 +366,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-windows:
     runs-on: windows-latest
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'windows'
     steps:
       - uses: actions/checkout@v4
 
