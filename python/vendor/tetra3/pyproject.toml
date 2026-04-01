@@ -1,0 +1,8 @@
+[project]
+name = "tetra3"
+version = "0.1.0"
+dependencies = ["numpy>=1.21.1", "Pillow>=8.3.1", "scipy>=1.7.1"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=PushNav
+Comment=Plate-solving push-to telescope navigation
+Exec=evf
+Icon=pushnav
+Categories=Education;Science;Astronomy;
+Terminal=false

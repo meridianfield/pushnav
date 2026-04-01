@@ -1,0 +1,23 @@
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+build/
+.python-version
+
+# Swift build artifacts
+camera/mac/.build/
+camera/mac/camera_server
+
+# C build artifacts
+camera/linux/camera_server
+camera/windows/camera_server.exe
+camera/windows/*.obj
+
+# Jekyll build output
+docs/_site/
+
+# Claude Code
+.claude/

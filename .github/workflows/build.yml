@@ -1,0 +1,309 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create a GitHub release with artifacts'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # macOS — Swift camera server + Nuitka Python app → .dmg
+  # ---------------------------------------------------------------------------
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build Swift camera server
+        run: |
+          cd camera/mac
+          swift build -c release
+          cp "$(swift build -c release --show-bin-path)/camera_server" camera_server
+
+      - name: Build Python app with Nuitka
+        run: |
+          uv run python -m nuitka \
+            --standalone \
+            --static-libpython=no \
+            --output-dir=build \
+            --output-filename=evf \
+            --include-package=dearpygui \
+            --include-package=numpy \
+            --include-package=scipy \
+            --include-package=PIL \
+            --include-package=playsound3 \
+            --include-package=tetra3 \
+            --nofollow-import-to=pytest \
+            --nofollow-import-to=setuptools \
+            --nofollow-import-to=_blake2 \
+            --nofollow-import-to=_hashlib \
+            --nofollow-import-to=_ssl \
+            --nofollow-import-to=_curses \
+            --nofollow-import-to=_curses_panel \
+            --nofollow-import-to=_dbm \
+            --nofollow-import-to=_gdbm \
+            --nofollow-import-to=_tkinter \
+            --nofollow-import-to=readline \
+            --assume-yes-for-downloads \
+            python/evf/main.py
+
+      - name: Generate app icon
+        run: |
+          ICONSET=build/AppIcon.iconset
+          mkdir -p "$ICONSET"
+          for size in 16 32 64 128 256 512 1024; do
+            sips -z $size $size marketing/logo.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+          done
+          # Create @2x variants
+          cp "$ICONSET/icon_32x32.png"   "$ICONSET/icon_16x16@2x.png"
+          cp "$ICONSET/icon_64x64.png"   "$ICONSET/icon_32x32@2x.png"
+          cp "$ICONSET/icon_256x256.png" "$ICONSET/icon_128x128@2x.png"
+          cp "$ICONSET/icon_512x512.png" "$ICONSET/icon_256x256@2x.png"
+          cp "$ICONSET/icon_1024x1024.png" "$ICONSET/icon_512x512@2x.png"
+          rm "$ICONSET/icon_64x64.png" "$ICONSET/icon_1024x1024.png"
+          iconutil --convert icns "$ICONSET" --output build/AppIcon.icns
+
+      - name: Assemble .app bundle
+        run: |
+          APP=build/PushNav.app
+          CONTENTS="$APP/Contents"
+          MACOS="$CONTENTS/MacOS"
+          RESOURCES="$CONTENTS/Resources"
+          mkdir -p "$MACOS" "$RESOURCES"
+
+          cp -a build/main.dist/* "$MACOS/"
+          cp camera/mac/camera_server "$MACOS/camera_server"
+          chmod +x "$MACOS/camera_server"
+
+          cp data/hip8_database.npz "$RESOURCES/"
+          cp data/VERSION.json "$RESOURCES/"
+          cp -a data/sounds "$RESOURCES/sounds"
+          cp -a data/fonts "$RESOURCES/fonts"
+          mkdir -p "$RESOURCES/marketing"
+          cp marketing/inapp-title.png "$RESOURCES/marketing/"
+          cp build/AppIcon.icns "$RESOURCES/AppIcon.icns"
+
+          cat > "$CONTENTS/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+            "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key>
+              <string>PushNav</string>
+              <key>CFBundleDisplayName</key>
+              <string>PushNav</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.pushnav.evf</string>
+              <key>CFBundleVersion</key>
+              <string>${{ github.ref_name }}</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${{ github.ref_name }}</string>
+              <key>CFBundleExecutable</key>
+              <string>evf</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleIconFile</key>
+              <string>AppIcon</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>NSCameraUsageDescription</key>
+              <string>PushNav uses the camera to capture telescope finder images for plate solving.</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Create .dmg
+        run: |
+          hdiutil create \
+            -volname "PushNav" \
+            -srcfolder build/PushNav.app \
+            -ov -format UDZO \
+            build/PushNav-macOS.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PushNav-macOS
+          path: build/PushNav-macOS.dmg
+
+  # ---------------------------------------------------------------------------
+  # Linux — C/V4L2 camera server + Nuitka Python app → tar.gz
+  # ---------------------------------------------------------------------------
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libjpeg-dev libfuse2 patchelf
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build C camera server
+        run: make -C camera/linux
+
+      - name: Build Python app with Nuitka
+        run: |
+          uv run python -m nuitka \
+            --standalone \
+            --output-dir=build \
+            --output-filename=evf \
+            --include-package=dearpygui \
+            --include-package=numpy \
+            --include-package=scipy \
+            --include-package=PIL \
+            --include-package=playsound3 \
+            --include-package=tetra3 \
+            --nofollow-import-to=pytest \
+            --nofollow-import-to=setuptools \
+            --nofollow-import-to=linuxpy \
+            --nofollow-import-to=_tkinter \
+            --assume-yes-for-downloads \
+            python/evf/main.py
+
+      - name: Assemble release directory
+        run: |
+          APP=build/PushNav-linux
+          mkdir -p "$APP/data" "$APP/marketing"
+          cp -a build/main.dist/* "$APP/"
+          cp camera/linux/camera_server "$APP/camera_server"
+          chmod +x "$APP/camera_server"
+          cp data/hip8_database.npz "$APP/data/"
+          cp data/VERSION.json "$APP/data/"
+          cp -a data/sounds "$APP/data/sounds"
+          cp -a data/fonts "$APP/data/fonts"
+          cp marketing/inapp-title.png "$APP/marketing/"
+
+      - name: Create tar.gz
+        run: |
+          tar czf build/PushNav-linux-x86_64.tar.gz -C build PushNav-linux
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PushNav-linux
+          path: build/PushNav-linux-x86_64.tar.gz
+
+  # ---------------------------------------------------------------------------
+  # Windows — C/DirectShow camera server + Nuitka Python app → zip
+  # ---------------------------------------------------------------------------
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build C camera server
+        shell: cmd
+        run: |
+          cd camera\windows
+          call build.bat
+
+      - name: Build Python app with Nuitka
+        run: |
+          uv run python -m nuitka `
+            --standalone `
+            --windows-disable-console `
+            --windows-icon-from-ico=marketing/logo.ico `
+            --output-dir=build `
+            --output-filename=evf.exe `
+            --include-package=dearpygui `
+            --include-package=numpy `
+            --include-package=scipy `
+            --include-package=PIL `
+            --include-package=playsound3 `
+            --include-package=tetra3 `
+            --nofollow-import-to=pytest `
+            --nofollow-import-to=setuptools `
+            --assume-yes-for-downloads `
+            python/evf/main.py
+
+      - name: Assemble release directory
+        shell: pwsh
+        run: |
+          $app = "build\PushNav-windows"
+          New-Item -ItemType Directory -Force -Path "$app\data", "$app\marketing"
+          Copy-Item -Recurse "build\main.dist\*" "$app\"
+          Copy-Item "camera\windows\camera_server.exe" "$app\camera_server.exe"
+          Copy-Item "data\hip8_database.npz" "$app\data\"
+          Copy-Item "data\VERSION.json" "$app\data\"
+          Copy-Item -Recurse "data\sounds" "$app\data\sounds"
+          Copy-Item -Recurse "data\fonts" "$app\data\fonts"
+          Copy-Item "marketing\inapp-title.png" "$app\marketing\"
+          Copy-Item "marketing\logo.ico" "$app\marketing\"
+
+      - name: Create zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build\PushNav-windows" -DestinationPath "build\PushNav-windows-x64.zip" -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PushNav-windows
+          path: build/PushNav-windows-x64.zip
+
+  # ---------------------------------------------------------------------------
+  # Create GitHub Release (only on tag push or manual with create_release)
+  # ---------------------------------------------------------------------------
+  release:
+    needs: [build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release)
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: PushNav ${{ github.ref_name }}
+          draft: true
+          generate_release_notes: true
+          files: |
+            artifacts/PushNav-macOS/PushNav-macOS.dmg
+            artifacts/PushNav-linux/PushNav-linux-x86_64.tar.gz
+            artifacts/PushNav-windows/PushNav-windows-x64.zip

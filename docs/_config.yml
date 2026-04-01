@@ -1,0 +1,17 @@
+title: PushNav
+description: Cross-platform plate-solving push-to system for manual telescopes
+baseurl: "/pushnav"
+url: "https://meridianfield.github.io"
+
+remote_theme: just-the-docs/just-the-docs
+
+# For local preview (ignored by GitHub Pages)
+theme: just-the-docs
+
+color_scheme: dark
+
+aux_links:
+  "View on GitHub":
+    - "https://github.com/meridianfield/pushnav"
+
+footer_content: ""
