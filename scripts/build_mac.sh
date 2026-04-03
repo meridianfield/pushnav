@@ -29,6 +29,10 @@ CONTENTS="$APP_DIR/Contents"
 MACOS="$CONTENTS/MacOS"
 RESOURCES="$CONTENTS/Resources"
 
+# Read version from VERSION.json (single source of truth)
+APP_VERSION="$(python3 -c "import json; print(json.load(open('$REPO_ROOT/data/VERSION.json'))['app_version'])")"
+echo "==> Version: $APP_VERSION"
+
 echo "==> Cleaning previous build"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
@@ -129,7 +133,7 @@ cp "$REPO_ROOT/marketing/inapp-title.png" "$RESOURCES/marketing/"
 cp "$BUILD_DIR/AppIcon.icns" "$RESOURCES/AppIcon.icns"
 
 # Write Info.plist
-cat > "$CONTENTS/Info.plist" <<'PLIST'
+cat > "$CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -142,9 +146,9 @@ cat > "$CONTENTS/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key>
     <string>com.pushnav.evf</string>
     <key>CFBundleVersion</key>
-    <string>0.1.0</string>
+    <string>${APP_VERSION}</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>${APP_VERSION}</string>
     <key>CFBundleExecutable</key>
     <string>evf</string>
     <key>CFBundlePackageType</key>
