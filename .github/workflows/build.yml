@@ -6,6 +6,12 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      platform:
+        description: 'Platform to build'
+        required: false
+        default: 'all'
+        type: choice
+        options: [all, macos, linux, windows]
       create_release:
         description: 'Create a GitHub release with artifacts'
         required: false
@@ -15,23 +21,74 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ---------------------------------------------------------------------------
-  # macOS — Swift camera server + Nuitka Python app → .dmg
+  # macOS — Swift camera server + Nuitka Python app → .dmg (ARM64)
   # ---------------------------------------------------------------------------
   build-macos:
     runs-on: macos-latest
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'macos'
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify required files
+        run: |
+          missing=()
+          for f in data/hip8_database.npz data/VERSION.json marketing/logo.png marketing/inapp-title.png; do
+            [ -f "$f" ] || missing+=("$f")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Required files missing:"
+            printf '  %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="$(python3 -c "import json; print(json.load(open('data/VERSION.json'))['app_version'])")"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # Update VERSION.json so the built app has the correct version
+          python3 -c "
+          import json
+          with open('data/VERSION.json', 'r') as f:
+              data = json.load(f)
+          data['app_version'] = '$VERSION'
+          with open('data/VERSION.json', 'w') as f:
+              json.dump(data, f, indent=2)
+              f.write('\n')
+          "
+
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+
+      - name: Cache uv packages
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/uv
+          key: macos-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: macos-uv-
 
       - name: Set up Python
         run: uv python install 3.12
 
       - name: Install dependencies
         run: uv sync
+
+      - name: Cache Swift build
+        uses: actions/cache@v4
+        with:
+          path: camera/mac/.build
+          key: macos-swift-${{ hashFiles('camera/mac/Package.swift', 'camera/mac/Sources/**/*.swift') }}
+          restore-keys: macos-swift-
 
       - name: Build Swift camera server
         run: |
@@ -73,7 +130,6 @@ jobs:
           for size in 16 32 64 128 256 512 1024; do
             sips -z $size $size marketing/logo.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
           done
-          # Create @2x variants
           cp "$ICONSET/icon_32x32.png"   "$ICONSET/icon_16x16@2x.png"
           cp "$ICONSET/icon_64x64.png"   "$ICONSET/icon_32x32@2x.png"
           cp "$ICONSET/icon_256x256.png" "$ICONSET/icon_128x128@2x.png"
@@ -84,6 +140,7 @@ jobs:
 
       - name: Assemble .app bundle
         run: |
+          VERSION="${{ steps.version.outputs.version }}"
           APP=build/PushNav.app
           CONTENTS="$APP/Contents"
           MACOS="$CONTENTS/MacOS"
@@ -102,7 +159,7 @@ jobs:
           cp marketing/inapp-title.png "$RESOURCES/marketing/"
           cp build/AppIcon.icns "$RESOURCES/AppIcon.icns"
 
-          cat > "$CONTENTS/Info.plist" <<'PLIST'
+          cat > "$CONTENTS/Info.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
             "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -115,9 +172,9 @@ jobs:
               <key>CFBundleIdentifier</key>
               <string>com.pushnav.evf</string>
               <key>CFBundleVersion</key>
-              <string>${{ github.ref_name }}</string>
+              <string>${VERSION}</string>
               <key>CFBundleShortVersionString</key>
-              <string>${{ github.ref_name }}</string>
+              <string>${VERSION}</string>
               <key>CFBundleExecutable</key>
               <string>evf</string>
               <key>CFBundlePackageType</key>
@@ -138,21 +195,59 @@ jobs:
             -volname "PushNav" \
             -srcfolder build/PushNav.app \
             -ov -format UDZO \
-            build/PushNav-macOS.dmg
+            build/PushNav-macOS-arm64.dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PushNav-macOS
-          path: build/PushNav-macOS.dmg
+          name: PushNav-macOS-arm64
+          path: build/PushNav-macOS-arm64.dmg
+          retention-days: 90
 
   # ---------------------------------------------------------------------------
-  # Linux — C/V4L2 camera server + Nuitka Python app → tar.gz
+  # Linux — C/V4L2 camera server + Nuitka Python app → tar.gz + AppImage
   # ---------------------------------------------------------------------------
   build-linux:
     runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'linux'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify required files
+        run: |
+          missing=()
+          for f in data/hip8_database.npz data/VERSION.json marketing/logo.png marketing/inapp-title.png; do
+            [ -f "$f" ] || missing+=("$f")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Required files missing:"
+            printf '  %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="$(python3 -c "import json; print(json.load(open('data/VERSION.json'))['app_version'])")"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          python3 -c "
+          import json
+          with open('data/VERSION.json', 'r') as f:
+              data = json.load(f)
+          data['app_version'] = '$VERSION'
+          with open('data/VERSION.json', 'w') as f:
+              json.dump(data, f, indent=2)
+              f.write('\n')
+          "
+
+      - name: Detect architecture
+        id: arch
+        run: echo "arch=$(uname -m)" >> "$GITHUB_OUTPUT"
 
       - name: Install system dependencies
         run: |
@@ -161,6 +256,13 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+
+      - name: Cache uv packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: linux-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: linux-uv-
 
       - name: Set up Python
         run: uv python install 3.12
@@ -205,24 +307,108 @@ jobs:
 
       - name: Create tar.gz
         run: |
-          tar czf build/PushNav-linux-x86_64.tar.gz -C build PushNav-linux
+          ARCH="${{ steps.arch.outputs.arch }}"
+          tar czf "build/PushNav-linux-${ARCH}.tar.gz" -C build PushNav-linux
 
-      - name: Upload artifact
+      - name: Build AppImage
+        run: |
+          ARCH="${{ steps.arch.outputs.arch }}"
+          APPDIR=build/PushNav.AppDir
+          rm -rf "$APPDIR"
+
+          # Copy release directory into AppDir
+          cp -a build/PushNav-linux "$APPDIR"
+
+          # Add AppImage metadata
+          cp linux/pushnav.desktop "$APPDIR/pushnav.desktop"
+          cp marketing/logo.png "$APPDIR/pushnav.png"
+
+          # Bundle libjpeg for camera_server
+          LIBJPEG="$(ldd "$APPDIR/camera_server" | grep libjpeg | awk '{print $3}')" || true
+          if [ -n "$LIBJPEG" ]; then
+            cp "$LIBJPEG" "$APPDIR/"
+            echo "Bundled: $LIBJPEG"
+          fi
+
+          # Create AppRun entry point
+          cat > "$APPDIR/AppRun" <<'APPRUN'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export LD_LIBRARY_PATH="${HERE}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          exec "${HERE}/evf" "$@"
+          APPRUN
+          chmod +x "$APPDIR/AppRun"
+
+          # Download appimagetool
+          curl -sSL -o build/appimagetool \
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH}.AppImage"
+          chmod +x build/appimagetool
+
+          # Build AppImage
+          ARCH="$ARCH" build/appimagetool "$APPDIR" "build/PushNav-linux-${ARCH}.AppImage"
+
+      - name: Upload tar.gz artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PushNav-linux
-          path: build/PushNav-linux-x86_64.tar.gz
+          name: PushNav-linux-tar
+          path: build/PushNav-linux-${{ steps.arch.outputs.arch }}.tar.gz
+          retention-days: 90
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PushNav-linux-AppImage
+          path: build/PushNav-linux-${{ steps.arch.outputs.arch }}.AppImage
+          retention-days: 90
 
   # ---------------------------------------------------------------------------
-  # Windows — C/DirectShow camera server + Nuitka Python app → zip
+  # Windows — C/DirectShow camera server + Nuitka Python app → zip + installer
   # ---------------------------------------------------------------------------
   build-windows:
     runs-on: windows-latest
+    if: github.event_name != 'workflow_dispatch' || inputs.platform == 'all' || inputs.platform == 'windows'
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify required files
+        shell: pwsh
+        run: |
+          $required = @(
+            "data/hip8_database.npz",
+            "data/VERSION.json",
+            "marketing/logo.ico",
+            "marketing/inapp-title.png"
+          )
+          $missing = $required | Where-Object { -not (Test-Path $_) }
+          if ($missing) {
+            Write-Error "Required files missing:`n  $($missing -join "`n  ")"
+            exit 1
+          }
+
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.ref }}" -like "refs/tags/v*") {
+            $version = "${{ github.ref_name }}" -replace '^v', ''
+          } else {
+            $version = (Get-Content data/VERSION.json | ConvertFrom-Json).app_version
+          }
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          # Update VERSION.json
+          $json = Get-Content data/VERSION.json | ConvertFrom-Json
+          $json.app_version = $version
+          $json | ConvertTo-Json | Set-Content data/VERSION.json
+
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+
+      - name: Cache uv packages
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\uv\cache
+          key: windows-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+          restore-keys: windows-uv-
 
       - name: Set up Python
         run: uv python install 3.12
@@ -277,11 +463,29 @@ jobs:
         run: |
           Compress-Archive -Path "build\PushNav-windows" -DestinationPath "build\PushNav-windows-x64.zip" -Force
 
-      - name: Upload artifact
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: cmd
+        run: |
+          set "APP_VERSION=${{ steps.version.outputs.version }}"
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" scripts\pushnav.iss
+
+      - name: Upload zip artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PushNav-windows
+          name: PushNav-windows-zip
           path: build/PushNav-windows-x64.zip
+          retention-days: 90
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PushNav-windows-setup
+          path: build/PushNav-windows-x64-setup.exe
+          retention-days: 90
 
   # ---------------------------------------------------------------------------
   # Create GitHub Release (only on tag push or manual with create_release)
@@ -289,12 +493,22 @@ jobs:
   release:
     needs: [build-macos, build-linux, build-windows]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release)
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.dmg" -o -name "*.tar.gz" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.exe" \) \
+            | sort \
+            | while read -r f; do
+                sha256sum "$f"
+              done > ../checksums-sha256.txt
+          cat ../checksums-sha256.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -304,6 +518,9 @@ jobs:
           draft: true
           generate_release_notes: true
           files: |
-            artifacts/PushNav-macOS/PushNav-macOS.dmg
-            artifacts/PushNav-linux/PushNav-linux-x86_64.tar.gz
-            artifacts/PushNav-windows/PushNav-windows-x64.zip
+            artifacts/PushNav-macOS-arm64/PushNav-macOS-arm64.dmg
+            artifacts/PushNav-linux-tar/PushNav-linux-*.tar.gz
+            artifacts/PushNav-linux-AppImage/PushNav-linux-*.AppImage
+            artifacts/PushNav-windows-zip/PushNav-windows-x64.zip
+            artifacts/PushNav-windows-setup/PushNav-windows-x64-setup.exe
+            checksums-sha256.txt

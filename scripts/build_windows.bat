@@ -33,6 +33,10 @@ set "BUILD_DIR=%REPO_ROOT%\build"
 set "APP_NAME=PushNav-windows"
 set "APP_DIR=%BUILD_DIR%\%APP_NAME%"
 
+REM Read version from VERSION.json (single source of truth)
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "(Get-Content '%REPO_ROOT%\data\VERSION.json' | ConvertFrom-Json).app_version"`) do set "APP_VERSION=%%V"
+echo ==> Version: %APP_VERSION%
+
 echo ==> Cleaning previous build
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 mkdir "%BUILD_DIR%"
@@ -130,7 +134,7 @@ if "!ISCC!"=="" (
 )
 
 echo ==> Creating Windows installer
-"!ISCC!" "%REPO_ROOT%\scripts\pushnav.iss"
+"!ISCC!" /DAPP_VERSION="%APP_VERSION%" "%REPO_ROOT%\scripts\pushnav.iss"
 if errorlevel 1 (
     echo ERROR: Installer build failed
     exit /b 1
