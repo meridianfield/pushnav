@@ -40,11 +40,11 @@
 // CONFIGURATION — toggle parts for STL export
 // ============================================================
 
-RENDER_BASE     = true;
-RENDER_HOOD     = true;
+RENDER_BASE     = false;
+RENDER_HOOD     = false;
 RENDER_CAP      = true;
 
-SELF_TAP_SCREWS = true;       // true  = self-tapping (smaller base holes)
+SELF_TAP_SCREWS = false;       // true  = self-tapping (smaller base holes)
                               // false = bolt-through (clearance holes in both base and hood)
 
 
@@ -81,15 +81,19 @@ screw_clearance_dia   = 3.5;     // clearance hole diameter (in hood plate and b
 /* M12 lens */
 lens_dia              = 18;      // M12 lens thread outer diameter
 
-/* Baffle — stepped light baffle integrated into hood cylinder */
-baffle_fov            = 11;      // camera field of view in degrees
-baffle_num_steps      = 20;      // number of staircase steps (~2mm each)
-baffle_min_wall       = 1.0;     // minimum wall thickness — steps stop expanding here
-
-/* Hood — cylindrical lens shroud with integral stepped baffle */
-hood_wall_thickness   = 2;       // cylinder wall thickness at lens end (thickest point)
+/* Hood — cylindrical lens shroud */
+hood_wall_thickness   = 2.5;     // cylinder wall thickness
 hood_length           = 40;      // height of the hood cylinder
 hood_plate_thickness  = 6;       // thickness of the mounting plate
+
+/* Baffle — ring baffles at the front (opening end) of the hood */
+/* DISABLED — uncomment _ring_baffles() call in hood() to re-enable */
+// baffle_fov            = 11;      // camera field of view in degrees
+// baffle_start_dia      = 16;      // lens barrel diameter at first ring
+// baffle_length         = 11;      // length of baffle zone (at front of hood)
+// baffle_step           = 2;       // spacing between ring baffles
+// baffle_ring_h         = 0.4;     // each ring disc height
+// baffle_ring_wall      = 1.5;     // ring wall thickness beyond FOV cone
 
 /* Dust cap */
 cap_height            = 15;      // cap depth
@@ -116,11 +120,14 @@ inset_width      = pcb_width + pcb_ledge_inset;                   // 26  — led
 base_height      = base_floor_thickness + base_pcb_depth
                    + base_upper_depth;                            // 13  — total base box height
 
-// Hood + baffle (single piece — baffle bore cut directly into hood cylinder)
-hood_outer_dia   = lens_dia + 2 * hood_wall_thickness;            // 22  — hood cylinder OD
-baffle_max_bore  = hood_outer_dia - 2 * baffle_min_wall;          // 20  — bore stops here (min wall)
-baffle_top_dia   = lens_dia
-                   + 2 * hood_length * tan(baffle_fov / 2);      // unclamped cone opening
+// Hood
+hood_outer_dia   = lens_dia + 2 * hood_wall_thickness;            // 23  — hood cylinder OD
+
+// Ring baffles (disabled)
+// baffle_end_dia   = baffle_start_dia
+//                    + 2 * baffle_length * tan(baffle_fov / 2);
+// baffle_ring_od   = baffle_end_dia + 2 * baffle_ring_wall;
+// baffle_offset    = hood_length - baffle_length;
 
 // Cap
 cap_inner_dia    = hood_outer_dia + cap_fit_clearance;            // slips over hood
@@ -178,7 +185,7 @@ module pcb_base() {
 
         // USB cable cutout — through the rear wall (+Y face)
         translate([usb_x_offset - body_width / 2,
-                   body_width / 2, usb_z_offset])
+                   body_width / 2 - 8, usb_z_offset - 0.5])
             cube([usb_width, base_corner_radius * 2 + 10, usb_height]);
 
         // Screw holes — 4-corner pattern
@@ -192,14 +199,12 @@ module pcb_base() {
 // Hood + Baffle
 // --------------------------------------------------
 // Flat mounting plate that bolts onto the base, with a tall
-// cylindrical lens shroud extending upward. The hood wall
-// contains an integral stepped light baffle — a staircase
-// approximation of the FOV cone that blocks stray light.
+// cylindrical lens shroud extending upward. Ring baffles at
+// the front (opening end) block stray light — thin disc rings
+// whose inner bore follows the FOV cone.
 // The lens hole passes through the center of the plate.
 
 module hood() {
-    step_height = hood_length / baffle_num_steps;
-
     difference() {
         union() {
             // Mounting plate — same rounded footprint as the base, centered at (0,0)
@@ -209,27 +214,19 @@ module hood() {
                 cylinder(r = base_corner_radius, h = hood_plate_thickness / 2);
             }
 
-            // Hood cylinder — solid; the stepped baffle bore is cut below
+            // Hood cylinder — hollow tube
             translate([0, 0, hood_plate_thickness])
-                cylinder(d = hood_outer_dia, h = hood_length);
-        }
+                difference() {
+                    cylinder(d = hood_outer_dia, h = hood_length);
+                    translate([0, 0, -1])
+                        cylinder(d = lens_dia, h = hood_length + 2);
+                }
+
+}
 
         // Lens hole — through the plate
         translate([0, 0, -1])
             cylinder(d = lens_dia, h = hood_plate_thickness + 2);
-
-        // Stepped baffle bore — staircase approximation of FOV cone.
-        // Step 0 (bottom, at plate) has the narrowest bore (lens_dia).
-        // Each step widens following the FOV cone, clamped to
-        // baffle_max_bore so the wall never thins below baffle_min_wall.
-        translate([0, 0, hood_plate_thickness])
-            for (i = [0 : baffle_num_steps - 1]) {
-                raw_dia = lens_dia
-                          + (baffle_top_dia - lens_dia) * (i / baffle_num_steps);
-                step_dia = min(raw_dia, baffle_max_bore);
-                translate([0, 0, i * step_height - 0.01])
-                    cylinder(d = step_dia, h = step_height + 0.02);
-            }
 
         // Screw holes — clearance diameter, countersunk from below
         translate([0, 0, -base_corner_radius])
@@ -251,6 +248,26 @@ module cap() {
         // Hollow interior — open at the bottom, closed at top
         translate([0, 0, -1])
             cylinder(d = cap_inner_dia, h = cap_height - cap_wall_thickness + 1);
+    }
+}
+
+
+// --------------------------------------------------
+// Helper: ring baffles
+// --------------------------------------------------
+// Thin disc rings whose inner bore follows the FOV cone.
+// Ring 0 (closest to lens) has the tightest bore; each
+// successive ring opens wider. All rings share the same
+// outer diameter (sized for the widest cone + wall margin).
+
+module _ring_baffles() {
+    for (i = [0 : baffle_step : baffle_length]) {
+        cone_dia = baffle_start_dia + 2 * i * tan(baffle_fov / 2);
+        translate([0, 0, i])
+            difference() {
+                cylinder(d = baffle_ring_od, h = baffle_ring_h);
+                cylinder(d = cone_dia, h = baffle_ring_h + 1);
+            }
     }
 }
 
