@@ -20,6 +20,26 @@ The base has two screw hole variants controlled by `SELF_TAP_SCREWS`:
 
 To export a single part: set its flag to `true`, all others to `false`, then Render (F6) and export as STL.
 
+### Laser Pointer Holder (`laser_pointer.scad`)
+
+Dovetail saddle with snap-in clips for mounting a laser pointer on a standard telescope finder shoe. The saddle design is derived from [rziomber's Vixen-style dovetail](https://www.thingiverse.com/thing:4853379), adapted to the finder shoe profile used by the camera housing.
+
+Two clip sizes for different laser pointers:
+
+| Clip set | Laser diameter | Position |
+|----------|---------------|----------|
+| Large | 23mm (flashlight-style) | Left side of extension plate |
+| Small | 14mm (pen-style) | Right side of extension plate |
+
+Two 1/4-20 UNC tripod mount holes on the underside of the extension plate:
+
+| Hole | Diameter | Usage |
+|------|----------|-------|
+| Tap hole | 5.1mm | Tap with 1/4-20 after printing |
+| Insert hole | 8.9mm | Press in a 1/4-20 brass heat-set insert (OD ~9.5mm, 6.4mm length) |
+
+**Print orientation:** XZ plane as base (on its side) for strong snap clips. Supports required for the overhanging clip.
+
 ### M12 Lens Adapter (`lens_adapter.stl`)
 
 Replacement M12 lens mount for cameras whose stock mount doesn't accept standard M12 threading. Square base with flanged mounting ears sits on the camera PCB; cylindrical tube provides an M12 bore.
