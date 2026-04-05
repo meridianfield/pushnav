@@ -40,11 +40,11 @@
 // CONFIGURATION — toggle parts for STL export
 // ============================================================
 
-RENDER_BASE     = false;
-RENDER_HOOD     = false;
+RENDER_BASE     = true;
+RENDER_HOOD     = true;
 RENDER_CAP      = true;
 
-SELF_TAP_SCREWS = false;       // true  = self-tapping (smaller base holes)
+SELF_TAP_SCREWS = true;       // true  = self-tapping (smaller base holes)
                               // false = bolt-through (clearance holes in both base and hood)
 
 
