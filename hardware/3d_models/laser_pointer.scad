@@ -27,9 +27,15 @@
 //   by rziomber — https://www.thingiverse.com/thing:4853379
 //
 // PRINTING:
-//   All parts print without supports on any FDM printer.
-//   Recommended: 0.2mm layer height, 3 perimeters, 20% infill.
-
+//   Print flat in XY orientation (default, Z=0 face on bed).
+//   No supports required. 0.2mm layer height, 3 perimeters, 20% infill.
+//
+// ASSEMBLY:
+//   1. Place the laser pointer in the V-groove cradle.
+//   2. Thread a cable tie through the channel slot on one side of the
+//      block, bring it over the laser pointer, and click shut.
+//   3. Repeat for the second cable tie.
+//   4. Slide the dovetail saddle onto the finder shoe rail.
 
 
 // ============================================================
@@ -41,49 +47,58 @@ $fn = 200;
 /* Saddle body — sized for finder shoe dovetail */
 saddle_size = [50, 46, 18];     // [width, length, height]
 
-
 /* Dovetail channel — matches housing.scad finder shoe rail + clearance */
-channel_clearance    = 0.5;                            // per side
-channel_bottom_width = 33 + 2 * channel_clearance;     // 34mm (wide, deep in saddle)
-channel_top_width    = 20 + 2 * channel_clearance;     // 21mm (narrow, at saddle surface)
-channel_depth        = 11 + channel_clearance;          // 11.5mm
+channel_clearance    = 0.5;
+channel_bottom_width = 33 + 2 * channel_clearance;
+channel_top_width    = 20 + 2 * channel_clearance;
+channel_depth        = 11 + channel_clearance;
 
-/* Extension plate — chassis for snap-in laser pointer mount */
-extension_length = 70;                                  // extends in +X from saddle
-plate_thickness  = saddle_size[2] - channel_depth;      // matches saddle floor
+/* Extension plate — base for the V-groove cradle */
+plate_thickness  = saddle_size[2] - channel_depth;   // matches saddle floor
 
+/* V-groove laser pointer cradle */
+groove_depth        = 13;        // depth of V cut from block top (mm)
+groove_width        = groove_depth * 2 * tan(45);    // 90° V: 26mm
+groove_wall         = 5;         // side wall thickness on each side of V
+block_width         = groove_width + 2 * groove_wall;  // 36mm
+floor_thickness     = 8;         // solid material below V tip
+block_height        = groove_depth + floor_thickness;  // 21mm
+tie_clearance       = 8;             // gap between saddle and block for zip tie routing
+extension_length    = tie_clearance + block_width;   // plate ends flush with the block
+block_x             = saddle_size[0] + tie_clearance;
+block_length        = saddle_size[1];
 
-/* Snap-in laser pointer clips */
-laser_dia        = 23;          // large laser pointer barrel diameter
-laser_dia_sm     = 14;          // small laser pointer barrel diameter
-clip_clearance   = 0.5;         // bore diameter clearance (0.25mm per side)
-clip_wall        = 4;           // wall thickness (outer side only, bore unchanged)
-clip_open_half   = 67;          // half of opening angle (degrees)
-clip_arm_h       = 5;           // arm/guide height above arc end
-clip_depth       = 8;           // extrusion depth per clip
-clip_front_y     = 0;                                   // flush with front edge
-clip_back_y      = saddle_size[1] - clip_depth;          // flush with back edge
-clip_margin      = 5;                                    // margin from plate edges
-clip_gap         = 6;                                    // gap between clip sets
+// Cable tie arch tunnels — D-shaped (rectangle base + semicircle top).
+// The arch spans the slot width dimension, which is only 4.5mm in the print
+// orientation — trivially self-supporting, no supports required.
+cable_tie_slot_w    = 4.5;       // tunnel width (Y) — fits 3.6mm standard cable tie
+cable_tie_channel_h = 5;         // total tunnel height (Z)
+cable_tie_arch_r    = cable_tie_slot_w / 2;          // semicircle radius: 2.25mm
+cable_tie_rect_h    = cable_tie_channel_h - cable_tie_arch_r;  // rectangular portion: 2.75mm
+cable_tie_y1        = 10;        // front cable tie Y position
+cable_tie_y2        = saddle_size[1] - 10;   // back cable tie Y position
 
-/* Derived clip values — large (23mm) */
-clip_bore_r  = (laser_dia + clip_clearance) / 2;         // 11.75mm
-clip_outer_r = clip_bore_r + clip_wall;                   // 14.75mm
-clip_x       = saddle_size[0] + clip_margin + clip_outer_r;
-clip_z       = plate_thickness + clip_bore_r;
-
-/* Derived clip values — small (14mm) */
-clip_bore_r_sm  = (laser_dia_sm + clip_clearance) / 2;   // 7.25mm
-clip_outer_r_sm = clip_bore_r_sm + clip_wall;             // 10.25mm
-clip_x_sm       = clip_x + clip_outer_r + clip_gap + clip_outer_r_sm;
-clip_z_sm       = plate_thickness + clip_bore_r_sm;
-
-/* 1/4-20 UNC tripod mount holes */
-tripod_tap_dia    = 5.1;         // #7 drill for tapping 1/4-20 UNC
-tripod_insert_dia = 8.9;         // pilot hole for 1/4-20 heat-set insert (OD ~9.5mm)
-tripod_y          = saddle_size[1] / 2;
-tripod_x_tap      = clip_x;                              // tap hole under large clips
-tripod_x_insert   = clip_x + 10;                          // insert hole, 10mm to the right
+/* 1/4-20 UNC tripod mount holes — all centred on Y, spread across X.
+   Depths vary per hole to keep all holes blind (see tripod_*_depth).
+   Insert/T-nut: 12mm — 6.5mm plate + 5.5mm into block floor, adequate for
+   heat-set inserts (8-12mm) and T-nuts (7-9mm).
+   Tap: 8mm — limited by dovetail channel wall at X=40. */
+tripod_tap_dia    = 5.1;         // #7 drill size for tapping 1/4-20 UNC
+tripod_insert_dia = 8.9;         // pilot hole for heat-set insert (OD ~9.5mm)
+tripod_tnut_dia   = 6.0;         // barrel hole for 1/4-20 T-nut
+/* Per-hole depths — kept blind (no break-through).
+   Tap hole (X=40) sits inside the dovetail channel footprint; the channel
+   wall at X=40 reaches Z≈10mm, so depth is limited to 8mm to stay blind.
+   Insert (X=50) and T-nut (X=60) are outside the channel; 12mm is safe. */
+tripod_tap_depth    = 8;         // limited by dovetail channel wall at X=40
+tripod_insert_depth = 12;        // safe: X=50 outside channel, 18mm material
+tripod_tnut_depth   = 12;        // safe: X=60 under block, 27.5mm material
+tripod_spacing    = 15;          // X spacing between holes
+tripod_y          = saddle_size[1] / 2;                              // all holes centred on Y
+tripod_x_center   = saddle_size[0];          // centre of base plate
+tripod_x_tap      = tripod_x_center - tripod_spacing;               // left
+tripod_x_insert   = tripod_x_center;                                // centre
+tripod_x_tnut     = tripod_x_center + tripod_spacing;               // right
 
 /* Side clamping screws (M5) */
 screw_diameter = 5;
@@ -94,56 +109,41 @@ nut_size       = [8.0, 4.7];    // M5 [across-flats, height]
 // MODULES
 // ============================================================
 
-// --------------------------------------------------
-// Snap-in clip profile (2D)
-// --------------------------------------------------
-// C-shaped cradle (220 deg arc) with two straight guide arms.
-// The bore circle is subtracted from the solid outer boundary.
-//
-// The profile sits in the XY plane with the bore center at the
-// origin. Extrude along Z and rotate into position.
-
-module snap_profile_2d(bore_r, outer_r) {
-    n_arc = 60;     // arc point resolution
-
-    a_right   = 90 - clip_open_half;                     // 20 deg
-    arc_sweep = 360 - 2 * clip_open_half;                // 220 deg
-
-    ro_x  = outer_r * cos(a_right);
-    ro_y  = outer_r * sin(a_right);
-    ri_x  = bore_r * cos(a_right);
-    ri_y  = bore_r * sin(a_right);
-    top_y = ro_y + clip_arm_h;
-
+module v_groove_block() {
     difference() {
-        polygon(concat(
-            // Right arm: outer top → outer arc end
-            [[ro_x, top_y], [ro_x, ro_y]],
-            // Outer arc (right → CW through bottom → left)
-            [for (i = [0:n_arc]) let(a = a_right - i * arc_sweep / n_arc)
-                [outer_r * cos(a), outer_r * sin(a)]],
-            // Left arm: outer arc end → outer top
-            [[-ro_x, top_y]],
-            // Left arm flat top (outer → inner)
-            [[-ri_x, top_y]],
-            // Left arm: inner top → inner arc end
-            [[-ri_x, ri_y]],
-            // Bridge across gap to right side
-            [[ri_x, ri_y]],
-            // Right arm: inner arc end → inner top
-            [[ri_x, top_y]]
-            // Close: right arm flat top back to start
-        ));
+        // Solid block sitting on top of extension plate
+        translate([block_x, 0, plate_thickness])
+            cube([block_width, block_length, block_height]);
 
-        // Subtract bore
-        circle(r = bore_r);
+        // V-groove — 90° included angle, runs full block length in Y.
+        // Tip points down into block, opening faces up.
+        translate([block_x + block_width / 2, -1, plate_thickness + block_height])
+            rotate([-90, 0, 0])
+                linear_extrude(block_length + 2)
+                    polygon([
+                        [-groove_width / 2, 0],
+                        [ groove_width / 2, 0],
+                        [0, groove_depth]
+                    ]);
+
+        // Cable tie arch tunnels — D-shaped cross-section (rectangle + semicircle top).
+        // Runs full block width in X so the tie can route around the outside.
+        // The arch spans only 4.5mm in print orientation — no supports needed.
+        for (cy = [cable_tie_y1, cable_tie_y2]) {
+            // Rectangular base — cable tie lies flat here
+            translate([block_x - 1, cy - cable_tie_slot_w / 2, plate_thickness])
+                cube([block_width + 2, cable_tie_slot_w, cable_tie_rect_h]);
+            // Semicircular arch top — self-supporting ceiling
+            translate([block_x - 1, cy, plate_thickness + cable_tie_rect_h])
+                rotate([0, 90, 0])
+                    cylinder(r = cable_tie_arch_r, h = block_width + 2, $fn = 60);
+        }
     }
 }
 
 
 module screw_insert() {
     // Hex nut pocket with insertion slot toward -X
-    // https://www.engineersedge.com/hardware/standard_metric_hex_nuts_13728.htm
     hull() {
         linear_extrude(height = nut_size[1], twist = 0, center = false)
             regular_polygon(6, nut_size[0] / 2 / cos(360 / (6 * 2)));
@@ -163,43 +163,21 @@ module regular_polygon(order = 4, r = 1) {
 // RENDER
 // ============================================================
 
-// Rotated for XZ-plane printing — Y=0 face becomes the print bed.
-// Clip layers run along the arm length for maximum strength.
-rotate([90, 0, 0])
 difference() {
     union() {
+        // Dovetail saddle
         cube(saddle_size, center = false);
 
-        // Extension plate — flat chassis for laser pointer mount
+        // Extension plate — flat chassis for laser pointer cradle
         translate([saddle_size[0], 0, 0])
             cube([extension_length, saddle_size[1], plate_thickness]);
 
-        // Large clips (23mm)
-        translate([clip_x, clip_front_y + clip_depth, clip_z])
-            rotate([90, 0, 0])
-                linear_extrude(clip_depth)
-                    snap_profile_2d(clip_bore_r, clip_outer_r);
-
-        translate([clip_x, clip_back_y + clip_depth, clip_z])
-            rotate([90, 0, 0])
-                linear_extrude(clip_depth)
-                    snap_profile_2d(clip_bore_r, clip_outer_r);
-
-        // Small clips (14mm)
-        translate([clip_x_sm, clip_front_y + clip_depth, clip_z_sm])
-            rotate([90, 0, 0])
-                linear_extrude(clip_depth)
-                    snap_profile_2d(clip_bore_r_sm, clip_outer_r_sm);
-
-        translate([clip_x_sm, clip_back_y + clip_depth, clip_z_sm])
-            rotate([90, 0, 0])
-                linear_extrude(clip_depth)
-                    snap_profile_2d(clip_bore_r_sm, clip_outer_r_sm);
+        // V-groove cradle block with cable tie channels
+        v_groove_block();
     }
 
     // Dovetail channel — trapezoid matching housing.scad finder shoe rail.
     // Wide at bottom (deep in saddle), narrow at top (saddle surface).
-    // Bar slides in from the end along Y.
     translate([saddle_size[0] / 2, -1, saddle_size[2]])
         rotate([-90, 0, 0])
             linear_extrude(saddle_size[1] + 2)
@@ -225,11 +203,11 @@ difference() {
                 screw_insert();
         }
 
-    // 1/4-20 UNC tripod mount — tap hole (through)
-    translate([tripod_x_tap, tripod_y, -1])
-        cylinder(d = tripod_tap_dia, h = plate_thickness + 2);
-
-    // 1/4-20 UNC tripod mount — heat-set insert hole (through)
-    translate([tripod_x_insert, tripod_y, -1])
-        cylinder(d = tripod_insert_dia, h = plate_thickness + 2);
+    // 1/4-20 UNC tripod mount holes — centred on Y, spread across X.
+    // Tap hole (X=40, 8mm): within channel footprint — depth limited to stay blind.
+    // Insert hole (X=50, 12mm): press in a heat-set insert from below.
+    // T-nut hole (X=60, 12mm): barrel hole for a T-nut installed from below.
+    translate([tripod_x_tap,    tripod_y, -1]) cylinder(d = tripod_tap_dia,    h = tripod_tap_depth    + 1);
+    translate([tripod_x_insert, tripod_y, -1]) cylinder(d = tripod_insert_dia, h = tripod_insert_depth + 1);
+    translate([tripod_x_tnut,   tripod_y, -1]) cylinder(d = tripod_tnut_dia,   h = tripod_tnut_depth   + 1);
 }
