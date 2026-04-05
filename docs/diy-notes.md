@@ -6,7 +6,7 @@ nav_order: 4
 
 # DIY Notes
 
-![Components](assets/components.jpg)
+![Assembly](assets/assembly-1.jpeg)
 
 
 ## Shopping List
@@ -43,3 +43,66 @@ The camera ships with a wide-angle lens that needs to be replaced with the 25mm 
 - Attach the hood to the base.
 - Ready to use with PushNav!
 
+## Detailed Assembly Instructions
+
+
+<figure>
+  <img src="assets/assembly-2.jpeg" alt="Assembly step 2">
+  <figcaption>Remove the 4 screws on the corners of the camera to separate the white plastic base from the PCB.</figcaption>
+</figure>
+
+---
+
+<figure>
+  <img src="assets/assembly-3.jpeg" alt="Assembly step 3">
+  <figcaption>Remove the PCB from the white plastic base.</figcaption>
+</figure>
+
+---
+
+<figure>
+  <img src="assets/assembly-4.jpeg" alt="Assembly step 4">
+  <figcaption>On the back of the PCB, locate the screws that hold the lens mount in place. Unscrew them to remove the lens mount.</figcaption>
+</figure>
+
+---
+
+<figure>
+  <img src="assets/assembly-5.jpeg" alt="Assembly step 5">
+  <figcaption>Remove the lens mount from the PCB. Take care not to touch the sensor and do not allow dust to settle on it. This will reduce the sensitivity of the sensor and introduce smudges and dust bunnies in the images.</figcaption>
+</figure>
+
+---
+
+<figure>
+  <img src="assets/assembly-6.jpeg" alt="Assembly step 6">
+  <figcaption>Place the M12 lens mount onto the PCB, ensuring it is properly aligned with the screw holes in the PCB.</figcaption>
+</figure>
+
+---
+
+<figure>
+  <img src="assets/assembly-7.jpeg" alt="Assembly step 7">
+  <figcaption>Reverse the PCB and screw the M12 lens mount onto the PCB, ensuring it is securely fastened.</figcaption>
+</figure>
+
+---
+
+<figure>
+  <img src="assets/assembly-8.jpeg" alt="Assembly step 8">
+  <figcaption>Reassemble the camera by placing the PCB back into the white plastic base.</figcaption>
+</figure>
+
+---
+
+<figure>
+  <img src="assets/assembly-9.jpeg" alt="Assembly step 9">
+  <figcaption>Screw the locking nut onto the M12 lens before screwing the lens into the mount.</figcaption>
+</figure>
+
+---
+
+<figure>
+  <img src="assets/assembly-10.jpeg" alt="Assembly step 10">
+  <figcaption> After focus is done, lock the lens in place by tightening the M12 lock nut. You may need to adjust the focus slightly by loosening the lock nut, fine-tuning the focus, and re-tightening until you achieve optimal focus.</figcaption>
+</figure>
