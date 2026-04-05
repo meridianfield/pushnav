@@ -32,9 +32,9 @@
 //
 // ASSEMBLY:
 //   1. Place the laser pointer in the V-groove cradle.
-//   2. Thread a cable tie through the channel slot on one side of the
-//      block, bring it over the laser pointer, and click shut.
-//   3. Repeat for the second cable tie.
+//   2. Push a cable tie (or rubber band) into the front slot, bring it
+//      up both sides of the block, over the laser pointer, and click shut.
+//   3. Repeat for the back slot.
 //   4. Slide the dovetail saddle onto the finder shoe rail.
 
 
@@ -68,15 +68,10 @@ extension_length    = tie_clearance + block_width;   // plate ends flush with th
 block_x             = saddle_size[0] + tie_clearance;
 block_length        = saddle_size[1];
 
-// Cable tie arch tunnels — D-shaped (rectangle base + semicircle top).
-// The arch spans the slot width dimension, which is only 4.5mm in the print
-// orientation — trivially self-supporting, no supports required.
-cable_tie_slot_w    = 4.5;       // tunnel width (Y) — fits 3.6mm standard cable tie
-cable_tie_channel_h = 5;         // total tunnel height (Z)
-cable_tie_arch_r    = cable_tie_slot_w / 2;          // semicircle radius: 2.25mm
-cable_tie_rect_h    = cable_tie_channel_h - cable_tie_arch_r;  // rectangular portion: 2.75mm
-cable_tie_y1        = 10;        // front cable tie Y position
-cable_tie_y2        = saddle_size[1] - 10;   // back cable tie Y position
+// Cable tie slots — open slots cut into the front and back faces of the block.
+// Push the cable tie (or rubber band) straight in from the outside; no threading.
+cable_tie_slot_w    = 9.5;       // slot depth into block (Y) — fits 3.6mm standard tie
+cable_tie_slot_h    = 5;         // slot height (Z)
 
 /* 1/4-20 UNC tripod mount holes — all centred on Y, spread across X.
    Depths vary per hole to keep all holes blind (see tripod_*_depth).
@@ -126,18 +121,14 @@ module v_groove_block() {
                         [0, groove_depth]
                     ]);
 
-        // Cable tie arch tunnels — D-shaped cross-section (rectangle + semicircle top).
-        // Runs full block width in X so the tie can route around the outside.
-        // The arch spans only 4.5mm in print orientation — no supports needed.
-        for (cy = [cable_tie_y1, cable_tie_y2]) {
-            // Rectangular base — cable tie lies flat here
-            translate([block_x - 1, cy - cable_tie_slot_w / 2, plate_thickness])
-                cube([block_width + 2, cable_tie_slot_w, cable_tie_rect_h]);
-            // Semicircular arch top — self-supporting ceiling
-            translate([block_x - 1, cy, plate_thickness + cable_tie_rect_h])
-                rotate([0, 90, 0])
-                    cylinder(r = cable_tie_arch_r, h = block_width + 2, $fn = 60);
-        }
+        // Cable tie slots — open to front and back faces.
+        // Push tie / rubber band straight in; no threading required.
+        // Front slot (open at Y=0)
+        translate([block_x - 1, -1, plate_thickness])
+            cube([block_width + 2, cable_tie_slot_w + 1, cable_tie_slot_h]);
+        // Back slot (open at Y=block_length)
+        translate([block_x - 1, block_length - cable_tie_slot_w, plate_thickness])
+            cube([block_width + 2, cable_tie_slot_w + 1, cable_tie_slot_h]);
     }
 }
 
