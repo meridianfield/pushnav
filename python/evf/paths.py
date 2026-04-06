@@ -162,6 +162,15 @@ def camera_binary() -> Path:
     )
 
 
+def web_dir() -> Path:
+    """Path to data/web/ directory (mobile web interface assets)."""
+    if _BUNDLE_MODE:
+        return _RESOURCES / "web"
+    if _LINUX_RELEASE or _WINDOWS_RELEASE:
+        return _RELEASE_ROOT / "data" / "web"
+    return _REPO_ROOT / "data" / "web"
+
+
 def samples_dir() -> Path | None:
     """Path to test sample images. Returns None in release modes (not shipped)."""
     if _BUNDLE_MODE or _LINUX_RELEASE or _WINDOWS_RELEASE:

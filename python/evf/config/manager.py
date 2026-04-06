@@ -35,6 +35,7 @@ DEFAULT_CONFIG = {
     "logging": {"verbose": False},
     "audio": {"enabled": True},
     "display": {"hidpi": False},
+    "webserver": {"port": 8080},
 }
 
 
@@ -193,6 +194,14 @@ class ConfigManager:
     @verbose.setter
     def verbose(self, value: bool) -> None:
         self.set("logging", "verbose", value)
+
+    @property
+    def web_port(self) -> int:
+        return self.get("webserver", "port")
+
+    @web_port.setter
+    def web_port(self, value: int) -> None:
+        self.set("webserver", "port", value)
 
     @property
     def path(self) -> Path:

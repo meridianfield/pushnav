@@ -194,6 +194,7 @@ class UI:
         self._stellarium_object_getter: Callable[[], dict | None] | None = None
         self._debug_sample_jpeg: bytes | None = None  # cached JPEG for continuous injection
         self._debug_frame_id = 100_000  # offset to avoid collisions with real frames
+        self._qr_texture: int | str | None = None
 
     # -- public API -----------------------------------------------------------
 
@@ -260,6 +261,34 @@ class UI:
         """Set callables for Stellarium Remote Control data."""
         self._stellarium_status_getter = status
         self._stellarium_object_getter = obj
+
+    def set_web_url(self, url: str) -> None:
+        """Show mobile web interface URL and QR code in the settings panel."""
+        if dpg.does_item_exist("web_url_label"):
+            dpg.set_value("web_url_label", url)
+        try:
+            import qrcode
+            qr = qrcode.QRCode(box_size=4, border=2)
+            qr.add_data(url)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill_color=(255, 70, 70), back_color=(10, 0, 0))
+            qr_img = qr_img.convert("RGBA")
+            qr_w, qr_h = qr_img.size
+            import numpy as np
+            qr_rgba = np.asarray(qr_img, dtype=np.float32).ravel() / 255.0
+            with dpg.texture_registry():
+                self._qr_texture = dpg.add_static_texture(
+                    width=qr_w, height=qr_h, default_value=qr_rgba,
+                )
+            if dpg.does_item_exist("web_qr_group"):
+                s = self._ui_scale
+                dpg.add_image(
+                    self._qr_texture,
+                    width=int(qr_w * s), height=int(qr_h * s),
+                    parent="web_qr_group",
+                )
+        except Exception as exc:
+            logger.debug("QR code generation failed: %s", exc)
 
     def setup(self) -> None:
         """Build all DearPyGui widgets.
@@ -704,6 +733,12 @@ class UI:
                 default_value=self._config.hidpi,
                 callback=self._on_hidpi_change,
             )
+        dpg.add_spacer(height=6)
+        dpg.add_separator()
+        mobile_heading = dpg.add_text("Mobile Interface", color=(255, 70, 70))
+        dpg.bind_item_font(mobile_heading, self._font_heading)
+        dpg.add_text("Starting...", tag="web_url_label", color=(200, 50, 50))
+        dpg.add_group(tag="web_qr_group")
 
     def _build_advanced_settings_section(self) -> None:
         s = self._ui_scale
