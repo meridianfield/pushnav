@@ -103,6 +103,9 @@ def main() -> None:
     ui.update_splash("Starting Stellarium server...")
     engine.startup_stellarium()
 
+    ui.update_splash("Starting web server...")
+    engine.startup_webserver()
+
     ui.update_splash("Connecting to camera...")
     engine.startup_camera()
 
@@ -151,6 +154,8 @@ def main() -> None:
 
     ui.destroy_splash()
     ui.set_audio_enabled(engine.audio_enabled)
+    if engine.web_url:
+        ui.set_web_url(engine.web_url)
 
     # Provide initial camera controls if connected
     controls = engine.camera_controls

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PushNav</title>
+  <style>
+    :root {
+      --red:        rgba(255, 70,  70,  1.00);
+      --red-dim:    rgba(200, 50,  50,  0.80);
+      --red-faint:  rgba(150, 30,  30,  0.60);
+      --orange:     rgba(255, 100, 50,  1.00);
+      --bg:         #0a0000;
+      --bg-card:    #120303;
+      --sep:        rgba(180, 40, 40, 0.20);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--red);
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Sky canvas ─────────────────────────────────────────────────────── */
+    #canvas-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #000;
+      position: relative;
+      flex-shrink: 0;
+    }
+    #sky {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #sound-banner {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 5, 5, 0.88);
+      color: rgba(255, 70, 70, 0.65);
+      padding: 5px 14px;
+      border: 1px solid rgba(200, 50, 50, 0.25);
+      border-radius: 20px;
+      font-size: 11px;
+      white-space: nowrap;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    /* ── Info panel ─────────────────────────────────────────────────────── */
+    #info {
+      padding: 10px 14px 24px;
+    }
+
+    #state-bar {
+      text-align: center;
+      font-weight: bold;
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      padding: 8px 0 4px;
+      color: var(--red);
+    }
+
+    .section-head {
+      color: var(--red);
+      font-weight: bold;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 14px 0 5px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid var(--sep);
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 2px 0;
+    }
+    .lbl { color: var(--red-faint); min-width: 80px; }
+    .val { font-family: monospace; color: var(--red); }
+
+    #nav-target {
+      font-size: 14px;
+      font-weight: bold;
+      padding: 4px 0 2px;
+    }
+    #nav-coords {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--red-faint);
+      padding-bottom: 2px;
+    }
+    #nav-direction {
+      font-family: monospace;
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--orange);
+      padding: 4px 0;
+    }
+
+    .audio-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      border: 2px solid var(--red-dim);
+      background: transparent;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .dot.on { background: rgba(255, 70, 70, 0.75); }
+  </style>
+</head>
+<body>
+
+<div id="canvas-wrap">
+  <canvas id="sky"></canvas>
+  <div id="sound-banner">🔇 Tap to enable audio</div>
+</div>
+
+<div id="info">
+  <div id="state-bar">CONNECTING…</div>
+
+  <div class="section-head">Plate-Solve Stats</div>
+  <div class="row"><span class="lbl">RA</span>        <span class="val" id="ra">--</span></div>
+  <div class="row"><span class="lbl">Dec</span>       <span class="val" id="dec">--</span></div>
+  <div class="row"><span class="lbl">Roll</span>      <span class="val" id="roll">--</span></div>
+  <div class="row"><span class="lbl">Matches</span>   <span class="val" id="matches">--</span></div>
+  <div class="row"><span class="lbl">Prob</span>      <span class="val" id="prob">--</span></div>
+  <div class="row"><span class="lbl">Last solve</span><span class="val" id="solve-age">--</span></div>
+  <div class="row"><span class="lbl">Failures</span>  <span class="val" id="failures">--</span></div>
+
+  <div class="section-head">Navigation</div>
+  <div id="nav-target">TARGET: --</div>
+  <div id="nav-coords"></div>
+  <div id="nav-direction"></div>
+
+  <div class="section-head">Audio</div>
+  <div class="audio-row" id="audio-row" onclick="toggleAudio()">
+    <div class="dot on" id="audio-dot"></div>
+    <span id="audio-lbl">Audio alerts on</span>
+  </div>
+</div>
+
+<script>
+// ── Constants (mirror window.py) ────────────────────────────────────────────
+const NO_STARS_THRESHOLD  = 3;
+const LOCKED_THRESHOLD_DEG = 0.15;
+
+const STATE_COLORS = {
+  SETUP: '#c83232', SYNC: '#c83232', SYNC_CONFIRM: '#c83232',
+  CALIBRATE: '#c83232', WARMING_UP: '#b42828', TRACKING: '#ff4646',
+  RECONNECTING: '#963232', ERROR: '#ff1e1e',
+};
+
+// ── Canvas setup ────────────────────────────────────────────────────────────
+const wrap   = document.getElementById('canvas-wrap');
+const canvas = document.getElementById('sky');
+const ctx    = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const sz = wrap.clientWidth;
+  canvas.width  = sz;
+  canvas.height = sz;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ── Audio ────────────────────────────────────────────────────────────────────
+let audioEnabled  = true;
+let audioUnlocked = false;
+let audioCtx      = null;
+const soundBuffers = {};
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioUnlocked = true;
+  document.getElementById('sound-banner').style.display = 'none';
+  ['lock', 'lost'].forEach(name => {
+    fetch(`/sounds/${name}.wav`)
+      .then(r => r.arrayBuffer())
+      .then(buf => audioCtx.decodeAudioData(buf))
+      .then(decoded => { soundBuffers[name] = decoded; })
+      .catch(() => {});
+  });
+}
+
+document.addEventListener('click', unlockAudio, { once: true });
+document.getElementById('sound-banner').addEventListener('click', e => {
+  e.stopPropagation(); unlockAudio();
+});
+
+function playSound(name) {
+  if (!audioEnabled || !audioUnlocked || !audioCtx || !soundBuffers[name]) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = soundBuffers[name];
+  src.connect(audioCtx.destination);
+  src.start(0);
+}
+
+function toggleAudio() {
+  audioEnabled = !audioEnabled;
+  document.getElementById('audio-dot').classList.toggle('on', audioEnabled);
+  document.getElementById('audio-lbl').textContent =
+    audioEnabled ? 'Audio alerts on' : 'Audio alerts off';
+}
+
+// ── WebSocket ────────────────────────────────────────────────────────────────
+let data     = null;
+let prevData = null;
+
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onmessage = e => {
+    prevData = data;
+    data = JSON.parse(e.data);
+    if (prevData !== null) {
+      if (prevData.failures === 0 && data.failures > 0) playSound('lost');
+      else if (prevData.failures > 0 && data.failures === 0) playSound('lock');
+    }
+    updateInfo();
+  };
+  ws.onclose = () => setTimeout(connect, 1500);
+  ws.onerror = () => ws.close();
+}
+connect();
+
+// ── Info panel ───────────────────────────────────────────────────────────────
+function formatRA(deg) {
+  const h  = deg / 15.0;
+  const hh = Math.floor(h);
+  const mm = Math.floor((h - hh) * 60);
+  const ss = ((h - hh - mm / 60) * 3600).toFixed(2).padStart(5, '0');
+  return `${hh}h ${String(mm).padStart(2,'0')}m ${ss}s`;
+}
+function formatDec(deg) {
+  const sign = deg >= 0 ? '+' : '-';
+  const abs  = Math.abs(deg);
+  const dd   = Math.floor(abs);
+  const mm   = Math.floor((abs - dd) * 60);
+  const ss   = ((abs - dd - mm / 60) * 3600).toFixed(1).padStart(4, '0');
+  return `${sign}${dd}\u00b0 ${String(mm).padStart(2,'0')}' ${ss}"`;
+}
+function formatAge(s) {
+  if (s === null || s === undefined) return '--';
+  return s < 60 ? `${s.toFixed(1)}s ago` : `${(s / 60).toFixed(1)}m ago`;
+}
+
+function updateInfo() {
+  if (!data) return;
+  const p = data.pointing;
+
+  const sl = document.getElementById('state-bar');
+  sl.textContent = data.state;
+  sl.style.color = STATE_COLORS[data.state] || '#c83232';
+
+  if (p.valid) {
+    document.getElementById('ra').textContent        = formatRA(p.ra_deg);
+    document.getElementById('dec').textContent       = formatDec(p.dec_deg);
+    document.getElementById('roll').textContent      = `${p.roll_deg.toFixed(1)}\u00b0`;
+    document.getElementById('matches').textContent   = p.matches;
+    document.getElementById('prob').textContent      = p.prob.toFixed(4);
+    document.getElementById('solve-age').textContent = formatAge(p.solve_age_s);
+  } else {
+    ['ra','dec','roll','matches','prob','solve-age'].forEach(id =>
+      document.getElementById(id).textContent = '--'
+    );
+  }
+  document.getElementById('failures').textContent = data.failures;
+
+  const nav = data.nav;
+  if (nav && nav.active) {
+    document.getElementById('nav-target').textContent =
+      'TARGET: ' + (nav.target_name || '');
+    document.getElementById('nav-coords').textContent =
+      nav.target_ra_deg != null
+        ? `${formatRA(nav.target_ra_deg)}  ${formatDec(nav.target_dec_deg)}`
+        : '';
+    document.getElementById('nav-direction').textContent =
+      nav.direction_text || '';
+  } else {
+    document.getElementById('nav-target').textContent    = 'TARGET: --';
+    document.getElementById('nav-coords').textContent    = '';
+    document.getElementById('nav-direction').textContent = '';
+  }
+}
+
+// ── Canvas rendering ─────────────────────────────────────────────────────────
+requestAnimationFrame(renderLoop);
+
+function renderLoop() {
+  requestAnimationFrame(renderLoop);
+  drawFrame();
+}
+
+function drawFrame() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0000';
+  ctx.fillRect(0, 0, W, H);
+  if (!data) return;
+
+  const sc = W / data.image_w;   // canvas_px per image_px
+
+  // Coordinate helpers ---------------------------------------------------
+  // imgToCanvas: absolute image coords → canvas coords
+  // (canvas centre = pointing origin = data.origin_x, data.origin_y in image)
+  function imgToCanvas(px, py) {
+    return [
+      (px - data.origin_x) * sc + W / 2,
+      (py - data.origin_y) * sc + H / 2,
+    ];
+  }
+
+  // projToCanvas: gnomonic-projection image coords → canvas coords.
+  // gnomonic_project centres at image centre (image_w/2, image_h/2), not at
+  // origin_x/y.  Mirrors the desktop's (nav.pixel_x + dx_off) adjustment.
+  function projToCanvas(px, py) {
+    const dx_off = data.origin_x - data.image_w / 2;
+    const dy_off = data.origin_y - data.image_h / 2;
+    return imgToCanvas(px + dx_off, py + dy_off);
+  }
+
+  // Axes -----------------------------------------------------------------
+  const axisStates = new Set(['CALIBRATE', 'WARMING_UP', 'TRACKING']);
+  if (axisStates.has(data.state) && data.pointing.valid &&
+      data.failures < NO_STARS_THRESHOLD) {
+    drawAxes(W, H, sc);
+  }
+
+  // Navigation overlay ---------------------------------------------------
+  if (data.nav && data.nav.active && data.failures < NO_STARS_THRESHOLD) {
+    drawNavigation(W, H, sc, imgToCanvas, projToCanvas);
+  }
+}
+
+// ── Axes ─────────────────────────────────────────────────────────────────────
+function drawAxes(W, H, sc) {
+  const phi = data.finder_rotation * Math.PI / 180;
+  const upX =  Math.sin(phi), upY  = -Math.cos(phi);
+  const rtX =  Math.cos(phi), rtY  =  Math.sin(phi);
+
+  const far     = 2 * Math.max(W, H);
+  const dashOn  = 12 * sc, dashOff = 8 * sc;
+  const col     = 'rgba(255,70,70,0.78)';
+  const cx = W / 2, cy = H / 2;
+
+  ctx.save();
+  ctx.strokeStyle = col;
+  ctx.lineWidth   = 1;
+  ctx.setLineDash([dashOn, dashOff]);
+  for (const [dx, dy] of [[upX, upY], [rtX, rtY]]) {
+    ctx.beginPath();
+    ctx.moveTo(cx - dx * far, cy - dy * far);
+    ctx.lineTo(cx + dx * far, cy + dy * far);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Labels: UP/DOWN on mount-right axis; RIGHT/LEFT on mount-up axis.
+  // Mirrors window.py label placement exactly.
+  const dist      = 200 * sc;
+  const labelCol  = 'rgba(255,70,70,0.86)';
+  const fr        = data.finder_rotation;
+
+  // right_axis_rot (PIL CCW) = -fr  →  canvas CW = fr
+  // up_axis_rot   (PIL CCW) = 90-fr →  canvas CW = -(90-fr) = fr-90
+  drawRotLabel('UP',    cx - rtX * dist, cy - rtY * dist, fr,       sc, labelCol);
+  drawRotLabel('DOWN',  cx + rtX * dist, cy + rtY * dist, fr,       sc, labelCol);
+  drawRotLabel('RIGHT', cx + upX * dist, cy + upY * dist, fr - 90,  sc, labelCol);
+  drawRotLabel('LEFT',  cx - upX * dist, cy - upY * dist, fr - 90,  sc, labelCol);
+}
+
+function drawRotLabel(text, x, y, angleCWdeg, sc, col) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angleCWdeg * Math.PI / 180);
+  ctx.font        = `bold ${Math.max(10, Math.round(14 * sc))}px sans-serif`;
+  ctx.fillStyle   = col;
+  ctx.textAlign   = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
+// ── Navigation overlay ────────────────────────────────────────────────────────
+function drawNavigation(W, H, sc, imgToCanvas, projToCanvas) {
+  const nav   = data.nav;
+  const t     = performance.now() / 1000;
+  const ox = W / 2, oy = H / 2;   // reticle always at canvas centre
+
+  let zone;
+  if (nav.in_fov && nav.separation_deg <= LOCKED_THRESHOLD_DEG) zone = 'LOCKED';
+  else if (nav.in_fov)                                           zone = 'CONVERGE';
+  else                                                           zone = 'PUSH';
+
+  if (zone === 'PUSH') {
+    const [ex, ey]  = imgToCanvas(nav.edge_x, nav.edge_y);
+    const arrowRad  = nav.edge_angle_deg * Math.PI / 180;
+    const tip_x     = ex - Math.sin(arrowRad) * 68 * sc;
+    const tip_y     = ey + Math.cos(arrowRad) * 68 * sc;
+
+    drawReticle(ox, oy, zone, t, sc);
+    drawGuideLine(ox, oy, ex, ey, zone);
+    drawArrow(tip_x, tip_y, (nav.edge_angle_deg + 180) % 360, sc);
+    drawDistance(nav.separation_deg, zone, ex, ey, nav.edge_angle_deg, sc, W, H);
+
+  } else if (zone === 'CONVERGE') {
+    const [tx, ty] = projToCanvas(nav.pixel_x, nav.pixel_y);
+
+    // Lock-zone ring (0.15° threshold)
+    const fovScPx  = data.image_w / (2 * Math.tan(data.fov_h_deg / 2 * Math.PI / 180));
+    const lockR    = Math.tan(LOCKED_THRESHOLD_DEG * Math.PI / 180) * fovScPx * sc;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,50,50,0.24)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.arc(ox, oy, lockR, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+
+    drawReticle(ox, oy, zone, t, sc);
+    drawGuideLine(ox, oy, tx, ty, zone);
+    drawTargetMarker(tx, ty, sc);
+    drawDistance(nav.separation_deg, zone, tx, ty, null, sc, W, H);
+    if (nav.target_name) drawLabel(nav.target_name, tx + 18 * sc, ty - 12 * sc,
+                                   'rgba(255,70,70,0.78)', sc);
+
+  } else {  // LOCKED
+    const pulse = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(t * 2 * Math.PI / 1.2));
+    drawReticle(ox, oy, zone, t, sc, pulse);
+    const col = `rgba(255,120,80,${pulse.toFixed(3)})`;
+    if (nav.target_name) {
+      drawLabel(nav.target_name, ox, oy - 45 * sc, col, sc, true /*centred*/);
+    }
+    drawLabel('ON TARGET', ox, oy + 35 * sc, col, sc, true /*centred*/);
+  }
+}
+
+function drawReticle(ox, oy, zone, t, sc, pulse) {
+  ctx.save();
+  if (zone === 'LOCKED') {
+    const p   = pulse || 0.8;
+    const col = `rgba(255,120,80,${p.toFixed(3)})`;
+    for (const [r, lw] of [[20 * sc, 2], [14 * sc, 3], [8 * sc, 2]]) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth   = lw;
+      ctx.beginPath(); ctx.arc(ox, oy, r, 0, 2 * Math.PI); ctx.stroke();
+    }
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(ox, oy, 4 * sc, 0, 2 * Math.PI); ctx.fill();
+  } else {
+    const [col, r, arm, gap, lw] = zone === 'PUSH'
+      ? ['rgba(120,25,25,0.63)',  12 * sc, 20 * sc, 4 * sc, 1]
+      : ['rgba(200,50,50,0.78)',  14 * sc, 24 * sc, 5 * sc, 2];
+    ctx.strokeStyle = col;
+    ctx.lineWidth   = lw;
+    ctx.beginPath(); ctx.arc(ox, oy, r, 0, 2 * Math.PI); ctx.stroke();
+    for (const [x1, y1, x2, y2] of [
+      [ox - arm, oy, ox - gap, oy], [ox + gap, oy, ox + arm, oy],
+      [ox, oy - arm, ox, oy - gap], [ox, oy + gap, ox, oy + arm],
+    ]) { ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  }
+  ctx.restore();
+}
+
+function drawGuideLine(x1, y1, x2, y2, zone) {
+  ctx.save();
+  ctx.strokeStyle = zone === 'PUSH' ? 'rgba(255,100,50,0.90)' : 'rgba(255,70,70,0.78)';
+  ctx.lineWidth   = zone === 'PUSH' ? 2 : 1;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawTargetMarker(tx, ty, sc) {
+  const col = 'rgba(255,70,70,0.78)';
+  const r = 8 * sc, gap = 3 * sc, arm = 14 * sc;
+  ctx.save();
+  ctx.strokeStyle = col; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(tx, ty, r, 0, 2 * Math.PI); ctx.stroke();
+  for (const [x1, y1, x2, y2] of [
+    [tx - arm, ty, tx - gap, ty], [tx + gap, ty, tx + arm, ty],
+    [tx, ty - arm, tx, ty - gap], [tx, ty + gap, tx, ty + arm],
+  ]) { ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  ctx.restore();
+}
+
+// Arrow with tail — mirrors _draw_arrow_with_tail() exactly.
+// angle_deg: clockwise from image-up; tip at (x, y).
+function drawArrow(x, y, angleDeg, sc) {
+  const size    = 28 * sc, tailLen = 40 * sc;
+  const rad     = angleDeg * Math.PI / 180;
+  const dx      = Math.sin(rad), dy = -Math.cos(rad);
+  const px      = -dy,           py = dx;
+  const hBase   = size * 0.4;
+  const bx1     = x - size * dx + hBase * px;
+  const by1     = y - size * dy + hBase * py;
+  const bx2     = x - size * dx - hBase * px;
+  const by2     = y - size * dy - hBase * py;
+  const col     = 'rgba(255,100,50,1)';
+
+  ctx.save();
+  ctx.fillStyle   = col;
+  ctx.strokeStyle = col;
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y); ctx.lineTo(bx1, by1); ctx.lineTo(bx2, by2);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  const bcx = x - size * dx, bcy = y - size * dy;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(bcx, bcy);
+  ctx.lineTo(bcx - tailLen * dx, bcy - tailLen * dy);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawDistance(sep_deg, zone, x, y, arrowAngleDeg, sc, W, H) {
+  const text = sep_deg >= 1.0
+    ? `${sep_deg.toFixed(1)}\u00b0`
+    : `${(sep_deg * 60).toFixed(1)}'`;
+  const col  = zone === 'PUSH' ? 'rgba(255,100,50,0.90)' : 'rgba(255,70,70,0.78)';
+  let lx, ly;
+  if (zone === 'PUSH' && arrowAngleDeg !== null) {
+    const rad = arrowAngleDeg * Math.PI / 180;
+    lx = x - Math.sin(rad) * 70 * sc + Math.cos(rad) * 15 * sc;
+    ly = y + Math.cos(rad) * 70 * sc + Math.sin(rad) * 15 * sc;
+  } else {
+    lx = x + 18 * sc; ly = y - 12 * sc;
+  }
+  const fs = Math.max(10, Math.round(14 * sc));
+  ctx.save();
+  ctx.font        = `bold ${fs}px sans-serif`;
+  ctx.fillStyle   = col;
+  ctx.textBaseline = 'top';
+  const tw = ctx.measureText(text).width;
+  lx = Math.max(4, Math.min(W - tw - 4, lx));
+  ly = Math.max(4, Math.min(H - fs - 4, ly));
+  ctx.fillText(text, lx, ly);
+  ctx.restore();
+}
+
+// Label with dark rounded-rect background (mirrors _draw_target_name / LOCKED labels)
+function drawLabel(text, x, y, col, sc, centred) {
+  const fs  = Math.max(10, Math.round(14 * sc));
+  const pad = 5 * sc;
+  ctx.save();
+  ctx.font        = `bold ${fs}px sans-serif`;
+  ctx.textBaseline = 'top';
+  const tw = ctx.measureText(text).width;
+  const tx = centred ? x - tw / 2 : x;
+  // Dark background
+  const rx = tx - pad, ry = y - pad;
+  const rw = tw + 2 * pad, rh = fs + 2 * pad;
+  const r  = 4 * sc;
+  ctx.fillStyle = 'rgba(40,5,5,0.55)';
+  ctx.beginPath();
+  ctx.roundRect(rx, ry, rw, rh, r);
+  ctx.fill();
+  ctx.fillStyle = col;
+  ctx.fillText(text, tx, y);
+  ctx.restore();
+}
+</script>
+</body>
+</html>
