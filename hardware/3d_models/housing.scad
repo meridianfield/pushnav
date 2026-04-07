@@ -78,12 +78,10 @@ screw_spacing         = 17;      // distance from body center to each hole
 screw_tap_dia         = 2.7;     // self-tapping hole diameter (in base)
 screw_clearance_dia   = 3.5;     // clearance hole diameter (in hood plate and bolt-through base)
 
-/* M12 lens */
-lens_dia              = 18;      // M12 lens thread outer diameter
-
 /* Hood — cylindrical lens shroud */
+hood_bore_dia         = 25;      // inner bore diameter (generous: tolerates lens offset)
 hood_wall_thickness   = 2.5;     // cylinder wall thickness
-hood_length           = 40;      // height of the hood cylinder
+hood_length           = 30;      // height of the hood cylinder
 hood_plate_thickness  = 6;       // thickness of the mounting plate
 
 /* Baffle — ring baffles at the front (opening end) of the hood */
@@ -96,8 +94,8 @@ hood_plate_thickness  = 6;       // thickness of the mounting plate
 // baffle_ring_wall      = 1.5;     // ring wall thickness beyond FOV cone
 
 /* Dust cap */
-cap_height            = 15;      // cap depth
-cap_wall_thickness    = 3;       // cap wall thickness
+cap_height            = 10;      // cap depth
+cap_wall_thickness    = 2;       // cap wall thickness
 cap_fit_clearance     = 0.2;     // friction-fit tolerance
 
 /* Dovetail mounting rail — slides into telescope finder shoe */
@@ -121,7 +119,7 @@ base_height      = base_floor_thickness + base_pcb_depth
                    + base_upper_depth;                            // 13  — total base box height
 
 // Hood
-hood_outer_dia   = lens_dia + 2 * hood_wall_thickness;            // 23  — hood cylinder OD
+hood_outer_dia   = hood_bore_dia + 2 * hood_wall_thickness;       // 30  — hood cylinder OD
 
 // Ring baffles (disabled)
 // baffle_end_dia   = baffle_start_dia
@@ -219,14 +217,14 @@ module hood() {
                 difference() {
                     cylinder(d = hood_outer_dia, h = hood_length);
                     translate([0, 0, -1])
-                        cylinder(d = lens_dia, h = hood_length + 2);
+                        cylinder(d = hood_bore_dia, h = hood_length + 2);
                 }
 
 }
 
         // Lens hole — through the plate
         translate([0, 0, -1])
-            cylinder(d = lens_dia, h = hood_plate_thickness + 2);
+            cylinder(d = hood_bore_dia, h = hood_plate_thickness + 2);
 
         // Screw holes — clearance diameter, countersunk from below
         translate([0, 0, -base_corner_radius])
