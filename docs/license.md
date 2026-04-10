@@ -1,7 +1,5 @@
 ---
-layout: default
 title: License
-nav_order: 99
 ---
 
 # License

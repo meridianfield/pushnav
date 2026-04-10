@@ -16,8 +16,8 @@ camera/linux/camera_server
 camera/windows/camera_server.exe
 camera/windows/*.obj
 
-# Jekyll build output
-docs/_site/
+# MkDocs build output
+site/
 
 # Claude Code
 .claude/

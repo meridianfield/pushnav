@@ -1,7 +1,5 @@
 ---
-layout: default
 title: DIY Notes
-nav_order: 4
 ---
 
 # DIY Notes
