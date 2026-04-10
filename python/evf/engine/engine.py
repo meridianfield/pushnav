@@ -45,6 +45,7 @@ from evf.solver.sync import (
 from evf.paths import version_json
 from evf.solver.thread import SolverThread
 from evf.stellarium.server import StellariumServer
+from evf.webserver.server import WebServer
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,7 @@ class Engine:
         self._audio: AudioAlert | None = None
         self._subprocess_mgr: SubprocessManager | None = None
         self._stellarium: StellariumServer | None = None
+        self._webserver: WebServer | None = None
 
         # Sync state (two-phase calibration)
         self._sync_lock = threading.Lock()
@@ -175,6 +177,28 @@ class Engine:
             logger.error("Failed to start Stellarium server: %s", exc)
             self._stellarium = None
 
+    def startup_webserver(self) -> None:
+        """Start mobile web interface server."""
+        try:
+            self._webserver = WebServer(
+                self._pointing_state,
+                self._state_machine,
+                self._goto_target,
+                self._config,
+                stellarium_object=lambda: self.stellarium_object,
+            )
+            self._webserver.start()
+        except Exception as exc:
+            logger.error("Failed to start web server: %s", exc)
+            self._webserver = None
+
+    @property
+    def web_url(self) -> str | None:
+        """LAN URL for the mobile web interface, or None if not running."""
+        if self._webserver:
+            return self._webserver.url
+        return None
+
     def startup_camera(self) -> None:
         """Spawn camera subprocess, connect, handshake, restore settings."""
         try:
@@ -204,6 +228,9 @@ class Engine:
                 self._config,
                 audio=self._audio,
             )
+            # Wire solver failure count into web server for audio event detection
+            if self._webserver is not None:
+                self._webserver._solver_failures = lambda: self.consecutive_failures
 
     # -- tracking lifecycle (§8.3) --------------------------------------------
 
@@ -399,6 +426,13 @@ class Engine:
                 self._stellarium.stop(timeout=2)
             except Exception as exc:
                 logger.error("Error stopping Stellarium: %s", exc)
+
+        # 3a. Stop web server
+        if self._webserver:
+            try:
+                self._webserver.stop(timeout=2)
+            except Exception as exc:
+                logger.error("Error stopping web server: %s", exc)
 
         # 3. Terminate camera subprocess
         if self._subprocess_mgr:

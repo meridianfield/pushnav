@@ -103,6 +103,9 @@ def main() -> None:
     ui.update_splash("Starting Stellarium server...")
     engine.startup_stellarium()
 
+    ui.update_splash("Starting web server...")
+    engine.startup_webserver()
+
     ui.update_splash("Connecting to camera...")
     engine.startup_camera()
 
@@ -140,6 +143,8 @@ def main() -> None:
 
     ui.set_on_use_prev_calibration(engine.use_previous_calibration)
     ui.set_on_audio_change(lambda v: setattr(engine, 'audio_enabled', v))
+    if dev_mode:
+        ui.set_on_inject_target(engine.goto_target.set)
     ui.set_navigation_source(
         goto_target=lambda: engine.goto_target.read(),
         on_clear=engine.clear_goto_target,
@@ -151,6 +156,8 @@ def main() -> None:
 
     ui.destroy_splash()
     ui.set_audio_enabled(engine.audio_enabled)
+    if engine.web_url:
+        ui.set_web_url(engine.web_url)
 
     # Provide initial camera controls if connected
     controls = engine.camera_controls
