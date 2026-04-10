@@ -189,6 +189,7 @@ class UI:
         self._on_use_prev_calibration: Callable[[], None] | None = None
         self._goto_target_getter: Callable[[], GotoTargetSnapshot] | None = None
         self._on_clear_target: Callable[[], None] | None = None
+        self._on_inject_target: Callable[[float, float], None] | None = None
         self._nav_result: NavigationResult | None = None
         self._stellarium_status_getter: Callable[[], dict | None] | None = None
         self._stellarium_object_getter: Callable[[], dict | None] | None = None
@@ -225,6 +226,10 @@ class UI:
     def set_on_use_prev_calibration(self, callback: Callable[[], None]) -> None:
         """Register callback for 'Use Previous Calibration' button."""
         self._on_use_prev_calibration = callback
+
+    def set_on_inject_target(self, callback: Callable[[float, float], None]) -> None:
+        """Register callback for debug target injection. callback(ra_deg, dec_deg)."""
+        self._on_inject_target = callback
 
     def set_audio_enabled(self, value: bool) -> None:
         """Set the audio checkbox state (call after setup)."""
@@ -778,6 +783,13 @@ class UI:
             width=-1,
         )
         dpg.add_text("", tag="debug_capture_status", color=(150, 40, 40))
+        dpg.add_spacer(height=5)
+        dpg.add_button(
+            label="Inject Capella",
+            tag="debug_inject_capella_btn",
+            callback=self._on_inject_capella,
+            width=-1,
+        )
         dpg.add_spacer(height=5)
         dpg.add_text("Inject sample image as video input:")
         for name in self._SAMPLE_NAMES:
@@ -1662,6 +1674,13 @@ class UI:
             logger.info("Debug sample loaded: %s", path.name)
         except Exception as exc:
             logger.error("Failed to load sample %s: %s", name, exc)
+
+    def _on_inject_capella(self, sender, app_data, user_data) -> None:
+        """Inject Capella as a GOTO target (debug only)."""
+        # Capella J2000: RA 79.1723°, Dec +45.9980°
+        if self._on_inject_target:
+            self._on_inject_target(79.1723, 45.9980)
+            logger.info("Debug: injected Capella as GOTO target")
 
     def _on_capture_frame(self, sender, app_data, user_data) -> None:
         """Save the current raw camera frame as PNG to ~/Downloads."""
