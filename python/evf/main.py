@@ -143,6 +143,8 @@ def main() -> None:
 
     ui.set_on_use_prev_calibration(engine.use_previous_calibration)
     ui.set_on_audio_change(lambda v: setattr(engine, 'audio_enabled', v))
+    if dev_mode:
+        ui.set_on_inject_target(engine.goto_target.set)
     ui.set_navigation_source(
         goto_target=lambda: engine.goto_target.read(),
         on_clear=engine.clear_goto_target,

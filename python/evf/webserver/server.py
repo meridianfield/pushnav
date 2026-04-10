@@ -145,6 +145,7 @@ class WebServer:
         app.router.add_get("/", self._handle_index)
         app.router.add_get("/ws", self._handle_ws)
         app.router.add_static("/sounds", sounds_dir(), name="sounds")
+        app.router.add_static("/assets", web_dir(), name="assets")
 
         runner = web.AppRunner(app)
         await runner.setup()
