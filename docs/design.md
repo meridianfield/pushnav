@@ -1,7 +1,5 @@
 ---
-layout: default
 title: Design Philosophy
-nav_order: 2
 ---
 
 ## KISS — Keep It Simple, Stupid

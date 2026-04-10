@@ -1,7 +1,5 @@
 ---
-layout: default
 title: Home
-nav_order: 1
 description: Cross-platform plate-solving push-to system for manual telescopes
 ---
 

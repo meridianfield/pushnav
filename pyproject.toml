@@ -18,6 +18,9 @@ dev = [
     "nuitka>=4.0.2",
     "pytest",
 ]
+docs = [
+    "mkdocs-material>=9.5",
+]
 
 [build-system]
 requires = ["hatchling"]
