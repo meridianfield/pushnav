@@ -9,6 +9,8 @@ dependencies = [
     "scipy",
     "tetra3",
     "playsound3",
+    "aiohttp",
+    "qrcode[pil]",
 ]
 
 [dependency-groups]
