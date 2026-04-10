@@ -201,6 +201,8 @@ class ConfigManager:
 
     @web_port.setter
     def web_port(self, value: int) -> None:
+        if not (1024 <= value <= 65535):
+            raise ValueError(f"Web port must be between 1024 and 65535, got {value}")
         self.set("webserver", "port", value)
 
     @property

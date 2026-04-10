@@ -41,6 +41,8 @@ from evf.paths import sounds_dir, web_dir
 
 logger = logging.getLogger(__name__)
 
+_MAX_WS_CLIENTS = 10  # cap concurrent WebSocket connections
+
 # Must match window.py constants exactly
 _FOV_H = 8.86   # horizontal FOV in degrees
 _IMG_W = 1280
@@ -72,6 +74,35 @@ def _compute_origin(config: ConfigManager) -> tuple[float, float]:
         cx += (-d_body[0] / d_body[2]) * scale
         cy += (-d_body[1] / d_body[2]) * scale
     return cx, cy
+
+
+@web.middleware
+async def _security_headers_middleware(request: web.Request, handler) -> web.StreamResponse:
+    """Add basic security headers to every HTTP response."""
+    response = await handler(request)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
+    )
+    return response
+
+
+def _is_local_origin(origin: str) -> bool:
+    """Return True if the WebSocket Origin header looks like a local address."""
+    import urllib.parse
+    try:
+        host = urllib.parse.urlparse(origin).hostname or ""
+        return (
+            host == "localhost"
+            or host.startswith("127.")
+            or host.startswith("192.168.")
+            or host.startswith("10.")
+            or host.startswith("172.")
+        )
+    except Exception:
+        return False
 
 
 class WebServer:
@@ -141,7 +172,7 @@ class WebServer:
         self._url = f"http://{ip}:{port}"
         logger.info("Mobile web interface at %s", self._url)
 
-        app = web.Application()
+        app = web.Application(middlewares=[_security_headers_middleware])
         app.router.add_get("/", self._handle_index)
         app.router.add_get("/ws", self._handle_ws)
         app.router.add_static("/sounds", sounds_dir(), name="sounds")
@@ -159,16 +190,26 @@ class WebServer:
         return web.FileResponse(web_dir() / "index.html")
 
     async def _handle_ws(self, request: web.Request) -> web.WebSocketResponse:
+        # Reject if connection cap reached
+        if len(self._clients) >= _MAX_WS_CLIENTS:
+            logger.warning("WebSocket connection limit reached (%d), rejecting", _MAX_WS_CLIENTS)
+            raise web.HTTPServiceUnavailable(reason="Too many clients")
+
+        # Warn on non-local origin (informational — LAN clients have no Origin header)
+        origin = request.headers.get("Origin", "")
+        if origin and not _is_local_origin(origin):
+            logger.warning("WebSocket connection from non-local origin: %s", origin)
+
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         self._clients.add(ws)
-        logger.info("Web client connected: %s", request.remote)
+        logger.info("Web client connected")
         try:
             async for _msg in ws:
                 pass  # read-only; ignore any incoming messages
         finally:
             self._clients.discard(ws)
-            logger.info("Web client disconnected: %s", request.remote)
+            logger.info("Web client disconnected")
         return ws
 
     async def _broadcast_loop(self) -> None:
