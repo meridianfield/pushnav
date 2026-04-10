@@ -189,11 +189,13 @@ class UI:
         self._on_use_prev_calibration: Callable[[], None] | None = None
         self._goto_target_getter: Callable[[], GotoTargetSnapshot] | None = None
         self._on_clear_target: Callable[[], None] | None = None
+        self._on_inject_target: Callable[[float, float], None] | None = None
         self._nav_result: NavigationResult | None = None
         self._stellarium_status_getter: Callable[[], dict | None] | None = None
         self._stellarium_object_getter: Callable[[], dict | None] | None = None
         self._debug_sample_jpeg: bytes | None = None  # cached JPEG for continuous injection
         self._debug_frame_id = 100_000  # offset to avoid collisions with real frames
+        self._qr_texture: int | str | None = None
 
     # -- public API -----------------------------------------------------------
 
@@ -224,6 +226,10 @@ class UI:
     def set_on_use_prev_calibration(self, callback: Callable[[], None]) -> None:
         """Register callback for 'Use Previous Calibration' button."""
         self._on_use_prev_calibration = callback
+
+    def set_on_inject_target(self, callback: Callable[[float, float], None]) -> None:
+        """Register callback for debug target injection. callback(ra_deg, dec_deg)."""
+        self._on_inject_target = callback
 
     def set_audio_enabled(self, value: bool) -> None:
         """Set the audio checkbox state (call after setup)."""
@@ -260,6 +266,34 @@ class UI:
         """Set callables for Stellarium Remote Control data."""
         self._stellarium_status_getter = status
         self._stellarium_object_getter = obj
+
+    def set_web_url(self, url: str) -> None:
+        """Show mobile web interface URL and QR code in the settings panel."""
+        if dpg.does_item_exist("web_url_label"):
+            dpg.set_value("web_url_label", url)
+        try:
+            import qrcode
+            qr = qrcode.QRCode(box_size=4, border=2)
+            qr.add_data(url)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill_color=(255, 70, 70), back_color=(10, 0, 0))
+            qr_img = qr_img.convert("RGBA")
+            qr_w, qr_h = qr_img.size
+            import numpy as np
+            qr_rgba = np.asarray(qr_img, dtype=np.float32).ravel() / 255.0
+            with dpg.texture_registry():
+                self._qr_texture = dpg.add_static_texture(
+                    width=qr_w, height=qr_h, default_value=qr_rgba,
+                )
+            if dpg.does_item_exist("web_qr_group"):
+                s = self._ui_scale
+                dpg.add_image(
+                    self._qr_texture,
+                    width=int(qr_w * s), height=int(qr_h * s),
+                    parent="web_qr_group",
+                )
+        except Exception as exc:
+            logger.debug("QR code generation failed: %s", exc)
 
     def setup(self) -> None:
         """Build all DearPyGui widgets.
@@ -704,6 +738,12 @@ class UI:
                 default_value=self._config.hidpi,
                 callback=self._on_hidpi_change,
             )
+        dpg.add_spacer(height=6)
+        dpg.add_separator()
+        mobile_heading = dpg.add_text("Mobile Interface", color=(255, 70, 70))
+        dpg.bind_item_font(mobile_heading, self._font_heading)
+        dpg.add_text("Starting...", tag="web_url_label", color=(200, 50, 50))
+        dpg.add_group(tag="web_qr_group")
 
     def _build_advanced_settings_section(self) -> None:
         s = self._ui_scale
@@ -743,6 +783,13 @@ class UI:
             width=-1,
         )
         dpg.add_text("", tag="debug_capture_status", color=(150, 40, 40))
+        dpg.add_spacer(height=5)
+        dpg.add_button(
+            label="Inject Capella",
+            tag="debug_inject_capella_btn",
+            callback=self._on_inject_capella,
+            width=-1,
+        )
         dpg.add_spacer(height=5)
         dpg.add_text("Inject sample image as video input:")
         for name in self._SAMPLE_NAMES:
@@ -1627,6 +1674,13 @@ class UI:
             logger.info("Debug sample loaded: %s", path.name)
         except Exception as exc:
             logger.error("Failed to load sample %s: %s", name, exc)
+
+    def _on_inject_capella(self, sender, app_data, user_data) -> None:
+        """Inject Capella as a GOTO target (debug only)."""
+        # Capella J2000: RA 79.1723°, Dec +45.9980°
+        if self._on_inject_target:
+            self._on_inject_target(79.1723, 45.9980)
+            logger.info("Debug: injected Capella as GOTO target")
 
     def _on_capture_frame(self, sender, app_data, user_data) -> None:
         """Save the current raw camera frame as PNG to ~/Downloads."""
