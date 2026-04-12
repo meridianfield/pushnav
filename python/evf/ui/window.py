@@ -96,7 +96,7 @@ class UI:
     """
 
     _SAMPLES_DIR = samples_dir()
-    _SAMPLE_NAMES = ["a", "b", "c", "d"]
+    _SAMPLE_NAMES = ["a", "b", "c", "d", "orion"]
     _STEPS = [("1", "Camera"), ("2", "Sync"), ("3", "Roll"), ("4", "Track")]
 
     _STATE_TO_STEP = {

@@ -1,7 +1,5 @@
 ---
-layout: default
 title: Camera & Lens
-nav_order: 3
 ---
 
 ## Supported Hardware
