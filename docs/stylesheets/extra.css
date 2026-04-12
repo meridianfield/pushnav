@@ -1,0 +1,6 @@
+/* Hide the site_name label at the top of the left nav sidebar.
+   The logo image in the header already identifies the site, and the
+   duplicate text above "Home" is visual noise. */
+.md-nav--primary > .md-nav__title {
+  display: none;
+}

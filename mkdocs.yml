@@ -41,7 +41,10 @@ nav:
   - Camera & Lens: hardware.md
   - DIY Notes: diy-notes.md
   - 3D Models: 3d-models.md
+  - Install PushNav: install.md
+  - Stellarium Setup: stellarium-setup.md
   - License: license.md
+  - Questions & Feedback: https://github.com/meridianfield/pushnav/issues
 
 markdown_extensions:
   - admonition
@@ -51,6 +54,8 @@ markdown_extensions:
       permalink: true
   - pymdownx.details
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
@@ -58,7 +63,14 @@ markdown_extensions:
 plugins:
   - search
 
+extra_css:
+  - stylesheets/extra.css
+
 extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/meridianfield/pushnav
+  generator: false
+
+copyright: >
+  <a href="https://github.com/meridianfield/pushnav/issues">Questions & Feedback</a>
