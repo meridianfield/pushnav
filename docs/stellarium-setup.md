@@ -130,4 +130,4 @@ To pick a different target, just click another object in Stellarium and press **
 
 ## What's next
 
-With Stellarium and PushNav connected, the typical observing workflow is: center any bright star in your eyepiece, press **Next** in PushNav to sync, then start picking targets in Stellarium. See the [DIY Notes](diy-notes.md) page for tips on mounting the camera to your telescope.
+Now that Stellarium is connected, head to [Using PushNav](using-pushnav.md) to learn how to sync, calibrate, and start pushing to targets.
