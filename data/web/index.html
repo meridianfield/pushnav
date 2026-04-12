@@ -11,7 +11,7 @@
       --red-faint:  rgba(150, 30,  30,  0.60);
       --orange:     rgba(255, 100, 50,  1.00);
       --bg:         #0a0000;
-      --bg-card:    #120303;
+      --bg-card:    #1a0808;
       --sep:        rgba(180, 40, 40, 0.20);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,6 +29,7 @@
     #title-bar {
       padding: 10px 14px 8px;
       background: var(--bg);
+      border-bottom: 1px solid var(--sep);
     }
     #title-img {
       height: 32px;
@@ -38,9 +39,12 @@
 
     /* ── Sky canvas ─────────────────────────────────────────────────────── */
     #canvas-wrap {
-      width: 100%;
+      width: calc(100% - 20px);
+      margin: 0 10px;
       aspect-ratio: 1 / 1;
-      background: #000;
+      background: var(--bg-card);
+      border: 1px solid var(--sep);
+      border-radius: 4px;
       position: relative;
       flex-shrink: 0;
     }
@@ -130,7 +134,7 @@
       align-items: baseline;
       padding: 2px 0;
     }
-    .lbl { color: var(--red-faint); min-width: 80px; }
+    .lbl { color: var(--red-dim); min-width: 80px; }
     .val { font-family: monospace; color: var(--red); }
 
     #nav-target {
@@ -384,7 +388,7 @@ function renderLoop() {
 function drawFrame() {
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#0a0000';
+  ctx.fillStyle = '#1a0808';
   ctx.fillRect(0, 0, W, H);
   if (!data) return;
 
