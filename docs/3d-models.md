@@ -1,7 +1,5 @@
 ---
-layout: default
 title: 3D Models
-nav_order: 5
 ---
 
 # 3D-Printable Parts
@@ -27,30 +25,20 @@ Two screw hole variants are available:
 | Self-tapping | 2.7mm | Self-tapping screws bite directly into plastic |
 | Bolt-through | 3.5mm | M3 bolts pass through, secured with nuts |
 
-{% raw %}
-<p><a href="https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_base_selftap.stl" class="btn btn-primary">Download Base (self-tap)</a></p>
-<p><a href="https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_base_bolt.stl" class="btn btn-primary">Download Base (bolt-through)</a></p>
-{% endraw %}
+[:material-download: Download Base (self-tap)](https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_base_selftap.stl){ .md-button .md-button--primary }
+[:material-download: Download Base (bolt-through)](https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_base_bolt.stl){ .md-button .md-button--primary }
 
 ### Hood + Baffle
 
 Cylindrical lens shroud with an integral stepped light baffle. The baffle is a staircase approximation of the camera's field-of-view cone that blocks stray light while preserving the full FOV. Screws onto the base via the mounting plate.
 
-{% raw %}
-<div class="d-flex flex-wrap gap-4">
-  <a href="https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_hood.stl" class="btn btn-primary">Download Hood</a>
-</div>
-{% endraw %}
+[:material-download: Download Hood](https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_hood.stl){ .md-button .md-button--primary }
 
 ### Dust Cap
 
 Friction-fit cap that protects the lens when not in use. Slips over the hood cylinder.
 
-{% raw %}
-<div class="d-flex flex-wrap gap-4">
-  <a href="https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_cap.stl" class="btn btn-primary">Download Cap</a>
-</div>
-{% endraw %}
+[:material-download: Download Cap](https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_cap.stl){ .md-button .md-button--primary }
 
 ---
 
@@ -60,11 +48,7 @@ Friction-fit cap that protects the lens when not in use. Slips over the hood cyl
 
 Lock ring that secures the M12 lens at the correct focus position. Features a tapered centering collar and grip notches for finger tightening.
 
-{% raw %}
-<div class="d-flex flex-wrap gap-4">
-  <a href="https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/lock_ring.stl" class="btn btn-primary">Download Lock Ring</a>
-</div>
-{% endraw %}
+[:material-download: Download Lock Ring](https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/lock_ring.stl){ .md-button .md-button--primary }
 
 ---
 
@@ -77,8 +61,8 @@ Lock ring that secures the M12 lens at the correct focus position. Features a ta
 | Infill | 20% | 100% |
 | Supports | None | None |
 
-{: .note }
-The lock ring should be printed at 100% infill and 0.12mm layer height for thread strength and a smooth finish. Use opaque filament for the housing to prevent stray light leaking through the walls.
+!!! note
+    The lock ring should be printed at 100% infill and 0.12mm layer height for thread strength and a smooth finish. Use opaque filament for the housing to prevent stray light leaking through the walls.
 
 ---
 

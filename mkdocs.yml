@@ -1,0 +1,76 @@
+site_name: PushNav
+site_description: Cross-platform plate-solving push-to system for manual telescopes
+site_url: https://meridianfield.github.io/pushnav/
+repo_url: https://github.com/meridianfield/pushnav
+repo_name: meridianfield/pushnav
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+exclude_docs: |
+  .DS_Store
+
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  palette:
+    - scheme: slate
+      primary: black
+      accent: grey
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: black
+      accent: grey
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.highlight
+    - search.suggest
+    - toc.integrate
+
+nav:
+  - Home: index.md
+  - Design Philosophy: design.md
+  - Camera & Lens: hardware.md
+  - DIY Notes: diy-notes.md
+  - 3D Models: 3d-models.md
+  - Install PushNav: install.md
+  - Stellarium Setup: stellarium-setup.md
+  - License: license.md
+  - Questions & Feedback: https://github.com/meridianfield/pushnav/issues
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/meridianfield/pushnav
+  generator: false
+
+copyright: >
+  <a href="https://github.com/meridianfield/pushnav/issues">Questions & Feedback</a>
