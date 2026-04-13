@@ -258,6 +258,43 @@ static HRESULT find_device(IBaseFilter **ppFilter)
 }
 
 /* ------------------------------------------------------------------ */
+/* Device discovery with retry                                         */
+/* Some USB cameras take a few seconds to appear in DirectShow after   */
+/* plug-in or system wake.  Retry for up to 8 seconds.                 */
+/* ------------------------------------------------------------------ */
+
+#define DEVICE_RETRY_TOTAL_MS   8000
+#define DEVICE_RETRY_SLEEP_MS   500
+
+static HRESULT find_device_with_retry(IBaseFilter **ppFilter)
+{
+    DWORD elapsed = 0;
+    HRESULT hr;
+
+    hr = find_device(ppFilter);
+    if (SUCCEEDED(hr))
+        return hr;
+
+    fprintf(stderr,
+            "Camera not found on first attempt, retrying for %d seconds...\n",
+            DEVICE_RETRY_TOTAL_MS / 1000);
+
+    while (elapsed < DEVICE_RETRY_TOTAL_MS) {
+        Sleep(DEVICE_RETRY_SLEEP_MS);
+        elapsed += DEVICE_RETRY_SLEEP_MS;
+
+        hr = find_device(ppFilter);
+        if (SUCCEEDED(hr))
+            return hr;
+
+        fprintf(stderr, "  retry at %lu ms - not found yet\n",
+                (unsigned long)elapsed);
+    }
+
+    return E_FAIL;
+}
+
+/* ------------------------------------------------------------------ */
 /* Capture graph setup                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -1050,8 +1087,8 @@ int main(void)
         return 1;
     }
 
-    /* Find camera device */
-    hr = find_device(&pCamFilter);
+    /* Find camera device (retries for up to 8s if not found immediately) */
+    hr = find_device_with_retry(&pCamFilter);
     if (FAILED(hr) || pCamFilter == NULL) {
         fprintf(stderr,
                 "No video device found with VID=0x%04X PID=0x%04X.\n"
@@ -1093,13 +1130,28 @@ int main(void)
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     addr.sin_port = htons(SERVER_PORT);
 
-    if (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        fprintf(stderr, "bind() failed: %d\n", WSAGetLastError());
-        closesocket(server_fd);
-        close_camera();
-        CoUninitialize();
-        WSACleanup();
-        return 1;
+    /* Bind with retry — port may be in TIME_WAIT from a previous run */
+    {
+        int bind_attempts = 0;
+        const int MAX_BIND_ATTEMPTS = 10;
+        const int BIND_RETRY_MS = 500;
+
+        while (bind(server_fd, (struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR) {
+            int err = WSAGetLastError();
+            bind_attempts++;
+            if (bind_attempts >= MAX_BIND_ATTEMPTS) {
+                fprintf(stderr, "bind() failed after %d attempts: %d\n",
+                        bind_attempts, err);
+                closesocket(server_fd);
+                close_camera();
+                CoUninitialize();
+                WSACleanup();
+                return 1;
+            }
+            fprintf(stderr, "bind() failed (err=%d), retrying in %dms (%d/%d)\n",
+                    err, BIND_RETRY_MS, bind_attempts, MAX_BIND_ATTEMPTS);
+            Sleep(BIND_RETRY_MS);
+        }
     }
 
     if (listen(server_fd, 1) == SOCKET_ERROR) {

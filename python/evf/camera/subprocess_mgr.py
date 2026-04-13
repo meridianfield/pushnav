@@ -118,7 +118,32 @@ class SubprocessManager:
 
     # -- spawn / terminate ----------------------------------------------------
 
+    def _kill_stale_server(self) -> None:
+        """Kill any leftover camera_server process from a previous run.
+
+        If PushNav was force-quit or crashed, the camera server may still
+        be alive holding the camera device and TCP port.  This prevents
+        the new instance from connecting.
+        """
+        name = Path(self._binary_path).name
+        try:
+            if sys.platform == "win32":
+                subprocess.run(
+                    ["taskkill", "/F", "/IM", name],
+                    capture_output=True, timeout=5,
+                )
+            else:
+                subprocess.run(
+                    ["pkill", "-f", name],
+                    capture_output=True, timeout=5,
+                )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        # Brief pause to let the OS release the port
+        time.sleep(0.5)
+
     def _spawn_process(self) -> None:
+        self._kill_stale_server()
         path = str(self._binary_path)
         cmd = [sys.executable, path] if path.endswith(".py") else [path]
         kwargs = {}
@@ -148,6 +173,23 @@ class SubprocessManager:
         deadline = time.monotonic() + self._PORT_TIMEOUT
         last_exc: Exception | None = None
         while time.monotonic() < deadline:
+            # Bail early if the server process already exited
+            if self._process is not None and self._process.poll() is not None:
+                rc = self._process.returncode
+                stderr_text = ""
+                try:
+                    _, stderr_bytes = self._process.communicate(timeout=1)
+                    if stderr_bytes:
+                        stderr_text = stderr_bytes.decode(errors="replace").strip()
+                except (subprocess.TimeoutExpired, ValueError):
+                    pass
+                self._process = None
+                msg = (
+                    f"Camera server exited immediately (rc={rc}). "
+                    f"Stderr: {stderr_text or '(empty)'}"
+                )
+                logger.error(msg)
+                raise RuntimeError(msg)
             try:
                 self._client = CameraClient(
                     self._frame_buffer, self._host, self._port
