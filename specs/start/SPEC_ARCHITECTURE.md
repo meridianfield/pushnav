@@ -70,6 +70,7 @@ Main Python Process
     ├── UI Thread (Main Thread)
     ├── Solver Thread
     ├── Stellarium Thread
+    ├── LX200 Thread
     └── Camera TCP Client (non-blocking in UI thread)
 
 Camera Subprocess (separate OS process)
@@ -200,6 +201,36 @@ every 1 second:
 Incoming GOTO commands are decoded and stored in GotoTarget for navigation guidance.
 On client connect, plays acknowledgment sound and queries Stellarium Remote Control API
 for observer status and object info.
+
+---
+
+## 4.4 LX200 Thread
+
+Runs independent TCP server on `0.0.0.0:4030` (SkyFi-compatible port) accepting
+LX200 Classic ASCII commands from SkySafari, Stellarium Mobile PLUS, INDI
+`indi_lx200basic`, and ASCOM Meade Generic clients.
+
+Request/response only — never emits unsolicited bytes.
+
+```
+on :GR#/:GD# (getters):
+    read J2000 RA/Dec from PointingState
+    precess to JNow via evf.engine.epoch
+    format as LX200 ASCII and reply
+
+on :Sr/:Sd/:MS (goto target):
+    parse JNow target from client
+    precess to J2000 via evf.engine.epoch
+    store in GotoTarget for navigation guidance
+
+on :CM# (align):
+    informational only — reply canonical string, no state change
+    (per §1.1 one-way data flow rule in SPEC_PROTOCOL_LX200.md)
+```
+
+Per-client state (precision mode, pending target, recv buffer) is isolated via
+`dict[socket, Lx200ClientState]`. Unknown commands are silently consumed so the
+ASCOM Meade Generic driver's `:ED#` probe does not break the session.
 
 ---
 
@@ -541,21 +572,26 @@ When the user closes the application, execute the following sequence in order:
    - Close server socket.
    - Join Stellarium thread with timeout (2s).
 
-3. **Terminate camera subprocess.**
+3. **Close LX200 server.**
+   - Close all connected client sockets.
+   - Close server socket.
+   - Join LX200 thread with timeout (2s).
+
+4. **Terminate camera subprocess.**
    - Close TCP socket to camera server.
    - Call `process.terminate()` (SIGTERM).
    - Wait up to 2s: `process.wait(timeout=2)`.
    - If still alive: `process.kill()` (SIGKILL).
 
-4. **Save configuration.**
+5. **Save configuration.**
    - Write current exposure, gain, thresholds, calibration, and display settings to config.json.
    - Only write if values have changed since last save.
 
-5. **Flush logs.**
+6. **Flush logs.**
    - Flush all logging handlers.
    - Close log files.
 
-6. **Exit.**
+7. **Exit.**
 
 ### 12.2 Rules
 
