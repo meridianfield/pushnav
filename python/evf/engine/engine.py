@@ -186,10 +186,21 @@ class Engine:
 
         LX200 server binds 0.0.0.0 so we advertise the LAN IP (same IP the
         mobile web URL uses) so mobile apps on the same network can connect.
+
+        Returns None when the LX200 server isn't running OR no LAN is
+        available — the UI distinguishes these via the lx200_running flag.
         """
         if self._lx200 is None:
             return None
-        return f"{local_ip()}:{self._lx200.port}"
+        ip = local_ip()
+        if ip is None:
+            return None
+        return f"{ip}:{self._lx200.port}"
+
+    @property
+    def lx200_running(self) -> bool:
+        """True if the LX200 server bound its socket successfully."""
+        return self._lx200 is not None
 
     # -- startup (§8.2) -------------------------------------------------------
 

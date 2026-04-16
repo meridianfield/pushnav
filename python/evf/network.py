@@ -20,20 +20,26 @@
 import socket
 
 
-def local_ip() -> str:
-    """Best-effort LAN IP address of this host.
+def local_ip() -> str | None:
+    """Best-effort LAN IP address of this host, or None if no LAN is available.
 
     Opens a UDP socket to a public address (no data sent — UDP doesn't
     establish a connection) to make the kernel pick the default-route
     interface, then reads getsockname() to find the IP it would use.
 
-    Falls back to 'localhost' if the probe fails (e.g. offline machine).
+    Returns None when the probe fails (e.g. no network interface, no route,
+    firewalled) or when the kernel hands back a loopback/unspecified address
+    that wouldn't be reachable from another device on the LAN.
     """
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        return ip
-    except Exception:
-        return "localhost"
+    except OSError:
+        return None
+    # Some kernels return 0.0.0.0 or a loopback on a machine with no default
+    # route; that's not a real LAN IP.
+    if not ip or ip.startswith("127.") or ip == "0.0.0.0":
+        return None
+    return ip
