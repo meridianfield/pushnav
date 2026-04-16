@@ -117,6 +117,12 @@ class StellariumServer:
     def stellarium_object(self) -> dict | None:
         return self._stellarium_object
 
+    @property
+    def client_count(self) -> int:
+        """Number of currently connected clients. UI reads this to light the
+        activity indicator next to the Stellarium address."""
+        return len(self._clients)
+
     # -- internal -------------------------------------------------------------
 
     def _run(self) -> None:

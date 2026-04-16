@@ -275,3 +275,18 @@ RA/Dec values are in degrees (J2000). A correct solve should match within ~2 deg
 3. Verify edge arrow positioning for off-screen targets.
 4. Verify RA wrapping at 0/360° boundaries.
 5. Verify behavior near poles.
+
+## L. LX200 Protocol
+
+See `specs/start/SPEC_PROTOCOL_LX200.md` §10 for the authoritative list.
+Summary of verification points:
+
+- **L1** — SkySafari (iOS/Android/macOS) Meade LX-200 GPS, Equatorial Push-To, TCP Direct to host:4030: crosshair follows pointing within 2 s; RA/Dec match on-screen within 1 arcmin.
+- **L2** — SkySafari goto: right-click object → GoTo; PushNav logs the GOTO, navigation chevrons appear.
+- **L3** — Stellarium Mobile PLUS: TCP connection to host:4030 auto-detects LX200; position tracks pointing.
+- **L4** — INDI `indi_lx200basic` with Connection → TCP host:4030: KStars crosshair matches PushNav pointing.
+- **L5** — ASCOM "Meade Generic" driver TCP mode to host:4030: N.I.N.A. mount tab shows matching RA/Dec.
+- **L6** — Sending `:ED#` does not break the session; subsequent `:GR#` still works.
+- **L7** — SkySafari + KStars attached simultaneously; both see consistent position.
+- **L8** — Unit tests (`tests/test_epoch.py`, `tests/test_lx200_protocol.py`, `tests/test_lx200_server.py`) all pass.
+- **L9** — Nuitka bundle on all three platforms: packaged binary logs `LX200 server listening on 0.0.0.0:4030` (implicitly tests `import erfa` inside the bundle).

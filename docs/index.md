@@ -6,7 +6,7 @@ description: Cross-platform plate-solving push-to system for manual telescopes
 # PushNav
 Plate-Solving Push-To System for Manual Telescopes
 
-A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to Stellarium in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required. Just a USB camera, a lens, and your laptop — under **$50** in total hardware.
+A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to Stellarium, SkySafari, and other planetarium apps in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required. Just a USB camera, a lens, and your laptop — under **$50** in total hardware.
 
 ![PushNav Mounted](assets/mounted.jpeg)
 
@@ -21,23 +21,30 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 
 ## How It Works
 
-1. Observer selects an object in Stellarium and "Slews" (Cmd+1 or Ctrl+1)
+1. Observer picks a target in a planetarium app — Stellarium on the desktop, or SkySafari / Stellarium Mobile PLUS on a phone — and sends it to PushNav.
 2. PushNav shows how to push the telescope to reach the target in its UI. A built-in mobile web interface lets you view the same guidance on your phone — scan a QR code and you're connected.
-3. Alternatively the telescope's pointing is also shown in Stellarium as a telescope crosshair that moves in real-time as you push the scope.
+3. The telescope's pointing is also shown as a live crosshair in the planetarium app's sky chart, moving in real-time as you push the scope.
 
 #### Internal workflow
 
 1. A USB camera in place of your telescope's finder captures the star field
 2. PushNav plate-solves frames using the [tetra3](https://github.com/esa/tetra3) star pattern recognition library in near real-time
 3. The difference in pointing is calculated and translated into directional guidance which is shown in the UI
-4. Solved RA/Dec coordinates are also broadcast to Stellarium via its telescope protocol, so you can see your telescope's pointing in Stellarium's sky chart in real-time as you push.
+4. Solved RA/Dec coordinates are exposed to connected planetarium apps over standard telescope-control protocols, so your telescope's pointing moves on the app's sky chart in real-time as you push.
 
 ## Features
 
 - Near real-time plate solving (~20–140 ms per frame)
 - One time, simple calibration. No named stars, just point at any bright star and sync
-- GOTO navigation guidance from Stellarium
+- GOTO navigation guidance from your planetarium app (Stellarium, SkySafari, Stellarium Mobile, etc.)
+- Works with **SkySafari**, **Stellarium Mobile**, **INDI**, and **ASCOM** clients over Wi-Fi via the LX200 protocol — see [SkySafari & Other Apps](skysafari-setup.md)
 - Audio feedback for lock/lost/GOTO events
 - Mobile web interface — scan a QR code on the PushNav screen with your phone for at-the-eyepiece push direction, no app install needed
 - Saves calibration for quick re-sync
 - Works from urban light-polluted skies with the right camera/lens combo (see hardware guide)
+
+## Open source — please report issues
+
+PushNav is free and open source under the GPLv3. It's been tested in real observing sessions with **Stellarium** (desktop) and **SkySafari Plus/Pro**. The Stellarium Mobile, INDI, and ASCOM paths follow the same LX200 protocol and should work out of the box, but haven't yet been field-tested against every client version.
+
+If something doesn't work as described — or you'd like to see an app supported that isn't listed — please open an issue on the [GitHub issue tracker](https://github.com/meridianfield/pushnav/issues). Reports from real observing sessions are the best way for the project to improve.
