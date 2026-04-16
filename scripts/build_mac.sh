@@ -63,6 +63,7 @@ uv run python -m nuitka \
     --include-package=PIL \
     --include-package=playsound3 \
     --include-package=tetra3 \
+    --include-package=erfa \
     --nofollow-import-to=pytest \
     --nofollow-import-to=setuptools \
     `# Exclude stdlib C extensions that link to Homebrew dylibs — Nuitka 4.x` \
