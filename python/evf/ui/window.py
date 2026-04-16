@@ -766,13 +766,19 @@ class UI:
         dpg.add_separator()
         telescope_heading = dpg.add_text("Telescope Control", color=(255, 70, 70))
         dpg.bind_item_font(telescope_heading, self._font_heading)
+        wrap_px = 280 * self._ui_scale
         dpg.add_text(
             "LX200 (SkySafari / Stellarium Mobile / INDI / ASCOM):",
-            color=(180, 180, 180),
+            color=(200, 50, 50),
+            wrap=wrap_px,
         )
         dpg.add_text("Starting...", tag="lx200_address_label", color=(200, 50, 50))
         dpg.add_spacer(height=4)
-        dpg.add_text("Stellarium (desktop, same machine only):", color=(180, 180, 180))
+        dpg.add_text(
+            "Stellarium (desktop, same machine only):",
+            color=(200, 50, 50),
+            wrap=wrap_px,
+        )
         dpg.add_text(
             "Starting...", tag="stellarium_address_label", color=(200, 50, 50)
         )
