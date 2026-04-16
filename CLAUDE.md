@@ -114,6 +114,7 @@ specs/start/                    # design specifications
 - **DearPyGui** — UI framework (requires display context; import-only works headless)
 - **numpy**, **scipy**, **Pillow** — tetra3 dependencies
 - **playsound3** — audio feedback for solve lock/lost events
+- **pyerfa** — IAU 2006 precession (J2000 ↔ JNow) for the LX200 protocol server
 
 Dev dependencies: **nuitka** (builds), **pytest** (tests)
 

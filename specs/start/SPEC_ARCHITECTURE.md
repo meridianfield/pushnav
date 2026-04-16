@@ -45,6 +45,7 @@ Supports Future Headless Mode
 │  Navigation    → angular separation / guidance │
 │  AudioAlert    → lock/lost/ack sounds         │
 │  StellariumSrv → TCP broadcast + GOTO handler │
+│  Lx200Server   → LX200 TCP request/response   │
 │  ConfigManager → JSON persistence             │
 │  Logger        → rotating file logs           │
 └──────────────────────────────────────────────┘
