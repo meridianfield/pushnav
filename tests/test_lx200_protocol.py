@@ -106,3 +106,182 @@ class TestRoundTrip:
         s = protocol.format_dec_hi(dec_deg).decode().rstrip("#")
         back = protocol.parse_dec_dms(s)
         assert abs(back - dec_deg) < 1.0 / 3600.0  # within 1 arc-second
+
+
+# -- dispatch tests ----------------------------------------------------------
+
+from unittest.mock import MagicMock
+
+from evf.engine.goto_target import GotoTarget
+from evf.engine.pointing import PointingState
+from evf.lx200.protocol import Lx200ClientState, Lx200Context, dispatch
+
+
+def _make_ctx(pointing: PointingState, goto: GotoTarget | None = None,
+              version: str = "1.2.3", play_ack=None) -> Lx200Context:
+    return Lx200Context(
+        pointing=pointing,
+        goto_target=goto,
+        play_ack=play_ack or MagicMock(),
+        app_version=version,
+    )
+
+
+class TestDispatchGetters:
+    def test_gr_invalid_pointing_returns_zero(self):
+        ps = PointingState()
+        state = Lx200ClientState()
+        ctx = _make_ctx(ps)
+        assert dispatch(b":GR", state, ctx) == b"00:00:00#"
+
+    def test_gd_invalid_pointing_returns_zero(self):
+        ps = PointingState()
+        state = Lx200ClientState()
+        ctx = _make_ctx(ps)
+        assert dispatch(b":GD", state, ctx) == b"+00*00:00#"
+
+    def test_gr_valid_pointing_returns_formatted(self):
+        ps = PointingState()
+        # Vega J2000 (RA in degrees, PointingState convention)
+        ps.update(ra_j2000=279.234, dec_j2000=38.784, roll=0.0, matches=10, prob=0.01)
+        state = Lx200ClientState()
+        ctx = _make_ctx(ps)
+        reply = dispatch(b":GR", state, ctx)
+        # Should be HH:MM:SS# format; we don't hard-code the JNow-precessed value
+        # because it's time-dependent. Just verify shape.
+        assert reply is not None
+        assert reply.endswith(b"#")
+        assert len(reply) == 9  # "HH:MM:SS#"
+        assert reply[2:3] == b":"
+        assert reply[5:6] == b":"
+
+    def test_gvp_returns_identity(self):
+        ps = PointingState()
+        state = Lx200ClientState()
+        ctx = _make_ctx(ps)
+        assert dispatch(b":GVP", state, ctx) == b"LX200 Classic#"
+
+    def test_gvn_returns_version(self):
+        ps = PointingState()
+        state = Lx200ClientState()
+        ctx = _make_ctx(ps, version="1.2.3")
+        assert dispatch(b":GVN", state, ctx) == b"PushNav 1.2.3#"
+
+    def test_precision_toggle(self):
+        ps = PointingState()
+        ps.update(ra_j2000=90.0, dec_j2000=45.0, roll=0.0, matches=10, prob=0.01)
+        state = Lx200ClientState()
+        ctx = _make_ctx(ps)
+        # Default is high precision
+        assert state.precision_hi is True
+        r1 = dispatch(b":GR", state, ctx)
+        assert len(r1) == 9  # HH:MM:SS#
+        # Toggle
+        assert dispatch(b":U", state, ctx) is None
+        assert state.precision_hi is False
+        r2 = dispatch(b":GR", state, ctx)
+        # Low precision: HH:MM.T#  (8 chars)
+        assert len(r2) == 8
+
+
+class TestDispatchSetters:
+    def test_sr_valid(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState())
+        assert dispatch(b":Sr 05:47:12", state, ctx) == b"1"
+        assert state.pending_ra_jnow_hours is not None
+        assert abs(state.pending_ra_jnow_hours - 5.78666666) < 1e-4
+
+    def test_sd_valid(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState())
+        assert dispatch(b":Sd +45*59:07", state, ctx) == b"1"
+        assert state.pending_dec_jnow_deg is not None
+        assert abs(state.pending_dec_jnow_deg - 45.9853) < 1e-3
+
+    def test_sr_malformed(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState())
+        assert dispatch(b":Sr BAD", state, ctx) == b"0"
+        assert state.pending_ra_jnow_hours is None
+
+    def test_sd_out_of_range(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState())
+        assert dispatch(b":Sd +91*00:00", state, ctx) == b"0"
+
+
+class TestDispatchGoto:
+    def test_ms_with_pending_sets_goto(self):
+        goto = GotoTarget()
+        ps = PointingState()
+        ack = MagicMock()
+        ctx = _make_ctx(ps, goto=goto, play_ack=ack)
+        state = Lx200ClientState()
+        dispatch(b":Sr 12:00:00", state, ctx)
+        dispatch(b":Sd +00*00:00", state, ctx)
+        reply = dispatch(b":MS", state, ctx)
+        assert reply == b"0"
+        snap = goto.read()
+        assert snap.active is True
+        # :Sr 12:00:00 JNow = 180° JNow RA. Precessed back to J2000 should be
+        # close to 180° (within ~0.5° for 2026 era).
+        assert abs(snap.ra_j2000 - 180.0) < 2.0
+        # NOTE: goto_target.set() plays the ack sound internally. Our play_ack
+        # callable should NOT be invoked by dispatch (to avoid double-play).
+        ack.assert_not_called()
+
+    def test_ms_without_pending_returns_error(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState(), goto=GotoTarget())
+        assert dispatch(b":MS", state, ctx) == b"1<no target set>#"
+
+
+class TestDispatchCm:
+    """Per the one-way data flow rule, :CM# is acknowledge-only."""
+
+    def test_cm_returns_canonical_string(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState())
+        reply = dispatch(b":CM", state, ctx)
+        assert reply == b"Coordinates matched.        #"
+
+    def test_cm_does_not_mutate_state(self):
+        goto = GotoTarget()
+        goto.set(ra_j2000_deg=10.0, dec_j2000_deg=20.0)
+        snap_before = goto.read()
+        state = Lx200ClientState()
+        dispatch(b":Sr 05:00:00", state, ctx := _make_ctx(PointingState(), goto=goto))
+        dispatch(b":Sd +45*00:00", state, ctx)
+        dispatch(b":CM", state, ctx)
+        snap_after = goto.read()
+        # goto_target must be UNCHANGED — :CM# never mutates
+        assert snap_before.ra_j2000 == snap_after.ra_j2000
+        assert snap_before.dec_j2000 == snap_after.dec_j2000
+
+
+class TestDispatchMisc:
+    def test_q_clears_pending(self):
+        state = Lx200ClientState()
+        state.pending_ra_jnow_hours = 5.0
+        state.pending_dec_jnow_deg = 45.0
+        ctx = _make_ctx(PointingState())
+        assert dispatch(b":Q", state, ctx) is None
+        assert state.pending_ra_jnow_hours is None
+        assert state.pending_dec_jnow_deg is None
+
+    def test_unknown_command_returns_none(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState())
+        assert dispatch(b":ED", state, ctx) is None
+        assert dispatch(b":$BDG", state, ctx) is None
+
+    def test_malformed_no_colon_returns_none(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState())
+        assert dispatch(b"GR", state, ctx) is None
+
+    def test_empty_returns_none(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState())
+        assert dispatch(b"", state, ctx) is None
