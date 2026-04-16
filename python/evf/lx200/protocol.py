@@ -104,11 +104,13 @@ def parse_dec_dms(arg: str) -> float:
 # -- types -------------------------------------------------------------------
 
 import logging
+import time
 from dataclasses import dataclass
 from typing import Callable
 
 from evf.engine.epoch import j2000_to_jnow, jnow_to_j2000
 from evf.engine.goto_target import GotoTarget
+from evf.engine.navigation import angular_separation
 from evf.engine.pointing import PointingState
 
 logger = logging.getLogger(__name__)
@@ -116,22 +118,34 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Lx200ClientState:
-    """State attached to each LX200 TCP client connection."""
+    """State attached to each LX200 TCP client connection.
+
+    Truly connection-scoped fields only (precision mode, recv buffer).
+    The pending goto target is NOT per-connection — see Lx200Context.
+    """
 
     precision_hi: bool = True
-    pending_ra_jnow_hours: float | None = None
-    pending_dec_jnow_deg: float | None = None
     recv_buffer: bytes = b""
 
 
 @dataclass
 class Lx200Context:
-    """Engine handles passed into dispatch."""
+    """Engine handles + mount-level state, shared across all client connections
+    of a single Lx200Server.
+
+    The pending RA/Dec from :Sr/:Sd lives here (not in Lx200ClientState)
+    because SkySafari's polling mode opens a fresh TCP connection per command
+    — so :Sr, :Sd, and :MS typically arrive on three different connections.
+    A real Meade mount holds this state in the mount itself, independent of
+    the serial/TCP link, and clients assume that semantics.
+    """
 
     pointing: PointingState
     goto_target: GotoTarget | None
     play_ack: Callable[[], None]
     app_version: str
+    pending_ra_jnow_hours: float | None = None
+    pending_dec_jnow_deg: float | None = None
 
 
 # -- dispatch ----------------------------------------------------------------
@@ -139,6 +153,19 @@ class Lx200Context:
 # SkySafari tolerates variable-length padding here; 29 bytes matches the
 # Meade reference implementation's canonical reply.
 _CM_REPLY = b"Coordinates matched.        #"
+
+# :D# (Distance / slew status) replies, per the Meade/Autostar command set.
+# SkySafari polls :D# after :MS# to watch for slew completion; it transitions
+# the button from "Stop" back to "GoTo" when it sees the _D_DONE reply.
+_D_SLEWING = b"\x7f#"   # one 0x7F "progress-bar" byte then '#' — still moving
+_D_DONE = b"#"          # empty string + terminator — slew complete
+
+# Angular separation (degrees) below which we tell SkySafari the push-to
+# "slew" is complete. A typical low-power eyepiece FOV is 0.5–1°; 0.5° is
+# tight enough that SkySafari flips to "GoTo" only once you're on target,
+# loose enough that arc-minute plate-solve jitter doesn't keep the button
+# bouncing between Stop and GoTo.
+_SLEW_DONE_THRESHOLD_DEG = 0.5
 
 
 def dispatch(cmd: bytes, state: Lx200ClientState, ctx: Lx200Context) -> bytes | None:
@@ -162,23 +189,31 @@ def dispatch(cmd: bytes, state: Lx200ClientState, ctx: Lx200Context) -> bytes | 
         return b"LX200 Classic#"
     if body == "GVN":
         return f"PushNav {ctx.app_version}#".encode("ascii")
+    if body == "GVD":
+        # Firmware date (Meade format). Today's date is a harmless placeholder;
+        # the protocol doesn't require it to match any real build date.
+        return time.strftime("%b %d %Y#").encode("ascii")
+    if body == "GVT":
+        return time.strftime("%H:%M:%S#").encode("ascii")
 
     # --- target setters ---
     if body.startswith("Sr"):
-        return _handle_set_ra(body[2:], state)
+        return _handle_set_ra(body[2:], ctx)
     if body.startswith("Sd"):
-        return _handle_set_dec(body[2:], state)
+        return _handle_set_dec(body[2:], ctx)
 
     # --- actions ---
     if body == "MS":
-        return _handle_move_slew(state, ctx)
+        return _handle_move_slew(ctx)
+    if body == "D":
+        return _reply_distance(ctx)
     if body == "CM":
         # Per SPEC_PROTOCOL_LX200.md §1.1: informational only, no state change.
         logger.info("LX200 :CM# received (informational, no state change)")
         return _CM_REPLY
     if body == "Q":
-        state.pending_ra_jnow_hours = None
-        state.pending_dec_jnow_deg = None
+        ctx.pending_ra_jnow_hours = None
+        ctx.pending_dec_jnow_deg = None
         return None
 
     # --- toggles ---
@@ -208,40 +243,66 @@ def _reply_get_dec(state: Lx200ClientState, ctx: Lx200Context) -> bytes:
     return format_dec_hi(dec_jnow_deg) if state.precision_hi else format_dec_lo(dec_jnow_deg)
 
 
-def _handle_set_ra(arg: str, state: Lx200ClientState) -> bytes:
+def _handle_set_ra(arg: str, ctx: Lx200Context) -> bytes:
     try:
-        state.pending_ra_jnow_hours = parse_ra_hms(arg)
+        ctx.pending_ra_jnow_hours = parse_ra_hms(arg)
         return b"1"
     except (ValueError, IndexError):
         logger.debug("LX200 :Sr parse failed: %r", arg)
-        state.pending_ra_jnow_hours = None
+        ctx.pending_ra_jnow_hours = None
         return b"0"
 
 
-def _handle_set_dec(arg: str, state: Lx200ClientState) -> bytes:
+def _handle_set_dec(arg: str, ctx: Lx200Context) -> bytes:
     try:
-        state.pending_dec_jnow_deg = parse_dec_dms(arg)
+        ctx.pending_dec_jnow_deg = parse_dec_dms(arg)
         return b"1"
     except (ValueError, IndexError):
         logger.debug("LX200 :Sd parse failed: %r", arg)
-        state.pending_dec_jnow_deg = None
+        ctx.pending_dec_jnow_deg = None
         return b"0"
 
 
-def _handle_move_slew(state: Lx200ClientState, ctx: Lx200Context) -> bytes:
-    if state.pending_ra_jnow_hours is None or state.pending_dec_jnow_deg is None:
+def _handle_move_slew(ctx: Lx200Context) -> bytes:
+    if ctx.pending_ra_jnow_hours is None or ctx.pending_dec_jnow_deg is None:
         return b"1<no target set>#"
-    ra_jnow_deg = state.pending_ra_jnow_hours * 15.0
-    ra_j2000, dec_j2000 = jnow_to_j2000(ra_jnow_deg, state.pending_dec_jnow_deg)
+    ra_jnow_deg = ctx.pending_ra_jnow_hours * 15.0
+    ra_j2000, dec_j2000 = jnow_to_j2000(ra_jnow_deg, ctx.pending_dec_jnow_deg)
     # GotoTarget.set() plays the ack sound internally — we do not call play_ack
     # separately to avoid a double-play. ctx.play_ack exists for future hooks.
     if ctx.goto_target is not None:
         ctx.goto_target.set(ra_j2000, dec_j2000)
     logger.info(
         "LX200 GOTO: (JNow) RA=%.4fh Dec=%.4f° -> (J2000) RA=%.4f° Dec=%.4f°",
-        state.pending_ra_jnow_hours,
-        state.pending_dec_jnow_deg,
+        ctx.pending_ra_jnow_hours,
+        ctx.pending_dec_jnow_deg,
         ra_j2000,
         dec_j2000,
     )
     return b"0"
+
+
+def _reply_distance(ctx: Lx200Context) -> bytes:
+    """Answer SkySafari's :D# slew-status poll.
+
+    For a push-to, the "slew" is the user physically pushing the scope toward
+    the target. We say slew is done when the plate-solve has converged to
+    within _SLEW_DONE_THRESHOLD_DEG of the committed goto target. SkySafari
+    uses this to transition its button from "Stop" back to "GoTo".
+    """
+    # No target committed (or no GotoTarget wired) -> not slewing.
+    if ctx.goto_target is None:
+        return _D_DONE
+    target = ctx.goto_target.read()
+    if not target.active:
+        return _D_DONE
+    # No valid pointing yet — can't measure distance, so don't claim we're
+    # still slewing forever. Say done; when the solver locks, subsequent
+    # polls give a real answer.
+    snap = ctx.pointing.read()
+    if not snap.valid:
+        return _D_DONE
+    sep_deg = angular_separation(
+        snap.ra_j2000, snap.dec_j2000, target.ra_j2000, target.dec_j2000,
+    )
+    return _D_DONE if sep_deg < _SLEW_DONE_THRESHOLD_DEG else _D_SLEWING

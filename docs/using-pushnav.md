@@ -52,6 +52,9 @@ You don't need to keep looking at your laptop while pushing. Open PushNav's **Se
 
 ![PushNav mobile companion view](assets/pushnav-mobile.png)
 
+!!! tip "Prefer SkySafari or Stellarium Mobile?"
+    PushNav also speaks the LX200 telescope protocol, so you can pick targets and see your scope's crosshair directly in **SkySafari**, **Stellarium Mobile PLUS**, **INDI** (KStars/Ekos), or **ASCOM** clients. See [SkySafari & Other Apps](skysafari-setup.md) for the one-time setup.
+
 ## Why the arrows might feel rotated
 
 The first time you use PushNav, you might notice that "LEFT" on the screen doesn't exactly match what feels like "left" on your telescope. This is normal and expected.

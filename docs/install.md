@@ -31,7 +31,7 @@ Grab the latest release from GitHub:
 
 ### First launch — firewall prompt
 
-The first time PushNav starts, Windows Firewall will ask if you want to allow PushNav to communicate on your network. **Tick "Private networks"** and click **Allow access**. This lets your phone connect to PushNav's mobile companion view.
+The first time PushNav starts, Windows Firewall will ask if you want to allow PushNav to communicate on your network. **Tick "Private networks"** and click **Allow access**. This lets other devices on your Wi-Fi — your phone for the mobile companion view, and telescope apps like SkySafari — connect to PushNav.
 
 !!! note "If PushNav won't start at all"
     If you see an error about a missing `.dll` file, you may need to install the [Microsoft Visual C++ Runtime](https://aka.ms/vs/17/release/vc_redist.x64.exe) (a one-time, free download from Microsoft). Most Windows 10/11 machines already have it.
@@ -58,7 +58,7 @@ You only need to do this once.
 
 **Camera access** — macOS will ask if PushNav can use your camera. Click **Allow**. PushNav needs the camera to see the stars.
 
-**Network access** — macOS will ask if PushNav can accept incoming network connections. Click **Allow**. This lets your phone connect to PushNav's mobile companion view (more on this below).
+**Network access** — macOS will ask if PushNav can accept incoming network connections. Click **Allow**. This lets other devices on your Wi-Fi — your phone for the mobile companion view, and telescope apps like SkySafari — connect to PushNav.
 
 ---
 

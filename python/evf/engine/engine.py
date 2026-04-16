@@ -24,6 +24,7 @@ Central coordinator that owns the lifecycle of every subsystem.
 import json
 import logging
 import threading
+import time
 
 from evf.camera.subprocess_mgr import SubprocessManager
 from evf.config.logging_setup import setup_logging
@@ -201,6 +202,34 @@ class Engine:
     def lx200_running(self) -> bool:
         """True if the LX200 server bound its socket successfully."""
         return self._lx200 is not None
+
+    @property
+    def stellarium_has_client(self) -> bool:
+        """True if the Stellarium server currently has any client connected.
+
+        Stellarium holds a persistent TCP connection, so this is a simple
+        boolean — the UI lights the Stellarium activity indicator while it
+        is True.
+        """
+        return self._stellarium is not None and self._stellarium.client_count > 0
+
+    # LX200 clients (notably SkySafari in polling mode) open a fresh TCP
+    # connection per command, so "has client connected right now" is almost
+    # never True. Instead we expose the time since the last connect or
+    # received command and hold the indicator lit for _LX200_INDICATOR_HOLD
+    # seconds. The user asked for a minimum hold of 100 ms.
+    _LX200_INDICATOR_HOLD = 0.1  # seconds
+
+    @property
+    def lx200_active(self) -> bool:
+        """True if the LX200 server saw a connect or a command within the
+        last _LX200_INDICATOR_HOLD seconds."""
+        if self._lx200 is None:
+            return False
+        last = self._lx200.last_activity_monotonic
+        if last == 0.0:
+            return False
+        return (time.monotonic() - last) < self._LX200_INDICATOR_HOLD
 
     # -- startup (§8.2) -------------------------------------------------------
 

@@ -156,6 +156,10 @@ def main() -> None:
         status=lambda: engine.stellarium_status,
         obj=lambda: engine.stellarium_object,
     )
+    ui.set_telescope_activity_source(
+        stellarium_active=lambda: engine.stellarium_has_client,
+        lx200_active=lambda: engine.lx200_active,
+    )
 
     ui.destroy_splash()
     ui.set_audio_enabled(engine.audio_enabled)
