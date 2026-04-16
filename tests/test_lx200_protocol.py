@@ -185,30 +185,51 @@ class TestDispatchGetters:
 
 
 class TestDispatchSetters:
+    """Pending target lives on the Lx200Context (shared across all client
+    connections of a server) — SkySafari's polling mode sends :Sr, :Sd, :MS
+    on three separate TCP connections, so the pending state must survive
+    reconnects. Tests therefore check ctx.pending_*, not state.pending_*.
+    """
+
     def test_sr_valid(self):
         state = Lx200ClientState()
         ctx = _make_ctx(PointingState())
         assert dispatch(b":Sr 05:47:12", state, ctx) == b"1"
-        assert state.pending_ra_jnow_hours is not None
-        assert abs(state.pending_ra_jnow_hours - 5.78666666) < 1e-4
+        assert ctx.pending_ra_jnow_hours is not None
+        assert abs(ctx.pending_ra_jnow_hours - 5.78666666) < 1e-4
 
     def test_sd_valid(self):
         state = Lx200ClientState()
         ctx = _make_ctx(PointingState())
         assert dispatch(b":Sd +45*59:07", state, ctx) == b"1"
-        assert state.pending_dec_jnow_deg is not None
-        assert abs(state.pending_dec_jnow_deg - 45.9853) < 1e-3
+        assert ctx.pending_dec_jnow_deg is not None
+        assert abs(ctx.pending_dec_jnow_deg - 45.9853) < 1e-3
 
     def test_sr_malformed(self):
         state = Lx200ClientState()
         ctx = _make_ctx(PointingState())
         assert dispatch(b":Sr BAD", state, ctx) == b"0"
-        assert state.pending_ra_jnow_hours is None
+        assert ctx.pending_ra_jnow_hours is None
 
     def test_sd_out_of_range(self):
         state = Lx200ClientState()
         ctx = _make_ctx(PointingState())
         assert dispatch(b":Sd +91*00:00", state, ctx) == b"0"
+
+    def test_sr_sd_ms_across_separate_client_states(self):
+        """Regression test for SkySafari polling mode: :Sr, :Sd, :MS arrive
+        on three different TCP connections (each with its own fresh
+        Lx200ClientState), but they share the same Lx200Context and so the
+        pending target accumulates correctly."""
+        goto = GotoTarget()
+        ctx = _make_ctx(PointingState(), goto=goto)
+        state_a = Lx200ClientState()
+        state_b = Lx200ClientState()
+        state_c = Lx200ClientState()
+        assert dispatch(b":Sr 12:00:00", state_a, ctx) == b"1"
+        assert dispatch(b":Sd +00*00:00", state_b, ctx) == b"1"
+        assert dispatch(b":MS", state_c, ctx) == b"0"
+        assert goto.read().active is True
 
 
 class TestDispatchGoto:
@@ -237,6 +258,45 @@ class TestDispatchGoto:
         assert dispatch(b":MS", state, ctx) == b"1<no target set>#"
 
 
+class TestDispatchDistance:
+    """`:D#` tells SkySafari whether the scope has finished slewing; it uses
+    the reply to transition the button from "Stop" back to "GoTo" after a
+    goto.  For a push-to, "slew complete" means the plate-solve is within
+    _SLEW_DONE_THRESHOLD_DEG of the committed target."""
+
+    def test_d_no_goto_target_reports_done(self):
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState(), goto=GotoTarget())
+        assert dispatch(b":D", state, ctx) == b"#"
+
+    def test_d_target_active_but_no_valid_pointing_reports_done(self):
+        # Avoid "forever slewing" UX when we haven't locked yet.
+        goto = GotoTarget()
+        goto.set(ra_j2000_deg=100.0, dec_j2000_deg=20.0)
+        state = Lx200ClientState()
+        ctx = _make_ctx(PointingState(), goto=goto)
+        assert dispatch(b":D", state, ctx) == b"#"
+
+    def test_d_pointing_far_from_target_reports_slewing(self):
+        goto = GotoTarget()
+        goto.set(ra_j2000_deg=100.0, dec_j2000_deg=20.0)
+        ps = PointingState()
+        ps.update(ra_j2000=150.0, dec_j2000=30.0, roll=0.0, matches=10, prob=0.01)
+        state = Lx200ClientState()
+        ctx = _make_ctx(ps, goto=goto)
+        assert dispatch(b":D", state, ctx) == b"\x7f#"
+
+    def test_d_pointing_on_target_reports_done(self):
+        goto = GotoTarget()
+        goto.set(ra_j2000_deg=100.0, dec_j2000_deg=20.0)
+        ps = PointingState()
+        # 0.1° off in each axis -> ~0.14° separation, well under the 0.5° threshold
+        ps.update(ra_j2000=100.1, dec_j2000=20.1, roll=0.0, matches=10, prob=0.01)
+        state = Lx200ClientState()
+        ctx = _make_ctx(ps, goto=goto)
+        assert dispatch(b":D", state, ctx) == b"#"
+
+
 class TestDispatchCm:
     """Per the one-way data flow rule, :CM# is acknowledge-only."""
 
@@ -263,12 +323,12 @@ class TestDispatchCm:
 class TestDispatchMisc:
     def test_q_clears_pending(self):
         state = Lx200ClientState()
-        state.pending_ra_jnow_hours = 5.0
-        state.pending_dec_jnow_deg = 45.0
         ctx = _make_ctx(PointingState())
+        ctx.pending_ra_jnow_hours = 5.0
+        ctx.pending_dec_jnow_deg = 45.0
         assert dispatch(b":Q", state, ctx) is None
-        assert state.pending_ra_jnow_hours is None
-        assert state.pending_dec_jnow_deg is None
+        assert ctx.pending_ra_jnow_hours is None
+        assert ctx.pending_dec_jnow_deg is None
 
     def test_unknown_command_returns_none(self):
         state = Lx200ClientState()

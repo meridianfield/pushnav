@@ -84,7 +84,7 @@ tetra3 = { path = "python/vendor/tetra3", editable = true }
 
 Uses `pyproject.toml` (hatchling build backend) with `uv` for dependency locking (`uv.lock`).
 
-Dependencies: dearpygui, Pillow, numpy, scipy, tetra3, playsound3
+Dependencies: dearpygui, Pillow, numpy, scipy, tetra3, playsound3, aiohttp, qrcode[pil], pyerfa (>=2.0.0, for LX200 J2000↔JNow precession)
 Dev dependencies: nuitka (>=4.0.2), pytest
 
 ---

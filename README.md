@@ -1,6 +1,6 @@
 # PushNav
 
-A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to Stellarium in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required.
+A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to Stellarium, SkySafari, and other planetarium apps in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required.
 
 ![Screenshot](docs/assets/pushnav_aldebran.png)
 
@@ -14,22 +14,23 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 
 ## How It Works
 
-1. Observer selects an object in Stellarium and "Slews" (Cmd+1 or Ctrl+1)
-2. PushNav shows how to push the telescope to reach the target in its UI. 
-3. Alternatively the telescope's pointing is also shown in Stellarium as a telescope crosshair that moves in real-time as you push the scope.
+1. Observer picks a target in a planetarium app — Stellarium on the desktop, or SkySafari / Stellarium Mobile PLUS on a phone — and sends it to PushNav.
+2. PushNav shows how to push the telescope to reach the target in its UI.
+3. The telescope's pointing is also shown as a live crosshair in the planetarium app's sky chart, moving in real-time as you push the scope.
 
 #### Internal workflow
 
 1. A USB camera in place of your telescope's finder captures the star field
 2. PushNav plate-solves frames using the [tetra3](https://github.com/esa/tetra3) star pattern recognition library in near real-time
 3. The difference in pointing is calculated and translated into directional guidance which is shown in the UI
-4. Solved RA/Dec coordinates are also broadcast to Stellarium via its telescope protocol, so you can see your telescope's pointing in Stellarium's sky chart in real-time as you push.
+4. Solved RA/Dec coordinates are exposed to connected planetarium apps over standard telescope-control protocols, so your telescope's pointing moves on the app's sky chart in real-time as you push.
 
 ## Features
 
 - Near real-time plate solving (~20–140 ms per frame)
 - One time, simple calibration. No named stars, just point at any bright star and sync
 - GOTO navigation guidance from Stellarium
+- Works with **SkySafari**, **Stellarium Mobile**, **INDI**, and **ASCOM** clients over Wi-Fi via the LX200 protocol
 - Audio feedback for lock/lost/GOTO events
 - Saves calibration for quick re-sync
 - Works from urban light-polluted skies with the right camera/lens combo (see hardware guide)
@@ -147,6 +148,8 @@ Tests include offline plate-solving against sample images, camera protocol tests
 4. Connect
 
 For GOTO navigation guidance, also enable the **Remote Control** plugin (default port 8090).
+
+To use **SkySafari**, **Stellarium Mobile**, **INDI**, or **ASCOM** instead, point your client at PushNav's LX200 server (shown in the app's Settings panel, port `4030`). Full walkthrough: [SkySafari & Other Apps](docs/skysafari-setup.md).
 
 ## Project Structure
 

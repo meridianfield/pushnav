@@ -122,21 +122,51 @@ If solve fails:
 
 ---
 
-# 5. Stellarium Integration
+# 5. External Integrations
 
-- TCP server on localhost.
-- Default port: 10001
-- Implements Stellarium telescope binary protocol.
-- Broadcasts last valid solution every 1 second.
-- Processes incoming GOTO commands into navigation targets.
-- Queries Stellarium Remote Control API (port 8090) for observer location and object info.
-- Plays acknowledgment sound on client connect.
+PushNav exposes pointing to external planetarium / astronomy clients over two
+independent TCP servers, both running in-process.
 
-No support for:
-- LX200
-- ASCOM
-- INDI
-- SkySafari
+## 5.1 Stellarium (desktop, binary protocol)
+
+- TCP server on `127.0.0.1:10001` (loopback only — desktop Stellarium on the
+  same machine).
+- Implements the Stellarium telescope binary protocol.
+- Broadcasts the last valid solution every 1 second.
+- Processes incoming GOTO commands into navigation targets (advisory only;
+  never mutates pointing or calibration).
+- Queries the Stellarium Remote Control API (port 8090) for observer
+  location and object info.
+- Plays an acknowledgment sound on client connect.
+
+See `SPEC_PROTOCOL_STELLARIUM.md`.
+
+## 5.2 LX200 (SkySafari / Stellarium Mobile / INDI / ASCOM)
+
+- TCP server on `0.0.0.0:4030` (LAN-reachable so mobile apps can connect).
+- Implements the Meade LX200 Classic ASCII command subset used by SkySafari,
+  Stellarium Mobile PLUS, INDI `indi_lx200basic`, and ASCOM "Meade Generic" /
+  "Meade Classic and Autostar I" drivers.
+- Request/response only — never emits unsolicited bytes.
+- Reports pointing in JNow (the LX200 convention); PushNav's internal
+  canonical form remains J2000. Precession is applied at the LX200 boundary
+  via `pyerfa` (IAU 2006).
+- `:MS#` (slew-to-target) stores the received target in `GotoTarget` for
+  on-screen navigation guidance — same advisory path as the Stellarium GOTO.
+- `:CM#` (align/sync) is acknowledge-only per the one-way data flow rule
+  (SPEC_PROTOCOL_LX200.md §1.1): external clients never mutate PushNav's
+  calibration.
+- `:D#` (slew-status) reports "on target" when the plate-solve is within
+  0.5° of the committed goto target, so SkySafari's "Stop"/"GoTo" button
+  transitions correctly even though PushNav has no motor.
+
+See `SPEC_PROTOCOL_LX200.md`.
+
+## 5.3 UI surface
+
+The main window's Settings panel exposes both addresses (`localhost:10001` for
+Stellarium and `<LAN-IP>:4030` for LX200) with a small per-server activity
+indicator dot that lights while a client is actively talking.
 
 ---
 

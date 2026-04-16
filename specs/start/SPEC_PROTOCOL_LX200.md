@@ -62,11 +62,13 @@ Minimum set required by all four client families. Unsupported commands are **sil
 | `:GR#` | `HH:MM:SS#` | `HH:MM.T#` |
 | `:GD#` | `sDD*MM:SS#` | `sDD*MM#` |
 | `:GVP#` | `LX200 Classic#` *(identity — used for auto-detect)* | — |
-| `:GVN#` | `PushNav 1.0#` *(firmware string)* | — |
-| `:GVD#` | build date string, e.g. `Apr 16 2026#` | — |
-| `:GVT#` | build time string, e.g. `12:34:56#` | — |
+| `:GVN#` | `PushNav <app version from VERSION.json>#` | — |
+| `:GVD#` | build-date string, e.g. `Apr 16 2026#` *(today's date; harmless placeholder)* | — |
+| `:GVT#` | build-time string, e.g. `12:34:56#` *(current local time; harmless placeholder)* | — |
 
 Precision mode: start in **high-precision** (HH:MM:SS / sDD*MM:SS). `:U#` toggles. Track per-connection.
+
+**Why no clock / site replies.** Empirical testing with SkySafari 7 confirmed it never polls `:GC#`, `:GL#`, `:GS#`, `:GG#`, `:Gt#`, `:Gg#`, or `:Gc#` — altitude and "below horizon" checks are done using SkySafari's own Observer location from its Settings, not the mount's reported site. If a user sees "target below horizon" errors, the fix is to set SkySafari's own Observer location correctly. We may add these handlers if a future client is observed polling them; for now they fall through to §3.3 (silent ignore).
 
 ### 3.2 Target setters (used for goto)
 
@@ -77,10 +79,24 @@ Precision mode: start in **high-precision** (HH:MM:SS / sDD*MM:SS). `:U#` toggle
 | `:MS#` | Slew to stored target | `0` = slew started (we always return `0`; push-to mount is the operator) |
 | `:CM#` | Sync to stored target | `Coordinates matched.        #` *(29-byte reply; matches the Meade reference implementation; SkySafari accepts variable-length padding)* |
 | `:Q#` | Stop slew / abort | (no response) |
+| `:D#` | Distance / slew-status poll | `\x7f#` while slewing, `#` when done — see §3.2.1 |
 
 On `:MS#` we treat the stored (RA, Dec) exactly like a Stellarium binary GOTO: write to `GotoTarget`, play the ack sound, log at INFO.
 
 `:CM#` is **informational only** — per §1.1 the one-way data flow rule prohibits third-party state input. Reply the canonical string, log at INFO, do nothing else.
+
+### 3.2.1 `:D#` slew-status semantics for a push-to
+
+After SkySafari sends `:MS#` it polls `:D#` ~1 Hz and transitions its button from "Stop" back to "GoTo" when it sees the "done" reply. For a real Meade mount the distinction is motor-state (actively slewing vs. tracking); for a push-to it's derived from plate-solved pointing vs. committed target:
+
+| Condition | Reply | Meaning |
+|-----------|-------|---------|
+| No `GotoTarget` is active | `#` | Not slewing; SkySafari shows "GoTo" |
+| Target active but no valid `PointingState` | `#` | Don't claim "forever slewing" — let SkySafari flip to "GoTo" until we have a lock |
+| Target active, pointing ≥ `_SLEW_DONE_THRESHOLD_DEG` (0.5°) away | `\x7f#` | User still pushing toward target; SkySafari shows "Stop" |
+| Target active, pointing < 0.5° away | `#` | On target; SkySafari flips back to "GoTo" |
+
+0.5° is a typical low-power eyepiece FOV — tight enough that SkySafari only flips to "GoTo" when the user has actually pushed to the target, loose enough that arc-minute plate-solve jitter doesn't bounce the button.
 
 ### 3.3 Tolerated but ignored (reply nothing)
 
@@ -292,7 +308,16 @@ A single server thread (like `StellariumServer._run`) uses `select` to fan in al
 1. Read available bytes into a per-client buffer.
 2. Scan for `#`-terminated tokens (or reply-less shortcuts like bare `:Q`).
 3. Dispatch each command; buffer stragglers for the next read.
-4. Per-client state: `{precision: "hi"|"lo", pending_ra, pending_dec}`.
+4. Per-client state: `{precision: "hi"|"lo", recv_buffer}` — truly connection-scoped only.
+5. Server-shared mount state: `{pending_ra_jnow_hours, pending_dec_jnow_deg}` — lives on the `Lx200Context` (single instance per server), not on the client state. See §6.2.1.
+
+### 6.2.1 Why pending target is server-shared, not per-connection
+
+SkySafari's LX200-over-TCP polling mode opens a **fresh TCP connection for every command**. The `:Sr`, `:Sd`, and `:MS#` sequence that makes up a GoTo arrives on three separate connections, seconds apart at most. Storing the pending target on a per-connection state object means each command lands on a fresh object with `pending_ra = pending_dec = None`, so `:MS#` sees no target and replies `1<no target set>#`.
+
+A real Meade mount holds pending target state in the mount itself, independent of the serial/TCP link — clients rely on that semantics. Our implementation mirrors it: `pending_ra_jnow_hours` / `pending_dec_jnow_deg` live on `Lx200Context`, which is constructed once per server and shared across all client connections.
+
+Trade-off: two simultaneous clients both issuing gotos will race (last `:Sr`/`:Sd` wins before `:MS`). Acceptable — push-to mounts have one `GotoTarget` anyway, and concurrent goto issuance is not a real scenario.
 
 ### 6.3 Command dispatch
 
@@ -305,23 +330,24 @@ A single server thread (like `StellariumServer._run`) uses `select` to fan in al
 :GD#  →  snap = pointing.read()
          _, dec_jnow_deg = epoch.j2000_to_jnow(snap.ra_j2000, snap.dec_j2000)
          reply format_dec_hi(dec_jnow_deg)
-:Sr X → parse X (JNow) into pending_ra_jnow; reply "1" (or "0" on parse error)
-:Sd X → parse X (JNow) into pending_dec_jnow; reply "1"
-:MS#  → if pending_ra_jnow and pending_dec_jnow are set:
+:Sr X → parse X (JNow) into ctx.pending_ra_jnow_hours; reply "1" (or "0" on parse error)
+:Sd X → parse X (JNow) into ctx.pending_dec_jnow_deg; reply "1"
+:MS#  → if ctx.pending_ra_jnow_hours and ctx.pending_dec_jnow_deg are set:
           ra_j2000_deg, dec_j2000_deg = epoch.jnow_to_j2000(
-              pending_ra_jnow * 15.0, pending_dec_jnow)
+              ctx.pending_ra_jnow_hours * 15.0, ctx.pending_dec_jnow_deg)
           goto_target.set(ra_j2000_deg, dec_j2000_deg)  # same as Stellarium path
-          play_ack()
-          log INFO "LX200 GOTO received: ..."
-          optionally kick off stellarium_object lookup (share code path with StellariumServer._fetch_goto_details)
-        reply "0"   (always — push-to has no motor; we never reject)
-:CM#  → reply "Coordinates matched.        #" (32 chars + #)
+          (GotoTarget.set() already plays the ack sound internally)
+          log INFO "LX200 GOTO: ..."
+        else:
+          reply "1<no target set>#"
+        reply "0" otherwise — push-to has no motor; we never reject
+:CM#  → reply "Coordinates matched.        #" (29 bytes)
         log INFO "LX200 :CM# received (informational, no state change)"
         # Per §1.1: one-way data flow; no calibration writes, no PointingState updates
-:Q#   → clear pending_ra / pending_dec; no reply
+:Q#   → clear ctx.pending_ra_jnow_hours / ctx.pending_dec_jnow_deg; no reply
         (does NOT clear GotoTarget — aborting a pending slew does not
          erase an already-committed navigation target)
-:U#   → toggle this client's precision mode; no reply
+:U#   → toggle this client's precision mode (per-connection); no reply
 :GVP# → reply "LX200 Classic#"
 :GVN# → reply "PushNav <app version from VERSION.json>#"
 unknown :XX# → consume, no reply, log DEBUG
@@ -398,6 +424,16 @@ Shared helper (new): `python/evf/engine/pointing.py` gains `PointingSnapshot.ra_
 - Connection: **WiFi**, "Use WiFi-to-Serial adapter or TCP/IP" → **Direct TCP/IP**
 - IP = PushNav host; Port = **4030**
 - "Auto-Detect SkyFi" may also find us if we answer the SkyFi discovery UDP broadcast on port 4031 — **optional**, add in a later revision if demand warrants.
+
+**To see the scope crosshair on SkySafari's star map:**
+
+SkySafari draws the scope crosshair only if a FOV indicator is defined and crosshairs are toggled on — this is independent of our protocol.
+- SkySafari 8: **Observe → Scope Display**, define a FOV indicator for the scope, enable **Crosshairs**, and in the settings icon turn on *"Show Even If Not Connected"* if you want the crosshair to stay visible when briefly disconnected.
+- SkySafari 7: **Settings → Telescope Display**.
+- If the crosshair still isn't visible, the star map is likely panned away from the scope's reported RA/Dec; use the Scope Control panel's *center-on-scope* button to snap the view.
+
+**"Below horizon" errors on GoTo:**
+SkySafari computes altitude from **its own Observer location and clock**, not the values the mount reports. Set SkySafari → Settings → Observer to your real location before using GoTo.
 
 ### 8.2 Stellarium Mobile PLUS
 - Menu → Observing Tools → Telescope → Add

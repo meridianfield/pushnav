@@ -66,6 +66,10 @@ _STATE_COLORS = {
     EngineState.ERROR: (255, 30, 30),
 }
 
+# Telescope-control activity indicator colors (Stellarium / LX200 dots)
+_INDICATOR_ON = (255, 70, 70)
+_INDICATOR_OFF = (60, 15, 15)
+
 
 def _format_ra(ra_deg: float) -> str:
     """Convert RA in degrees to hours/minutes/seconds string."""
@@ -193,6 +197,10 @@ class UI:
         self._nav_result: NavigationResult | None = None
         self._stellarium_status_getter: Callable[[], dict | None] | None = None
         self._stellarium_object_getter: Callable[[], dict | None] | None = None
+        # Activity-indicator sources (set via set_telescope_activity_source).
+        # Each returns True when its dot should be lit.
+        self._stellarium_active_getter: Callable[[], bool] | None = None
+        self._lx200_active_getter: Callable[[], bool] | None = None
         self._debug_sample_jpeg: bytes | None = None  # cached JPEG for continuous injection
         self._debug_frame_id = 100_000  # offset to avoid collisions with real frames
         self._qr_texture: int | str | None = None
@@ -266,6 +274,17 @@ class UI:
         """Set callables for Stellarium Remote Control data."""
         self._stellarium_status_getter = status
         self._stellarium_object_getter = obj
+
+    def set_telescope_activity_source(
+        self,
+        stellarium_active: Callable[[], bool],
+        lx200_active: Callable[[], bool],
+    ) -> None:
+        """Set callables that drive the red-dot activity indicators next to
+        the Stellarium and LX200 addresses. Each should return True while the
+        dot should be lit."""
+        self._stellarium_active_getter = stellarium_active
+        self._lx200_active_getter = lx200_active
 
     def set_lx200_address(self, address: str | None) -> None:
         """Show LX200 TCP address in the settings panel.
@@ -350,6 +369,11 @@ class UI:
         font_bold_path = str(_fonts / "Inter-Bold.ttf")
         with dpg.font_registry():
             self._font_body = dpg.add_font(font_path, font_body_sz)
+            # "●" (U+25CF) is used for the telescope activity indicators;
+            # it's outside the default Basic-Latin+Latin-1 glyph range, so
+            # we rasterize it explicitly or it would render as a missing-
+            # glyph box.
+            dpg.add_font_chars([0x25CF], parent=self._font_body)
             self._font_heading = dpg.add_font(font_bold_path, font_heading_sz)
             self._font_title = dpg.add_font(font_bold_path, font_title_sz)
         dpg.bind_font(self._font_body)
@@ -781,16 +805,30 @@ class UI:
             color=(200, 50, 50),
             wrap=wrap_px,
         )
-        dpg.add_text("Starting...", tag="lx200_address_label", color=(200, 50, 50))
+        with dpg.group(horizontal=True):
+            dpg.add_text(
+                "\u25cf",  # ● activity indicator; color updated each frame
+                tag="lx200_indicator_dot",
+                color=_INDICATOR_OFF,
+            )
+            dpg.add_text(
+                "Starting...", tag="lx200_address_label", color=(200, 50, 50)
+            )
         dpg.add_spacer(height=4)
         dpg.add_text(
             "Stellarium (desktop, same machine only):",
             color=(200, 50, 50),
             wrap=wrap_px,
         )
-        dpg.add_text(
-            "Starting...", tag="stellarium_address_label", color=(200, 50, 50)
-        )
+        with dpg.group(horizontal=True):
+            dpg.add_text(
+                "\u25cf",
+                tag="stellarium_indicator_dot",
+                color=_INDICATOR_OFF,
+            )
+            dpg.add_text(
+                "Starting...", tag="stellarium_address_label", color=(200, 50, 50)
+            )
 
     def _build_advanced_settings_section(self) -> None:
         s = self._ui_scale
@@ -898,6 +936,7 @@ class UI:
         self._update_state(state, failures)
         self._update_status(state, failures)
         self._update_navigation()
+        self._update_telescope_indicators()
 
     def _update_texture(self) -> None:
         jpeg_bytes, _ts, frame_id = self._frame_buffer.get()
@@ -1141,6 +1180,31 @@ class UI:
 
         dpg.set_value("nav_detail_label", f"Dist: {sep_s} | {lr_s} | {ud_s}")
         dpg.configure_item("nav_scale_label", show=True)
+
+    def _update_telescope_indicators(self) -> None:
+        """Drive the red-dot activity indicators next to the Stellarium and
+        LX200 addresses in the settings panel.
+
+        The engine decides when each should be lit:
+        - Stellarium: True while any client is connected (persistent link)
+        - LX200: True if a connect or command happened within the last ~100 ms
+          (SkySafari opens a new connection per poll, so we hold the dot lit
+          briefly to make the flash visible)
+        """
+        if self._stellarium_active_getter is not None and dpg.does_item_exist(
+            "stellarium_indicator_dot"
+        ):
+            color = (
+                _INDICATOR_ON
+                if self._stellarium_active_getter()
+                else _INDICATOR_OFF
+            )
+            dpg.configure_item("stellarium_indicator_dot", color=color)
+        if self._lx200_active_getter is not None and dpg.does_item_exist(
+            "lx200_indicator_dot"
+        ):
+            color = _INDICATOR_ON if self._lx200_active_getter() else _INDICATOR_OFF
+            dpg.configure_item("lx200_indicator_dot", color=color)
 
     def _sync_offset_pixel(self) -> tuple[float, float]:
         """Pixel position of the sync offset (where main scope points).

@@ -28,6 +28,7 @@ import logging
 import select
 import socket
 import threading
+import time
 
 from evf.engine.goto_target import GotoTarget
 from evf.engine.pointing import PointingState
@@ -91,6 +92,10 @@ class Lx200Server:
             app_version=app_version,
         )
         self._clients: dict[socket.socket, Lx200ClientState] = {}
+        # Monotonic timestamp of the most recent connect OR received command.
+        # UI reads it (via the `last_activity_monotonic` property) to light the
+        # activity indicator next to the LX200 address. 0.0 means "never".
+        self._last_activity_at: float = 0.0
         self._server_sock: socket.socket | None = None
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -121,6 +126,15 @@ class Lx200Server:
             return self._server_sock.getsockname()[1]
         return self._port
 
+    @property
+    def last_activity_monotonic(self) -> float:
+        """Monotonic timestamp of the last connect or received command.
+
+        Returns 0.0 if there has been no activity this session. The UI lights
+        the LX200 indicator whenever `time.monotonic() - this < hold_seconds`.
+        """
+        return self._last_activity_at
+
     # -- internal -------------------------------------------------------------
 
     def _run(self) -> None:
@@ -147,7 +161,11 @@ class Lx200Server:
             return
         client.setblocking(False)
         self._clients[client] = Lx200ClientState()
-        logger.info("LX200 client connected from %s:%d", *addr)
+        self._last_activity_at = time.monotonic()
+        # Logged at DEBUG only. SkySafari's LX200-over-TCP polling mode opens a
+        # fresh connection per poll (~1 Hz) rather than holding a persistent
+        # socket, so connect/disconnect at INFO would drown the log.
+        logger.debug("LX200 client connected from %s:%d", *addr)
 
     def _handle_client_data(self, client: socket.socket) -> None:
         state = self._clients.get(client)
@@ -184,11 +202,16 @@ class Lx200Server:
             cmd = cmd.lstrip(b"\x00 \r\n\t\x06")
             if not cmd:
                 continue
+            self._last_activity_at = time.monotonic()
             try:
                 reply = dispatch(cmd, state, self._ctx)
             except Exception as exc:
                 logger.exception("LX200 dispatch error for %r: %s", cmd, exc)
                 reply = None
+            # DEBUG-level trace of the full request/response pair — enable
+            # verbose logging to see it. INFO would drown the log under
+            # SkySafari's ~1 Hz polling (one connection per poll).
+            logger.debug("LX200 <- %r  -> %r", cmd, reply)
             if reply is not None:
                 try:
                     client.sendall(reply)
@@ -199,9 +222,9 @@ class Lx200Server:
     def _remove_client(self, client: socket.socket) -> None:
         try:
             peer = client.getpeername()
-            logger.info("LX200 client disconnected: %s:%d", *peer)
+            logger.debug("LX200 client disconnected: %s:%d", *peer)
         except OSError:
-            logger.info("LX200 client disconnected")
+            logger.debug("LX200 client disconnected")
         try:
             client.close()
         except OSError:
