@@ -267,6 +267,24 @@ class UI:
         self._stellarium_status_getter = status
         self._stellarium_object_getter = obj
 
+    def set_lx200_address(self, address: str) -> None:
+        """Show LX200 TCP address in the settings panel.
+
+        Format: "<ip>:<port>" (e.g. "192.168.1.42:4030").
+        Users paste this into SkySafari / Stellarium Mobile / INDI / ASCOM.
+        """
+        if dpg.does_item_exist("lx200_address_label"):
+            dpg.set_value("lx200_address_label", address)
+
+    def set_stellarium_address(self, address: str) -> None:
+        """Show desktop-Stellarium binary-protocol address in the settings panel.
+
+        Format: "localhost:<port>" — desktop Stellarium's Telescope Control
+        plugin only connects to the local machine (server binds 127.0.0.1).
+        """
+        if dpg.does_item_exist("stellarium_address_label"):
+            dpg.set_value("stellarium_address_label", address)
+
     def set_web_url(self, url: str) -> None:
         """Show mobile web interface URL and QR code in the settings panel."""
         if dpg.does_item_exist("web_url_label"):
@@ -744,6 +762,20 @@ class UI:
         dpg.bind_item_font(mobile_heading, self._font_heading)
         dpg.add_text("Starting...", tag="web_url_label", color=(200, 50, 50))
         dpg.add_group(tag="web_qr_group")
+        dpg.add_spacer(height=6)
+        dpg.add_separator()
+        telescope_heading = dpg.add_text("Telescope Control", color=(255, 70, 70))
+        dpg.bind_item_font(telescope_heading, self._font_heading)
+        dpg.add_text(
+            "LX200 (SkySafari / Stellarium Mobile / INDI / ASCOM):",
+            color=(180, 180, 180),
+        )
+        dpg.add_text("Starting...", tag="lx200_address_label", color=(200, 50, 50))
+        dpg.add_spacer(height=4)
+        dpg.add_text("Stellarium (desktop, same machine only):", color=(180, 180, 180))
+        dpg.add_text(
+            "Starting...", tag="stellarium_address_label", color=(200, 50, 50)
+        )
 
     def _build_advanced_settings_section(self) -> None:
         s = self._ui_scale
