@@ -75,7 +75,7 @@ Precision mode: start in **high-precision** (HH:MM:SS / sDD*MM:SS). `:U#` toggle
 | `:Sr HH:MM:SS#` or `:Sr HH:MM.T#` | Target RA | `1` accepted, `0` malformed |
 | `:Sd sDD*MM:SS#` or `:Sd sDD*MM#` | Target Dec | `1` accepted, `0` malformed |
 | `:MS#` | Slew to stored target | `0` = slew started (we always return `0`; push-to mount is the operator) |
-| `:CM#` | Sync to stored target | `Coordinates matched.        #` *(32-char padded string ending in `#`)* |
+| `:CM#` | Sync to stored target | `Coordinates matched.        #` *(29-byte reply; matches the Meade reference implementation; SkySafari accepts variable-length padding)* |
 | `:Q#` | Stop slew / abort | (no response) |
 
 On `:MS#` we treat the stored (RA, Dec) exactly like a Stellarium binary GOTO: write to `GotoTarget`, play the ack sound, log at INFO.
@@ -318,7 +318,9 @@ A single server thread (like `StellariumServer._run`) uses `select` to fan in al
 :CM#  → reply "Coordinates matched.        #" (32 chars + #)
         log INFO "LX200 :CM# received (informational, no state change)"
         # Per §1.1: one-way data flow; no calibration writes, no PointingState updates
-:Q#   → clear pending_ra / pending_dec; clear GotoTarget; no reply
+:Q#   → clear pending_ra / pending_dec; no reply
+        (does NOT clear GotoTarget — aborting a pending slew does not
+         erase an already-committed navigation target)
 :U#   → toggle this client's precision mode; no reply
 :GVP# → reply "LX200 Classic#"
 :GVN# → reply "PushNav <app version from VERSION.json>#"

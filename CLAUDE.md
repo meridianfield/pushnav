@@ -53,6 +53,7 @@ python/evf/                     # main Python package
     navigation.py               # goto-target navigation logic
     goto_target.py              # thread-safe goto target container
     audio.py                    # audio feedback (lock/lost sounds)
+    epoch.py                    # J2000 <-> JNow precession (pyerfa)
   ui/                           # DearPyGui UI layer
     window.py                   # main UI window
   camera/                       # TCP camera client
@@ -66,6 +67,9 @@ python/evf/                     # main Python package
   stellarium/                   # Stellarium telescope protocol server
     server.py                   # TCP server for Stellarium connection
     protocol.py                 # Stellarium binary protocol
+  lx200/                        # LX200 Classic TCP protocol server
+    server.py                   # TCP server (select-based, multi-client)
+    protocol.py                 # LX200 ASCII parsing + dispatch
   config/                       # configuration
     manager.py                  # JSON config read/write
     logging_setup.py            # logging configuration
