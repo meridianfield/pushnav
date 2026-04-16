@@ -25,7 +25,6 @@ import asyncio
 import json
 import logging
 import math
-import socket
 import threading
 import time
 from typing import Callable
@@ -37,6 +36,7 @@ from evf.engine.goto_target import GotoTarget
 from evf.engine.navigation import compute_navigation, edge_arrow_position
 from evf.engine.pointing import PointingState
 from evf.engine.state import StateMachine
+from evf.network import local_ip
 from evf.paths import sounds_dir, web_dir
 
 logger = logging.getLogger(__name__)
@@ -47,18 +47,6 @@ _MAX_WS_CLIENTS = 10  # cap concurrent WebSocket connections
 _FOV_H = 8.86   # horizontal FOV in degrees
 _IMG_W = 1280
 _IMG_H = 720
-
-
-def _local_ip() -> str:
-    """Best-effort LAN IP address (doesn't send any data)."""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except Exception:
-        return "localhost"
 
 
 def _compute_origin(config: ConfigManager) -> tuple[float, float]:
@@ -168,7 +156,7 @@ class WebServer:
 
     async def _serve(self) -> None:
         port = self._config.web_port
-        ip = _local_ip()
+        ip = local_ip()
         self._url = f"http://{ip}:{port}"
         logger.info("Mobile web interface at %s", self._url)
 

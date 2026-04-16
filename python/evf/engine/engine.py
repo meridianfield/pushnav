@@ -42,6 +42,7 @@ from evf.solver.sync import (
     build_sync_candidates,
     compute_body_frame_sync,
 )
+from evf.network import local_ip
 from evf.paths import version_json
 from evf.solver.thread import SolverThread
 from evf.lx200.server import Lx200Server
@@ -167,6 +168,28 @@ class Engine:
         if self._stellarium:
             return self._stellarium.stellarium_object
         return None
+
+    @property
+    def stellarium_address(self) -> str | None:
+        """Address to paste into desktop Stellarium's Telescope Control plugin.
+
+        Stellarium server binds 127.0.0.1, so the address is always localhost
+        regardless of LAN IP — remote machines cannot reach the binary protocol.
+        """
+        if self._stellarium is None:
+            return None
+        return f"localhost:{self._stellarium.port}"
+
+    @property
+    def lx200_address(self) -> str | None:
+        """Address to paste into SkySafari / Stellarium Mobile / INDI / ASCOM.
+
+        LX200 server binds 0.0.0.0 so we advertise the LAN IP (same IP the
+        mobile web URL uses) so mobile apps on the same network can connect.
+        """
+        if self._lx200 is None:
+            return None
+        return f"{local_ip()}:{self._lx200.port}"
 
     # -- startup (§8.2) -------------------------------------------------------
 

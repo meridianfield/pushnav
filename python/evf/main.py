@@ -161,6 +161,10 @@ def main() -> None:
     ui.set_audio_enabled(engine.audio_enabled)
     if engine.web_url:
         ui.set_web_url(engine.web_url)
+    if engine.lx200_address:
+        ui.set_lx200_address(engine.lx200_address)
+    if engine.stellarium_address:
+        ui.set_stellarium_address(engine.stellarium_address)
 
     # Provide initial camera controls if connected
     controls = engine.camera_controls
