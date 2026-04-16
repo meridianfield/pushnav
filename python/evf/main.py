@@ -103,6 +103,9 @@ def main() -> None:
     ui.update_splash("Starting Stellarium server...")
     engine.startup_stellarium()
 
+    ui.update_splash("Starting LX200 server...")
+    engine.startup_lx200()
+
     ui.update_splash("Starting web server...")
     engine.startup_webserver()
 

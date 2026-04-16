@@ -44,12 +44,27 @@ from evf.solver.sync import (
 )
 from evf.paths import version_json
 from evf.solver.thread import SolverThread
+from evf.lx200.server import Lx200Server
 from evf.stellarium.server import StellariumServer
 from evf.webserver.server import WebServer
 
 logger = logging.getLogger(__name__)
 
 _VERSION_PATH = version_json()
+
+
+def _read_app_version() -> str:
+    """Read app_version string from VERSION.json at engine init.
+
+    Falls back to '0.0.0' if the file is missing or malformed so that the
+    LX200 :GVN# reply always returns a well-formed 'PushNav <version>#'.
+    """
+    try:
+        with open(_VERSION_PATH) as f:
+            data = json.load(f)
+        return str(data.get("app_version", "0.0.0"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return "0.0.0"
 
 
 class Engine:
@@ -68,6 +83,7 @@ class Engine:
         self._state_machine = StateMachine()
         self._config = ConfigManager()
         self._goto_target = GotoTarget()
+        self._app_version = _read_app_version()
 
         # Components (created during startup)
         self._solver: PlateSolver | None = None
@@ -75,6 +91,7 @@ class Engine:
         self._audio: AudioAlert | None = None
         self._subprocess_mgr: SubprocessManager | None = None
         self._stellarium: StellariumServer | None = None
+        self._lx200: Lx200Server | None = None
         self._webserver: WebServer | None = None
 
         # Sync state (two-phase calibration)
@@ -176,6 +193,23 @@ class Engine:
         except Exception as exc:
             logger.error("Failed to start Stellarium server: %s", exc)
             self._stellarium = None
+
+    def startup_lx200(self) -> None:
+        """Start LX200 TCP server.
+
+        Binds 0.0.0.0:4030 so mobile apps (SkySafari, Stellarium Mobile) can
+        reach it on the LAN. Always-on; no config toggle in v1.
+        """
+        try:
+            self._lx200 = Lx200Server(
+                self._pointing_state,
+                goto_target=self._goto_target,
+                app_version=self._app_version,
+            )
+            self._lx200.start()
+        except Exception as exc:
+            logger.error("Failed to start LX200 server: %s", exc)
+            self._lx200 = None
 
     def startup_webserver(self) -> None:
         """Start mobile web interface server."""
@@ -426,6 +460,13 @@ class Engine:
                 self._stellarium.stop(timeout=2)
             except Exception as exc:
                 logger.error("Error stopping Stellarium: %s", exc)
+
+        # 2b. Stop LX200 server
+        if self._lx200:
+            try:
+                self._lx200.stop(timeout=2)
+            except Exception as exc:
+                logger.error("Error stopping LX200 server: %s", exc)
 
         # 3a. Stop web server
         if self._webserver:
