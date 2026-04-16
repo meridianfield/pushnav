@@ -89,6 +89,10 @@ class TestParseDec:
         with pytest.raises(ValueError):
             protocol.parse_dec_dms("-91*00:00")
 
+    def test_accepts_unicode_degree_sign(self):
+        # Some clients may send the real degree sign (U+00B0) instead of '*'.
+        assert abs(protocol.parse_dec_dms("+45\u00b030:00") - 45.5) < 1e-6
+
 
 class TestRoundTrip:
     @pytest.mark.parametrize("ra_hours", [0.0, 5.78666666, 12.5, 23.99972])

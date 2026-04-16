@@ -90,7 +90,7 @@ def parse_dec_dms(arg: str) -> float:
         raise ValueError("empty Dec")
     sign = -1.0 if arg[0] == "-" else 1.0
     # Some clients use various degree markers; normalize to ':'
-    body = arg.lstrip("+-").replace("*", ":").replace("'", ":").replace("\xdf", ":")
+    body = arg.lstrip("+-").replace("*", ":").replace("'", ":").replace("\u00b0", ":")
     parts = body.split(":")
     d = int(parts[0])
     m = int(parts[1]) if len(parts) > 1 else 0
