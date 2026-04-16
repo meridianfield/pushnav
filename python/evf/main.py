@@ -159,12 +159,14 @@ def main() -> None:
 
     ui.destroy_splash()
     ui.set_audio_enabled(engine.audio_enabled)
-    if engine.web_url:
-        ui.set_web_url(engine.web_url)
-    if engine.lx200_address:
-        ui.set_lx200_address(engine.lx200_address)
+    ui.set_web_url(engine.web_url)
+    ui.set_lx200_address(
+        engine.lx200_address if engine.lx200_running else "Server not running"
+    )
     if engine.stellarium_address:
         ui.set_stellarium_address(engine.stellarium_address)
+    else:
+        ui.set_stellarium_address("Server not running")
 
     # Provide initial camera controls if connected
     controls = engine.camera_controls

@@ -267,14 +267,17 @@ class UI:
         self._stellarium_status_getter = status
         self._stellarium_object_getter = obj
 
-    def set_lx200_address(self, address: str) -> None:
+    def set_lx200_address(self, address: str | None) -> None:
         """Show LX200 TCP address in the settings panel.
 
-        Format: "<ip>:<port>" (e.g. "192.168.1.42:4030").
-        Users paste this into SkySafari / Stellarium Mobile / INDI / ASCOM.
+        Format: "<ip>:<port>" (e.g. "192.168.1.42:4030") when a LAN IP was
+        detected. Pass None when no LAN is available — the panel will show
+        "No LAN connection" so the user knows mobile apps cannot reach the
+        server.
         """
-        if dpg.does_item_exist("lx200_address_label"):
-            dpg.set_value("lx200_address_label", address)
+        if not dpg.does_item_exist("lx200_address_label"):
+            return
+        dpg.set_value("lx200_address_label", address or "No LAN connection")
 
     def set_stellarium_address(self, address: str) -> None:
         """Show desktop-Stellarium binary-protocol address in the settings panel.
@@ -285,10 +288,16 @@ class UI:
         if dpg.does_item_exist("stellarium_address_label"):
             dpg.set_value("stellarium_address_label", address)
 
-    def set_web_url(self, url: str) -> None:
-        """Show mobile web interface URL and QR code in the settings panel."""
+    def set_web_url(self, url: str | None) -> None:
+        """Show mobile web interface URL and QR code in the settings panel.
+
+        Pass None when no LAN is available; the panel will show
+        "No LAN connection" and skip the QR code (nothing useful to encode).
+        """
         if dpg.does_item_exist("web_url_label"):
-            dpg.set_value("web_url_label", url)
+            dpg.set_value("web_url_label", url or "No LAN connection")
+        if url is None:
+            return
         try:
             import qrcode
             qr = qrcode.QRCode(box_size=4, border=2)

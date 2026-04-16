@@ -157,8 +157,16 @@ class WebServer:
     async def _serve(self) -> None:
         port = self._config.web_port
         ip = local_ip()
-        self._url = f"http://{ip}:{port}"
-        logger.info("Mobile web interface at %s", self._url)
+        if ip is None:
+            self._url = None
+            logger.warning(
+                "Mobile web interface listening on port %d but no LAN IP "
+                "detected — mobile devices cannot reach the server",
+                port,
+            )
+        else:
+            self._url = f"http://{ip}:{port}"
+            logger.info("Mobile web interface at %s", self._url)
 
         app = web.Application(middlewares=[_security_headers_middleware])
         app.router.add_get("/", self._handle_index)
