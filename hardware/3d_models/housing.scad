@@ -40,8 +40,8 @@
 // CONFIGURATION — toggle parts for STL export
 // ============================================================
 
-RENDER_BASE     = true;
-RENDER_HOOD     = true;
+RENDER_BASE     = false;
+RENDER_HOOD     = false;
 RENDER_CAP      = true;
 
 SELF_TAP_SCREWS = true;       // true  = self-tapping (smaller base holes)
@@ -79,19 +79,17 @@ screw_tap_dia         = 2.7;     // self-tapping hole diameter (in base)
 screw_clearance_dia   = 3.5;     // clearance hole diameter (in hood plate and bolt-through base)
 
 /* Hood — cylindrical lens shroud */
-hood_bore_dia         = 25;      // inner bore diameter (generous: tolerates lens offset)
+hood_bore_dia         = 23;      // inner bore at tooth roots (clear_dia + 2×tooth_depth)
 hood_wall_thickness   = 2.5;     // cylinder wall thickness
-hood_length           = 30;      // height of the hood cylinder
+hood_length           = 44;      // height of hood cylinder (50 - plate)
 hood_plate_thickness  = 6;       // thickness of the mounting plate
 
-/* Baffle — ring baffles at the front (opening end) of the hood */
-/* DISABLED — uncomment _ring_baffles() call in hood() to re-enable */
-// baffle_fov            = 11;      // camera field of view in degrees
-// baffle_start_dia      = 16;      // lens barrel diameter at first ring
-// baffle_length         = 11;      // length of baffle zone (at front of hood)
-// baffle_step           = 2;       // spacing between ring baffles
-// baffle_ring_h         = 0.4;     // each ring disc height
-// baffle_ring_wall      = 1.5;     // ring wall thickness beyond FOV cone
+/* Sawtooth baffle — concentric ring baffles on inner wall */
+baffle_clear_dia      = 20;      // clear aperture at tooth tips
+baffle_tooth_depth    = 1.5;     // radial depth of each tooth (inward protrusion)
+baffle_tooth_pitch    = 3;       // axial distance between teeth
+baffle_margin_bottom  = 3;       // smooth bore zone above the plate (lens clearance)
+baffle_margin_top     = 3;       // smooth bore zone at the opening (cap fit area)
 
 /* Dust cap */
 cap_height            = 10;      // cap depth
@@ -121,11 +119,9 @@ base_height      = base_floor_thickness + base_pcb_depth
 // Hood
 hood_outer_dia   = hood_bore_dia + 2 * hood_wall_thickness;       // 30  — hood cylinder OD
 
-// Ring baffles (disabled)
-// baffle_end_dia   = baffle_start_dia
-//                    + 2 * baffle_length * tan(baffle_fov / 2);
-// baffle_ring_od   = baffle_end_dia + 2 * baffle_ring_wall;
-// baffle_offset    = hood_length - baffle_length;
+// Sawtooth baffle zone
+baffle_zone      = hood_length - baffle_margin_bottom - baffle_margin_top;
+baffle_n_teeth   = floor(baffle_zone / baffle_tooth_pitch);
 
 // Cap
 cap_inner_dia    = hood_outer_dia + cap_fit_clearance;            // slips over hood
@@ -197,9 +193,9 @@ module pcb_base() {
 // Hood + Baffle
 // --------------------------------------------------
 // Flat mounting plate that bolts onto the base, with a tall
-// cylindrical lens shroud extending upward. Ring baffles at
-// the front (opening end) block stray light — thin disc rings
-// whose inner bore follows the FOV cone.
+// cylindrical lens shroud extending upward. Concentric sawtooth
+// baffle rings on the inner wall trap stray light. Smooth bore
+// margins at the base (lens clearance) and opening (cap fit).
 // The lens hole passes through the center of the plate.
 
 module hood() {
@@ -212,17 +208,13 @@ module hood() {
                 cylinder(r = base_corner_radius, h = hood_plate_thickness / 2);
             }
 
-            // Hood cylinder — hollow tube
+            // Hood cylinder with integrated sawtooth baffle — single piece,
+            // no boolean ops between bore and teeth
             translate([0, 0, hood_plate_thickness])
-                difference() {
-                    cylinder(d = hood_outer_dia, h = hood_length);
-                    translate([0, 0, -1])
-                        cylinder(d = hood_bore_dia, h = hood_length + 2);
-                }
+                _hood_cylinder();
+        }
 
-}
-
-        // Lens hole — through the plate
+        // Lens hole — through the plate only
         translate([0, 0, -1])
             cylinder(d = hood_bore_dia, h = hood_plate_thickness + 2);
 
@@ -251,22 +243,45 @@ module cap() {
 
 
 // --------------------------------------------------
-// Helper: ring baffles
+// Helper: hood cylinder with integrated sawtooth baffle
 // --------------------------------------------------
-// Thin disc rings whose inner bore follows the FOV cone.
-// Ring 0 (closest to lens) has the tightest bore; each
-// successive ring opens wider. All rings share the same
-// outer diameter (sized for the widest cone + wall margin).
+// Single rotate_extrude of the full wall cross-section:
+// outer wall, inner bore with sawtooth teeth, smooth margins
+// at top and bottom. No boolean operations needed — the profile
+// defines everything in one pass.
+//
+// Tooth orientation: flat blocking face at TOP (faces incoming
+// light from the hood opening), ramp angled downward (deflects
+// reflected light into the next tooth toward the wall).
 
-module _ring_baffles() {
-    for (i = [0 : baffle_step : baffle_length]) {
-        cone_dia = baffle_start_dia + 2 * i * tan(baffle_fov / 2);
-        translate([0, 0, i])
-            difference() {
-                cylinder(d = baffle_ring_od, h = baffle_ring_h);
-                cylinder(d = cone_dia, h = baffle_ring_h + 1);
-            }
-    }
+module _hood_cylinder() {
+    outer_r = hood_outer_dia / 2;
+    bore_r  = hood_bore_dia / 2;
+    tip_r   = baffle_clear_dia / 2;
+
+    y_start = baffle_margin_bottom;
+    y_end   = hood_length - baffle_margin_top;
+
+    // Build polygon points tracing the wall cross-section clockwise:
+    //   bottom-inner → up inner wall (with teeth) → top-inner →
+    //   top-outer → down outer wall → bottom-outer
+    tooth_points = [for (i = [0 : baffle_n_teeth - 1]) each [
+        [bore_r, y_start + i * baffle_tooth_pitch],          // tooth root (flat face start)
+        [tip_r,  y_start + (i + 1) * baffle_tooth_pitch],    // tooth tip (sharp edge, facing out)
+    ]];
+
+    points = concat(
+        [[bore_r, 0]],                  // bottom inner
+        [[bore_r, y_start]],            // start of baffle zone
+        tooth_points,                   // sawtooth inner wall
+        [[bore_r, y_end]],              // end of baffle zone
+        [[bore_r, hood_length]],        // top inner
+        [[outer_r, hood_length]],       // top outer
+        [[outer_r, 0]]                  // bottom outer
+    );
+
+    rotate_extrude($fn = $fn)
+        polygon(points);
 }
 
 
