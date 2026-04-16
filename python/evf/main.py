@@ -103,6 +103,9 @@ def main() -> None:
     ui.update_splash("Starting Stellarium server...")
     engine.startup_stellarium()
 
+    ui.update_splash("Starting LX200 server...")
+    engine.startup_lx200()
+
     ui.update_splash("Starting web server...")
     engine.startup_webserver()
 
@@ -153,11 +156,21 @@ def main() -> None:
         status=lambda: engine.stellarium_status,
         obj=lambda: engine.stellarium_object,
     )
+    ui.set_telescope_activity_source(
+        stellarium_active=lambda: engine.stellarium_has_client,
+        lx200_active=lambda: engine.lx200_active,
+    )
 
     ui.destroy_splash()
     ui.set_audio_enabled(engine.audio_enabled)
-    if engine.web_url:
-        ui.set_web_url(engine.web_url)
+    ui.set_web_url(engine.web_url)
+    ui.set_lx200_address(
+        engine.lx200_address if engine.lx200_running else "Server not running"
+    )
+    if engine.stellarium_address:
+        ui.set_stellarium_address(engine.stellarium_address)
+    else:
+        ui.set_stellarium_address("Server not running")
 
     # Provide initial camera controls if connected
     controls = engine.camera_controls

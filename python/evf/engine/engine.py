@@ -24,6 +24,7 @@ Central coordinator that owns the lifecycle of every subsystem.
 import json
 import logging
 import threading
+import time
 
 from evf.camera.subprocess_mgr import SubprocessManager
 from evf.config.logging_setup import setup_logging
@@ -42,14 +43,30 @@ from evf.solver.sync import (
     build_sync_candidates,
     compute_body_frame_sync,
 )
+from evf.network import local_ip
 from evf.paths import version_json
 from evf.solver.thread import SolverThread
+from evf.lx200.server import Lx200Server
 from evf.stellarium.server import StellariumServer
 from evf.webserver.server import WebServer
 
 logger = logging.getLogger(__name__)
 
 _VERSION_PATH = version_json()
+
+
+def _read_app_version() -> str:
+    """Read app_version string from VERSION.json at engine init.
+
+    Falls back to '0.0.0' if the file is missing or malformed so that the
+    LX200 :GVN# reply always returns a well-formed 'PushNav <version>#'.
+    """
+    try:
+        with open(_VERSION_PATH) as f:
+            data = json.load(f)
+        return str(data.get("app_version", "0.0.0"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return "0.0.0"
 
 
 class Engine:
@@ -68,6 +85,7 @@ class Engine:
         self._state_machine = StateMachine()
         self._config = ConfigManager()
         self._goto_target = GotoTarget()
+        self._app_version = _read_app_version()
 
         # Components (created during startup)
         self._solver: PlateSolver | None = None
@@ -75,6 +93,7 @@ class Engine:
         self._audio: AudioAlert | None = None
         self._subprocess_mgr: SubprocessManager | None = None
         self._stellarium: StellariumServer | None = None
+        self._lx200: Lx200Server | None = None
         self._webserver: WebServer | None = None
 
         # Sync state (two-phase calibration)
@@ -151,6 +170,67 @@ class Engine:
             return self._stellarium.stellarium_object
         return None
 
+    @property
+    def stellarium_address(self) -> str | None:
+        """Address to paste into desktop Stellarium's Telescope Control plugin.
+
+        Stellarium server binds 127.0.0.1, so the address is always localhost
+        regardless of LAN IP — remote machines cannot reach the binary protocol.
+        """
+        if self._stellarium is None:
+            return None
+        return f"localhost:{self._stellarium.port}"
+
+    @property
+    def lx200_address(self) -> str | None:
+        """Address to paste into SkySafari / Stellarium Mobile / INDI / ASCOM.
+
+        LX200 server binds 0.0.0.0 so we advertise the LAN IP (same IP the
+        mobile web URL uses) so mobile apps on the same network can connect.
+
+        Returns None when the LX200 server isn't running OR no LAN is
+        available — the UI distinguishes these via the lx200_running flag.
+        """
+        if self._lx200 is None:
+            return None
+        ip = local_ip()
+        if ip is None:
+            return None
+        return f"{ip}:{self._lx200.port}"
+
+    @property
+    def lx200_running(self) -> bool:
+        """True if the LX200 server bound its socket successfully."""
+        return self._lx200 is not None
+
+    @property
+    def stellarium_has_client(self) -> bool:
+        """True if the Stellarium server currently has any client connected.
+
+        Stellarium holds a persistent TCP connection, so this is a simple
+        boolean — the UI lights the Stellarium activity indicator while it
+        is True.
+        """
+        return self._stellarium is not None and self._stellarium.client_count > 0
+
+    # LX200 clients (notably SkySafari in polling mode) open a fresh TCP
+    # connection per command, so "has client connected right now" is almost
+    # never True. Instead we expose the time since the last connect or
+    # received command and hold the indicator lit for _LX200_INDICATOR_HOLD
+    # seconds. The user asked for a minimum hold of 100 ms.
+    _LX200_INDICATOR_HOLD = 0.1  # seconds
+
+    @property
+    def lx200_active(self) -> bool:
+        """True if the LX200 server saw a connect or a command within the
+        last _LX200_INDICATOR_HOLD seconds."""
+        if self._lx200 is None:
+            return False
+        last = self._lx200.last_activity_monotonic
+        if last == 0.0:
+            return False
+        return (time.monotonic() - last) < self._LX200_INDICATOR_HOLD
+
     # -- startup (§8.2) -------------------------------------------------------
 
     def startup_logging(self) -> None:
@@ -176,6 +256,23 @@ class Engine:
         except Exception as exc:
             logger.error("Failed to start Stellarium server: %s", exc)
             self._stellarium = None
+
+    def startup_lx200(self) -> None:
+        """Start LX200 TCP server.
+
+        Binds 0.0.0.0:4030 so mobile apps (SkySafari, Stellarium Mobile) can
+        reach it on the LAN. Always-on; no config toggle in v1.
+        """
+        try:
+            self._lx200 = Lx200Server(
+                self._pointing_state,
+                goto_target=self._goto_target,
+                app_version=self._app_version,
+            )
+            self._lx200.start()
+        except Exception as exc:
+            logger.error("Failed to start LX200 server: %s", exc)
+            self._lx200 = None
 
     def startup_webserver(self) -> None:
         """Start mobile web interface server."""
@@ -426,6 +523,13 @@ class Engine:
                 self._stellarium.stop(timeout=2)
             except Exception as exc:
                 logger.error("Error stopping Stellarium: %s", exc)
+
+        # 2b. Stop LX200 server
+        if self._lx200:
+            try:
+                self._lx200.stop(timeout=2)
+            except Exception as exc:
+                logger.error("Error stopping LX200 server: %s", exc)
 
         # 3a. Stop web server
         if self._webserver:
