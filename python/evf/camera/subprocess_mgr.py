@@ -194,7 +194,7 @@ class SubprocessManager:
                 self._client = CameraClient(
                     self._frame_buffer, self._host, self._port
                 )
-                return self._client.connect(timeout=1.0)
+                return self._client.connect(timeout=5.0)
             except Exception as exc:
                 last_exc = exc
                 self._client = None
