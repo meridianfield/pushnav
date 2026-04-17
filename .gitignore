@@ -19,5 +19,10 @@ camera/windows/*.obj
 # MkDocs build output
 site/
 
+# Windows build script artifacts
+Building
+Cleaning
+Version
+
 # Claude Code
 .claude/
