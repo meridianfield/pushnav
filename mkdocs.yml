@@ -9,6 +9,7 @@ docs_dir: docs
 
 exclude_docs: |
   .DS_Store
+  superpowers/
 
 theme:
   name: material
