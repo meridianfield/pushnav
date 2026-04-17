@@ -1,5 +1,7 @@
 # PushNav
 
+![Status](https://img.shields.io/badge/status-🚧%20Work%20in%20Progress-yellow)
+
 A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to Stellarium, SkySafari, and other planetarium apps in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required.
 
 ![Screenshot](docs/assets/pushnav_aldebran.png)
