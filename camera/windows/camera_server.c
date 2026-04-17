@@ -986,10 +986,8 @@ static void poll_commands(SOCKET client_fd)
 
 static void handle_client(SOCKET client_fd)
 {
-    /* Probe controls */
-    probe_controls();
-
-    /* Send HELLO */
+    /* Send HELLO immediately so the client sees the handshake start before
+       slow DirectShow control probing runs. */
     char hello[512];
     build_hello_json(hello, sizeof(hello));
     if (send_json_message(client_fd, MSG_HELLO, hello) < 0) {
@@ -1012,6 +1010,9 @@ static void handle_client(SOCKET client_fd)
         return;
     }
     free(payload);
+
+    /* Probe controls now that the handshake is complete. */
+    probe_controls();
 
     /* Send CONTROL_INFO */
     char info[1024];

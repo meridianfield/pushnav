@@ -119,12 +119,13 @@ class UI:
     }
     _STEP_INSTRUCTIONS = {
         "1": (
-            'To get good tracking performance, you should first complete the '
-            'Setup step. This involves pointing the camera at the sky and making '
-            'sure you can see stars in the preview. Make sure that the stars are '
-            'reasonably well-focused and that the exposure is set to a level where '
-            'stars are visible and tight. Press "Next" when you\'re ready to move '
-            'on to the Sync step.'
+            'To get good tracking performance, complete the Setup step first. '
+            'Point the camera at the sky and make sure you can see stars in the '
+            'preview, reasonably well-focused and tight. Adjust exposure first '
+            '— raise it until stars are clearly visible. Only then raise gain '
+            'if they\'re still too dim. Keep gain as low as you can: too much '
+            'gain adds noise that can confuse the solver. Press "Next" when '
+            'you\'re ready to move on to the Sync step.'
         ),
         "2": (
             'This step involves syncing the camera\'s view with the telescope\'s '
