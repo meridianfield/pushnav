@@ -40,8 +40,8 @@
 // CONFIGURATION — toggle parts for STL export
 // ============================================================
 
-RENDER_BASE     = false;
-RENDER_HOOD     = false;
+RENDER_BASE     = true;
+RENDER_HOOD     = true;
 RENDER_CAP      = true;
 
 SELF_TAP_SCREWS = true;       // true  = self-tapping (smaller base holes)
@@ -62,7 +62,7 @@ pcb_ledge_inset       = 1;       // step-in from pocket wall for resting ledge
 pcb_ledge_depth       = 1.5;     // vertical depth of the ledge step
 
 /* Base enclosure */
-base_floor_thickness  = 3;       // solid floor below the PCB pocket
+base_floor_thickness  = 3+2;       // solid floor below the PCB pocket
 base_pcb_depth        = 5;       // depth of the lower PCB pocket (below ledge)
 base_upper_depth      = 5;       // clearance above PCB to top face
 base_corner_radius    = 6;       // minkowski rounding radius on corners
@@ -71,8 +71,7 @@ base_corner_radius    = 6;       // minkowski rounding radius on corners
 usb_width             = 13;      // cutout width
 usb_height            = 7;       // cutout height
 usb_x_offset          = 8.5;     // horizontal offset from base origin
-usb_z_offset          = 2;       // vertical offset from base bottom
-
+usb_z_offset          = base_floor_thickness - 1;       // vertical offset from base bottom
 /* Screw holes — 4-corner pattern connecting base and hood */
 screw_spacing         = 17;      // distance from body center to each hole
 screw_tap_dia         = 2.7;     // self-tapping hole diameter (in base)
