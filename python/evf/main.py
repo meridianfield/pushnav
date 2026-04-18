@@ -81,7 +81,7 @@ def main() -> None:
     dpg.create_context()
     dpg.configure_app(manual_callback_management=True)
     dpg.create_viewport(
-        title="PushNav - Plate-Solving Push-To System",
+        title=f"PushNav {engine.app_version} - Plate-Solving Push-To System",
         width=int(_VP_WIDTH * vp_scale),
         height=int(_VP_HEIGHT * vp_scale),
         resizable=False,

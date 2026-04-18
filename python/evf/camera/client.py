@@ -110,7 +110,7 @@ class CameraClient:
             )
 
         # Send our HELLO response
-        our_hello = {"protocol_version": PROTOCOL_VERSION, "app": "evf", "app_version": "0.1.0"}
+        our_hello = {"protocol_version": PROTOCOL_VERSION, "app": "evf", "app_version": "0.1.1"}
         self._sock.sendall(encode_json_message(MSG_HELLO, our_hello))
         logger.debug("Sent HELLO response")
 

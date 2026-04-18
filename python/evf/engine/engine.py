@@ -124,6 +124,10 @@ class Engine:
         return self._config
 
     @property
+    def app_version(self) -> str:
+        return self._app_version
+
+    @property
     def camera_connected(self) -> bool:
         """True if the camera subprocess is running and connected."""
         return self._subprocess_mgr is not None and self._subprocess_mgr.running
