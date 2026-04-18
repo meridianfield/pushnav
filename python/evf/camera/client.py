@@ -110,7 +110,7 @@ class CameraClient:
             )
 
         # Send our HELLO response
-        our_hello = {"protocol_version": PROTOCOL_VERSION, "app": "evf", "app_version": "0.1.0"}
+        our_hello = {"protocol_version": PROTOCOL_VERSION, "app": "evf", "app_version": "0.1.1"}
         self._sock.sendall(encode_json_message(MSG_HELLO, our_hello))
         logger.debug("Sent HELLO response")
 
@@ -153,6 +153,18 @@ class CameraClient:
             self._sock.sendall(msg)
         except OSError as exc:
             logger.error("Failed to send SET_CONTROL: %s", exc)
+
+    def update_cached_control(self, control_id: str, value: int) -> None:
+        """Optimistically update the cached current value for a control.
+
+        Avoids UI displaying stale values before the server's CONTROL_INFO
+        reply arrives.
+        """
+        with self._controls_lock:
+            for ctrl in self._controls:
+                if ctrl.get("id") == control_id:
+                    ctrl["cur"] = value
+                    break
 
     def get_controls(self) -> None:
         """Send a GET_CONTROLS request."""

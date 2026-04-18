@@ -20,7 +20,7 @@
 Per impl0.md §8.6.
 """
 
-import platform
+import logging
 import sys
 
 import dearpygui.dearpygui as dpg
@@ -28,54 +28,60 @@ import dearpygui.dearpygui as dpg
 from evf.engine.engine import Engine
 from evf.ui.window import UI
 
+logger = logging.getLogger(__name__)
+
 _VP_WIDTH = 1280 // 2 + 320 + 35  # 995
 _VP_HEIGHT = 720 // 2 + 60  # 420
 
 
-def _get_windows_dpi_scale() -> float:
-    """Declare DPI awareness and return the display scale factor on Windows.
+def _windows_primary_monitor_dpi() -> int:
+    """Return primary monitor's effective DPI on Windows, or 96 on failure.
 
-    Must be called before any window/context creation.
-    Returns 1.0 on non-Windows or on failure.
+    Uses GetScaleFactorForMonitor which returns the user-configured scale
+    percentage (100, 125, 150, ...) even for DPI-unaware processes, unlike
+    GetDpiForMonitor which virtualizes to 96 in that mode.
     """
-    if platform.system() != "Windows":
-        return 1.0
+    if sys.platform != "win32":
+        return 96
     try:
         import ctypes
-        # PROCESS_PER_MONITOR_DPI_AWARE — tells Windows we handle DPI ourselves
-        ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        dc = ctypes.windll.user32.GetDC(0)
-        dpi = ctypes.windll.gdi32.GetDeviceCaps(dc, 88)  # LOGPIXELSX
-        ctypes.windll.user32.ReleaseDC(0, dc)
-        return dpi / 96.0
+        from ctypes import wintypes
+
+        MONITOR_DEFAULTTOPRIMARY = 1
+        hmon = ctypes.windll.user32.MonitorFromPoint(
+            wintypes.POINT(0, 0), MONITOR_DEFAULTTOPRIMARY
+        )
+        scale = ctypes.c_int(100)
+        if ctypes.windll.shcore.GetScaleFactorForMonitor(
+            hmon, ctypes.byref(scale)
+        ) != 0:
+            return 96
+        return int(96 * scale.value / 100)
     except Exception:
-        return 1.0
+        return 96
 
 
 def main() -> None:
     dev_mode = "--dev" in sys.argv
 
-    # Windows: declare DPI awareness *before* creating any window.
-    # Returns the actual display scale (e.g. 1.5 for 150%).
-    # On macOS / Linux this is always 1.0.
-    win_dpi_scale = _get_windows_dpi_scale()
-
     # Engine owns the ConfigManager — create it first so we can read hidpi
     engine = Engine()
 
-    # Determine viewport scale factor:
-    # - Windows with active DPI scaling (125%+): use the real DPI scale
-    # - Everything else (macOS, Linux, Windows at 100%): use hidpi toggle
-    if platform.system() == "Windows" and win_dpi_scale > 1.0:
-        vp_scale = win_dpi_scale
-    else:
-        vp_scale = 2 if engine.config.hidpi else 1
+    # First-launch auto-enable of 4K mode on Windows HiDPI displays. After
+    # this runs once, the user's explicit checkbox choice always wins.
+    if sys.platform == "win32" and not engine.config.hidpi_autodetected:
+        if _windows_primary_monitor_dpi() >= 120 and not engine.config.hidpi:
+            engine.config.hidpi = True
+            logger.info("Auto-enabled 4K monitor compatibility mode (first launch)")
+        engine.config.hidpi_autodetected = True
+
+    vp_scale = 2 if engine.config.hidpi else 1
 
     # Create DPG context and full-size viewport
     dpg.create_context()
     dpg.configure_app(manual_callback_management=True)
     dpg.create_viewport(
-        title="PushNav - Plate-Solving Push-To System",
+        title=f"PushNav {engine.app_version} - Plate-Solving Push-To System",
         width=int(_VP_WIDTH * vp_scale),
         height=int(_VP_HEIGHT * vp_scale),
         resizable=False,
@@ -87,7 +93,6 @@ def main() -> None:
         engine.state_machine,
         engine.config,
         dev_mode=dev_mode,
-        dpi_scale=win_dpi_scale,
     )
     ui.setup()
 

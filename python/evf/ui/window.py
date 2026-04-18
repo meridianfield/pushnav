@@ -164,19 +164,13 @@ class UI:
         config: ConfigManager,
         *,
         dev_mode: bool = False,
-        dpi_scale: float = 1.0,
     ) -> None:
         self._frame_buffer = frame_buffer
         self._pointing = pointing_state
         self._state_machine = state_machine
         self._config = config
         self._dev_mode = dev_mode
-        self._dpi_scale = dpi_scale
-        # Windows: use real DPI scale; macOS/Linux: use hidpi toggle (1x or 2x)
-        if dpi_scale > 1.0:
-            self._ui_scale = dpi_scale
-        else:
-            self._ui_scale = 2 if config.hidpi else 1
+        self._ui_scale = 2 if config.hidpi else 1
         self._texture_tag: int | str = 0
         self._last_rendered_frame_id = -1
         self._on_step_advance: Callable[[], None] | None = None
@@ -347,24 +341,13 @@ class UI:
 
         Expects the DPG context and viewport to already exist.
         """
-        # Font strategy — platform-specific for crisp rendering:
-        #
-        # Windows DPI-aware: rasterize at exact display size, no scaling.
-        #   e.g. 150%: body=16*1.5=24px, global_font_scale=1.0 → no resampling
-        # macOS Retina:  32px rasterized, *0.5=16px logical, 2x backing → crisp
-        # Linux HiDPI:   32px rasterized, *1.0=32px in doubled viewport → crisp
-        if self._dpi_scale > 1.0:
-            # Windows: load at exact target size, scale=1.0 → zero artifacts
-            base_body, base_heading, base_title = 16, 18, 28
-            font_body_sz = int(base_body * self._dpi_scale)
-            font_heading_sz = int(base_heading * self._dpi_scale)
-            font_title_sz = int(base_title * self._dpi_scale)
-            dpg.set_global_font_scale(1.0)
-        else:
-            # macOS / Linux: original 2x-rasterize + scale-down approach
-            font_body_sz, font_heading_sz, font_title_sz = 32, 36, 56
-            hidpi_scale = 2 if self._config.hidpi else 1
-            dpg.set_global_font_scale(0.5 * hidpi_scale)
+        # Font strategy: rasterize at 2× target and scale down with
+        # set_global_font_scale for crisp supersampled rendering.
+        #   1×:  32 px raster, 0.5 scale → 16 px logical
+        #   2×:  32 px raster, 1.0 scale → 32 px in doubled viewport
+        font_body_sz, font_heading_sz, font_title_sz = 32, 36, 56
+        hidpi_scale = 2 if self._config.hidpi else 1
+        dpg.set_global_font_scale(0.5 * hidpi_scale)
         _fonts = fonts_dir()
         font_path = str(_fonts / "Inter-Regular.ttf")
         font_bold_path = str(_fonts / "Inter-Bold.ttf")
@@ -782,14 +765,12 @@ class UI:
             default_value=self._config.audio_enabled,
             callback=self._on_audio_change_click,
         )
-        # On Windows, DPI scaling is handled automatically — no checkbox needed.
-        if self._dpi_scale <= 1.0:
-            dpg.add_checkbox(
-                label="4K monitor compatibility mode",
-                tag="hidpi_checkbox",
-                default_value=self._config.hidpi,
-                callback=self._on_hidpi_change,
-            )
+        dpg.add_checkbox(
+            label="4K monitor compatibility mode",
+            tag="hidpi_checkbox",
+            default_value=self._config.hidpi,
+            callback=self._on_hidpi_change,
+        )
         dpg.add_spacer(height=6)
         dpg.add_separator()
         mobile_heading = dpg.add_text("Mobile Interface", color=(255, 70, 70))

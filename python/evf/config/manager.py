@@ -30,11 +30,11 @@ CONFIG_VERSION = 1
 DEFAULT_CONFIG = {
     "version": CONFIG_VERSION,
     "solver": {"min_matches": 8, "max_prob": 0.2},
-    "camera": {"exposure": 100, "gain": 10},
+    "camera": {"exposure": None, "gain": None},
     "calibration": {"finder_rotation": 0.0, "sync_d_body": None},
     "logging": {"verbose": False},
     "audio": {"enabled": True},
-    "display": {"hidpi": False},
+    "display": {"hidpi": False, "hidpi_autodetected": False},
     "webserver": {"port": 8080},
 }
 
@@ -186,6 +186,14 @@ class ConfigManager:
     @hidpi.setter
     def hidpi(self, value: bool) -> None:
         self.set("display", "hidpi", value)
+
+    @property
+    def hidpi_autodetected(self) -> bool:
+        return self.get("display", "hidpi_autodetected")
+
+    @hidpi_autodetected.setter
+    def hidpi_autodetected(self, value: bool) -> None:
+        self.set("display", "hidpi_autodetected", value)
 
     @property
     def verbose(self) -> bool:
