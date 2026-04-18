@@ -444,6 +444,12 @@ class UI:
             with dpg.theme_component(dpg.mvAll):
                 dpg.add_theme_color(dpg.mvThemeCol_Border, (80, 15, 15))
 
+        # Inner content container: narrower than outer so content doesn't sit
+        # flush against the scrollbar on the right.
+        with dpg.theme() as self._side_panel_inner_theme:
+            with dpg.theme_component(dpg.mvAll):
+                dpg.add_theme_style(dpg.mvStyleVar_WindowPadding, 0, 0)
+
         # Create blank RGBA texture using array.array for proper buffer interface
         initial_data = array.array("f", [0.0] * (WIDTH * HEIGHT * _CHANNELS))
         with dpg.texture_registry():
@@ -617,35 +623,44 @@ class UI:
                     dpg.bind_item_handler_registry("live_image", handler)
                 dpg.bind_item_theme("video_container", self._video_border_theme)
 
-                # Right: fixed-width side panel
-                with dpg.child_window(width=320 * s, tag="side_panel", no_scrollbar=False):
-                    self._build_title_section()
-                    dpg.add_separator()
-                    dpg.add_spacer(height=5)
-                    self._build_state_section()
-                    dpg.add_separator()
-                    self._build_navigation_section()
-                    dpg.add_separator()
-                    self._build_controls_section()
-                    dpg.add_separator()
-                    self._build_settings_section()
-                    dpg.add_separator()
-                    self._build_advanced_settings_section()
-                    dpg.add_separator()
-                    self._build_status_section()
-                    if self._dev_mode:
+                # Right: fixed-width side panel with a nested inner container
+                # that's narrower than the outer so content doesn't sit flush
+                # against the scrollbar. Outer fills parent height (for the
+                # scrollbar); inner grows with content (so outer can scroll).
+                with dpg.child_window(
+                    width=320 * s, autosize_y=True,
+                    tag="side_panel", no_scrollbar=False,
+                ):
+                    with dpg.child_window(
+                        width=295 * s, tag="side_panel_inner",
+                        border=False, no_scrollbar=True,
+                        auto_resize_y=True,
+                    ):
+                        dpg.bind_item_theme(
+                            "side_panel_inner", self._side_panel_inner_theme,
+                        )
+                        self._build_title_section()
                         dpg.add_separator()
-                        self._build_debug_section()
+                        dpg.add_spacer(height=5)
+                        self._build_state_section()
+                        dpg.add_separator()
+                        self._build_navigation_section()
+                        dpg.add_separator()
+                        self._build_controls_section()
+                        dpg.add_separator()
+                        self._build_settings_section()
+                        dpg.add_separator()
+                        self._build_advanced_settings_section()
+                        dpg.add_separator()
+                        self._build_status_section()
+                        if self._dev_mode:
+                            dpg.add_separator()
+                            self._build_debug_section()
 
         dpg.set_primary_window("primary_window", True)
 
     def _build_title_section(self) -> None:
-        s = self._ui_scale
-        dpg.add_image(
-            self._title_texture,
-            width=self._title_img_w * s // 2,
-            height=self._title_img_h * s // 2,
-        )
+        dpg.add_image(self._title_texture)
         dpg.add_spacer(height=6)
 
     def _build_steps_section(self) -> None:
@@ -665,11 +680,11 @@ class UI:
         dpg.add_text(
             self._STEP_INSTRUCTIONS["1"],
             tag="step_instructions",
-            wrap=300 * s,
+            wrap=280 * s,
             color=(200, 50, 50),
         )
         dpg.add_spacer(height=5)
-        dpg.add_text("", tag="sync_status_label", wrap=300 * s, color=(255, 100, 100))
+        dpg.add_text("", tag="sync_status_label", wrap=280 * s, color=(255, 100, 100))
         dpg.configure_item("sync_status_label", show=False)
         dpg.add_button(
             label="Next",
