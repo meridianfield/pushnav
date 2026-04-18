@@ -997,8 +997,11 @@ class UI:
             instr_key = "2c" if state == EngineState.SYNC_CONFIRM else step
             dpg.set_value("step_instructions", self._STEP_INSTRUCTIONS[instr_key])
 
-        # Camera controls enabled in SETUP and SYNC only
-        controls_enabled = state in (EngineState.SETUP, EngineState.SYNC)
+        # Camera controls remain adjustable in every live state; only disable
+        # while the camera connection itself is unavailable.
+        controls_enabled = state not in (
+            EngineState.RECONNECTING, EngineState.ERROR,
+        )
         for tag in self._control_tags():
             if dpg.does_item_exist(tag):
                 dpg.configure_item(tag, enabled=controls_enabled)
