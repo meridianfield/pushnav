@@ -297,7 +297,12 @@ class Engine:
         return None
 
     def startup_camera(self) -> None:
-        """Spawn camera subprocess, connect, handshake, restore settings."""
+        """Spawn camera subprocess, connect, handshake, restore settings.
+
+        On first launch (config has no saved exposure/gain), each control is
+        initialized to the midpoint of the range the camera reports — which
+        differs by OS/camera backend, so we can't hardcode sensible defaults.
+        """
         try:
             self._subprocess_mgr = SubprocessManager(
                 self._frame_buffer, self._state_machine, self._config
@@ -307,8 +312,27 @@ class Engine:
 
             client = self._subprocess_mgr.client
             if client:
-                client.set_control("exposure", self._config.exposure)
-                client.set_control("gain", self._config.gain)
+                for ctrl in client.controls:
+                    cid = ctrl.get("id")
+                    if cid not in ("exposure", "gain"):
+                        continue
+                    saved = self._config.exposure if cid == "exposure" else self._config.gain
+                    if saved is None:
+                        cmin = ctrl.get("min", 0)
+                        cmax = ctrl.get("max", 0)
+                        value = (cmin + cmax) // 2
+                        logger.info(
+                            "First-run %s = %d (midpoint of [%d, %d])",
+                            cid, value, cmin, cmax,
+                        )
+                        if cid == "exposure":
+                            self._config.exposure = value
+                        else:
+                            self._config.gain = value
+                    else:
+                        value = saved
+                    client.set_control(cid, value)
+                    client.update_cached_control(cid, value)
         except Exception as exc:
             logger.error("Failed to start camera: %s", exc)
             self._subprocess_mgr = None
