@@ -4,11 +4,15 @@
 
 A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to Stellarium, SkySafari, and other planetarium apps in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required.
 
+![PushNav Mounted](docs/assets/mounted.jpeg)
+
 ![Screenshot](docs/assets/pushnav_aldebran.png)
 
 It uses European Space Agency's (ESA) tetra3 fast lost-in-space plate solver for plate-solving. This effecient algorithm produces near real-time solutions on a live video feed.
 
 Power your non-GOTO manual telescope with PushNav and enjoy seamless push-to navigation, even in light-polluted urban skies. All for under **$50** with an off-the-shelf USB UVC camera and lens. The same technology that powers spacecraft navigation and advanced astrophotography apps is now available for your backyard stargazing sessions.
+
+📖 **Full documentation: [meridianfield.github.io/pushnav](https://meridianfield.github.io/pushnav)**
 
 ## Cross platform from ground up
 
@@ -181,13 +185,6 @@ The [`hardware/3d_models/`](hardware/3d_models/) directory contains OpenSCAD sou
 | **M12 Lock Ring** | Secures the lens at the correct focus position. |
 
 Pre-built STLs are in [`hardware/3d_models/stls/`](hardware/3d_models/stls/). See the [3D models README](hardware/3d_models/README.md) for print settings and build instructions.
-
-## Documentation
-
-- [Hardware Setup & Camera Guide](docs/hardware.md) — supported cameras, lens, DIY notes, shopping list
-- [Design Philosophy](docs/design.md) — why PushNav is built the way it is
-
-Full documentation is also available at [meridianfield.github.io/pushnav](https://meridianfield.github.io/pushnav).
 
 ## License
 
