@@ -21,7 +21,7 @@ Supports Future Headless Mode
 # 2. System Overview
 
 ```
-┌──────────────────────────────────────────────┐
+┌───────────────────────────────────────────────┐
 │                 UI Layer                      │
 │          (DearPyGui Main Thread)              │
 │                                               │
@@ -34,31 +34,32 @@ Supports Future Headless Mode
 └───────────────────────────────────────────────┘
                      │
                      ▼
-┌──────────────────────────────────────────────┐
+┌───────────────────────────────────────────────┐
 │                Core Engine                    │
 │                                               │
-│  CameraClient  → receives JPEG frames         │
+│  SubprocessMgr → spawns + owns camera client  │
 │  SolverThread  → continuous solve loop        │
 │  SyncModule    → body-frame calibration       │
 │  PointingState → last valid solution          │
 │  GotoTarget    → thread-safe GOTO target      │
-│  Navigation    → angular separation / guidance │
+│  Navigation    → angular separation /guidance │
 │  AudioAlert    → lock/lost/ack sounds         │
 │  StellariumSrv → TCP broadcast + GOTO handler │
 │  Lx200Server   → LX200 TCP request/response   │
+│  WebServer     → HTTP + WebSocket mobile UI   │
 │  ConfigManager → JSON persistence             │
 │  Logger        → rotating file logs           │
-└──────────────────────────────────────────────┘
+└───────────────────────────────────────────────┘
                      │
                      ▼
-┌──────────────────────────────────────────────┐
+┌───────────────────────────────────────────────┐
 │       Camera Subprocess (native)              │
 │  Platform-specific:                           │
 │  - macOS:   Swift / AVFoundation / IOKit      │
 │  - Linux:   C / V4L2                          │
 │  - Windows: C / DirectShow                    │
 │  All use TCP protocol v1 on localhost         │
-└──────────────────────────────────────────────┘
+└───────────────────────────────────────────────┘
 ```
 
 ---
@@ -71,6 +72,7 @@ Main Python Process
     ├── Solver Thread
     ├── Stellarium Thread
     ├── LX200 Thread
+    ├── Web Server Thread (aiohttp event loop)
     └── Camera TCP Client (non-blocking in UI thread)
 
 Camera Subprocess (separate OS process)
@@ -86,7 +88,7 @@ Camera Subprocess (separate OS process)
 Responsibilities:
 
 - Step wizard (Camera → Sync → Roll → Track)
-- Receive frames from CameraClient
+- Receive frames from the camera client (owned by SubprocessManager)
 - Store latest JPEG (protected by Lock)
 - Decode JPEG → RGB texture for display
 - Display solver status, navigation guidance, star overlays
@@ -228,9 +230,45 @@ on :CM# (align):
     (per §1.1 one-way data flow rule in SPEC_PROTOCOL_LX200.md)
 ```
 
-Per-client state (precision mode, pending target, recv buffer) is isolated via
-`dict[socket, Lx200ClientState]`. Unknown commands are silently consumed so the
-ASCOM Meade Generic driver's `:ED#` probe does not break the session.
+Per-client state (precision mode, recv buffer) is isolated via
+`dict[socket, Lx200ClientState]`. Pending goto target (`:Sr`/`:Sd` values
+awaiting `:MS#`) lives on the server-shared `Lx200Context` because SkySafari's
+polling mode opens a fresh TCP connection per command. Unknown commands are
+silently consumed so the ASCOM Meade Generic driver's `:ED#` probe does not
+break the session.
+
+---
+
+## 4.5 Web Server Thread
+
+Runs an aiohttp-based HTTP + WebSocket server on `0.0.0.0:<webserver.port>`
+(default 8080) in its own asyncio event loop on a dedicated daemon thread.
+
+```
+HTTP GET /           → serves data/web/index.html (single-page mobile UI)
+HTTP GET /sounds/*   → serves WAV audio files
+HTTP GET /assets/*   → serves static UI assets
+WebSocket /ws        → pushes JSON state at ~10 Hz to every connected client
+```
+
+Security hardening:
+
+- WebSocket Origin header is inspected on connect: if the Origin is present
+  and resolves to something outside localhost / loopback / RFC1918
+  private-network ranges, the server logs a WARNING. **The connection is
+  still accepted** — the Origin check is observational, not enforced. The
+  intent is that a misconfigured firewall gets surfaced in the log; actual
+  defense against public-internet exposure relies on the bind address, the
+  firewall, and the cap below. (A future hardening pass should reject on
+  non-local Origin; tracked as a known gap.)
+- CSP / X-Frame-Options / X-Content-Type-Options headers on every HTTP
+  response, set via a middleware that uses `setdefault` (so handlers can
+  override if needed).
+- Hard cap of 10 concurrent WebSocket clients; further connects get HTTP
+  503 during the handshake.
+
+The Settings panel surfaces the server's LAN URL (`http://<LAN-IP>:port`) plus
+a QR code for one-scan phone pairing.
 
 ---
 
@@ -577,21 +615,26 @@ When the user closes the application, execute the following sequence in order:
    - Close server socket.
    - Join LX200 thread with timeout (2s).
 
-4. **Terminate camera subprocess.**
+4. **Close web server.**
+   - Stop the asyncio event loop.
+   - Close all WebSocket clients.
+   - Join the web-server thread with timeout (2s).
+
+5. **Terminate camera subprocess.**
    - Close TCP socket to camera server.
    - Call `process.terminate()` (SIGTERM).
    - Wait up to 2s: `process.wait(timeout=2)`.
    - If still alive: `process.kill()` (SIGKILL).
 
-5. **Save configuration.**
+6. **Save configuration.**
    - Write current exposure, gain, thresholds, calibration, and display settings to config.json.
    - Only write if values have changed since last save.
 
-6. **Flush logs.**
+7. **Flush logs.**
    - Flush all logging handlers.
    - Close log files.
 
-7. **Exit.**
+8. **Exit.**
 
 ### 12.2 Rules
 
@@ -624,13 +667,25 @@ Default configuration:
 {
   "version": 1,
   "solver": {"min_matches": 8, "max_prob": 0.2},
-  "camera": {"exposure": 100, "gain": 10},
+  "camera": {"exposure": null, "gain": null},
   "calibration": {"finder_rotation": 0.0, "sync_d_body": null},
   "logging": {"verbose": false},
   "audio": {"enabled": true},
-  "display": {"hidpi": false}
+  "display": {"hidpi": false, "hidpi_last_scale": 0},
+  "webserver": {"port": 8080}
 }
 ```
+
+Notes on specific fields:
+
+- `camera.exposure` / `camera.gain` default to `null`. On the first camera
+  HELLO, the engine seeds them to the midpoint of the reported control range
+  and persists the values from there on.
+- `display.hidpi_last_scale` caches the most recent Windows primary-monitor
+  scale factor (percent — 100, 125, 150, …). When that value changes between
+  launches the engine auto-toggles `hidpi` to match, so a laptop moved between
+  a retina display and a standard monitor doesn't need manual retoggling.
+- `webserver.port` is validated to the 1024–65535 range on write.
 
 ---
 

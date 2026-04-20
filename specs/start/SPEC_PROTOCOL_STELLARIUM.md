@@ -1,10 +1,12 @@
 # SPEC_PROTOCOL_STELLARIUM.md — PushNav
 
-Version: 2.0
+Version: 2.1
 Status: Reflects Current Implementation
-Date: 2026-02-19
+Date: 2026-04-20
 Transport: TCP on localhost
 Default Port: 10001
+Bind Host: `127.0.0.1` (loopback only — desktop Stellarium on the same machine)
+Coordinate Epoch: **J2000** on the wire (contrast LX200, which uses JNow)
 Direction: App acts as TCP **server**; Stellarium connects as **client**
 
 ---
@@ -16,6 +18,8 @@ PushNav broadcasts its current pointing position to Stellarium using the **Stell
 Stellarium's "External software or a remote computer" telescope type connects to our TCP server and expects periodic position updates.
 
 Incoming GOTO commands are decoded and stored for navigation guidance.
+
+All coordinates exchanged over this protocol are **J2000** — PushNav's internal canonical form — with no precession applied. Stellarium's telescope-plugin configuration must be set to "J2000 (default)"; see the docs site (`docs/stellarium-setup.md`) for the UI walkthrough.
 
 ---
 
@@ -122,11 +126,16 @@ def decode_goto(data: bytes) -> tuple[float, float]:
 
 GOTO handling:
 - Decoded RA (hours) is converted to degrees: `ra_deg = ra_hours * 15.0`
-- Stored in `GotoTarget` for navigation guidance display
-- Acknowledgment sound plays on receipt
-- Object info fetched from Stellarium Remote Control API (port 8090)
-- Never attempt mount control
-- Never change PointingState from a GOTO
+- Stored in `GotoTarget` via `GotoTarget.set()`, which internally plays the
+  acknowledgment sound. The Stellarium server itself does not call
+  `_play_ack()` from the GOTO path (it only plays ack directly on client
+  *connect*; see §6.2). In effect the ack sound does fire on every GOTO,
+  just via the `GotoTarget` side effect rather than from inside the server.
+- Object info fetched from Stellarium Remote Control API (port 8090) in a
+  background thread so the main server loop isn't blocked; malformed GOTO
+  messages are silently skipped (struct-unpack errors logged at DEBUG).
+- Never attempt mount control.
+- Never change PointingState from a GOTO.
 
 ---
 
@@ -169,6 +178,16 @@ every 1 second:
 1. Close all client sockets.
 2. Close server socket.
 3. Occurs during app graceful shutdown (see SPEC_ARCHITECTURE.md).
+
+### 6.6 UI activity indicator
+
+`StellariumServer.client_count` exposes the number of currently connected
+clients as a property. The UI polls this each frame to light a red-dot
+activity indicator next to the Stellarium address in the Settings panel —
+lit whenever any client is connected, dim otherwise. Because Stellarium
+holds a persistent TCP connection (unlike LX200 clients, which reconnect
+per poll), this indicator is effectively binary: on for the whole session,
+off when the client disconnects.
 
 ---
 
