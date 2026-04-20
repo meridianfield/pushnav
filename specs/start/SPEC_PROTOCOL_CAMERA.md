@@ -1,17 +1,16 @@
 # SPEC_PROTOCOL_CAMERA.md — PushNav
 
-Version: 2.0
+Document version: 2.1
+Protocol version (wire): **1** — must match `data/VERSION.json.protocol_version`
+and `PROTOCOL_VERSION` in `python/evf/camera/client.py`, `camera/mac/Sources/.../main.swift`, and the Linux/Windows camera servers.
 Status: Reflects Current Implementation
-Date: 2026-02-19
+Date: 2026-04-20
 Transport: TCP on localhost
 Applies to: macOS (Swift), Linux (C/V4L2), Windows (C/DirectShow)
 
-Prototype references (keep these paths):
-- macOS camera prototype: `~/Devel/Learning/webcam/camera_viewer.swift`
-- UVC parsing prototype: `~/Devel/Learning/webcam/uvc_controls.swift`
-- Enumeration helper: `~/Devel/Learning/webcam/webcam_probe.swift`
-- macOS behavior notes: `~/Devel/Learning/webcam/how_openaicam.md`
-- UVC generalization notes: `~/Devel/Learning/webcam/generalisation.md`
+The document-revision number above (2.1) is editorial — it tracks updates to
+this spec file, not the wire protocol. The wire protocol is unchanged since
+v1 of the project.
 
 ---
 
@@ -58,7 +57,19 @@ Rules:
 - `length` may be 0.
 - Receiver must read exactly 8 bytes header, then exactly `length` payload bytes.
 - If socket closes mid-message, treat as disconnect.
-- Unknown `type` must be ignored (log at DEBUG) unless in handshake stage.
+- Unknown `type` MUST be ignored (log at DEBUG) unless in handshake stage.
+  This preserves forward compatibility when a newer client sends messages
+  an older server doesn't recognize.
+
+> **Known issue (not yet fixed):** the macOS Swift backend
+> (`camera/mac/Sources/CameraServer/TCPServer.swift` in the `parseHeader`
+> path) currently **disconnects** on unknown message types instead of
+> ignoring them, violating the rule above. This breaks forward-compat for
+> any future message added to the protocol. Linux/Windows C backends fall
+> through their if/else dispatch chain without disconnecting, which matches
+> the spec. A follow-up task should change the Swift branch to log-and-skip
+> the frame rather than tear the connection down. Tracked separately; do
+> not rely on "ignore unknown" from macOS until that fix lands.
 
 ---
 
@@ -81,13 +92,20 @@ Example payload:
   "protocol_version": 1,
   "backend": "mac-swift",
   "backend_version": "0.1.0",
-  "camera_model": "KNOWN_SINGLE_MODEL_V1",
+  "camera_model": "openaicam",
   "stream_format": "MJPEG",
   "default_width": 1280,
   "default_height": 720,
   "default_fps": 30
 }
 ```
+
+The `camera_model` value is backend-specific:
+- macOS (Swift) sends the hardcoded string `"openaicam"`.
+- Linux (V4L2) and Windows (DirectShow) send the probed device model string.
+
+Clients should treat `camera_model` as free-form informational and not parse
+it as an enum.
 
 Handshake rules:
 - If `protocol_version` mismatch:
@@ -146,9 +164,11 @@ Required schema (v1):
 
 Rules:
 - CONTROL_INFO MUST be sent once right after handshake completes.
-- CONTROL_INFO MUST be re-sent if:
-  - camera clamps a requested value
-  - camera changes a value due to constraints (rare in v1)
+- CONTROL_INFO MUST be re-sent after every SET_CONTROL, so the app sees the
+  actual applied value (which may differ from the requested value if the
+  camera clamped or rounded it). Backends currently re-send unconditionally
+  on every SET_CONTROL — a superset of the spec requirement that simplifies
+  implementation and gives the UI a consistent update cadence.
 - App builds UI controls dynamically from this list.
 
 #### 0x03 ERROR
@@ -198,9 +218,10 @@ Rules:
 Camera backend MUST force auto exposure OFF during initialization, before streaming begins.
 This setting is NOT exposed in UI.
 
-macOS prototype reference:
-- `~/Devel/Learning/webcam/camera_viewer.swift` (UVCController class)
-- `~/Devel/Learning/webcam/how_openaicam.md` (why AVFoundation cannot change UVC controls directly)
+The macOS Swift backend implements this via a direct USB control request
+through IOKit (the `UVCController` class in `camera/mac/Sources/CameraServer/`),
+because AVFoundation does not expose UVC auto-exposure controls. Linux and
+Windows backends use their native V4L2 / DirectShow APIs.
 
 ### 6.2 Single supported camera model
 Backend assumes one supported camera model (known VID/PID + known control layout).
@@ -219,10 +240,11 @@ If not found:
 
 - No explicit keepalive in v1.
 - Liveness is based on: socket connected + frames arriving.
-- If app does not receive frames for N seconds (configurable; default 2s),
-  it may treat the camera as stalled and restart.
-
-Note: If implemented, ensure this does not trigger during expected temporary stalls.
+- If the app does not receive frames for `_FRAME_STALL_TIMEOUT` seconds it
+  treats the camera as stalled and triggers a subprocess restart. Currently
+  hardcoded to **2.0 seconds** in `python/evf/camera/subprocess_mgr.py`; no
+  config hook. If the timeout needs to be user-tunable later, add a config
+  field rather than a command-line flag (so it persists across runs).
 
 ---
 
@@ -253,10 +275,17 @@ Reserved message types:
 
 ## 10. macOS Implementation Notes (Reference Only)
 
-Backend should be derived from `camera_viewer.swift` by stripping AppKit UI.
+The macOS Swift backend lives in `camera/mac/Sources/CameraServer/` and is
+built via Swift Package Manager (see `scripts/build_camera_mac.sh`).
 
-Key code sections to reuse (approximate):
-- UVCController class (~lines 95–382)
-- AVFoundation capture session (~lines 572–626)
-- Frame capture delegate (~lines 628–631)
-- SampleBuffer → image conversion (~lines 696–738), adapted to JPEG bytes.
+Key classes in the backend:
+
+- `UVCController` — performs UVC control reads/writes via IOKit USB control
+  requests. Used specifically for auto-exposure-off and for the exposure /
+  gain set paths that AVFoundation cannot reach.
+- `CaptureSession` wrapper — AVFoundation capture session + sample-buffer
+  delegate; emits MJPEG-compressed `Data` into the TCP FRAME payload.
+- `TCPServer` — single-client TCP server that accepts the Python app and
+  handles the length-prefixed framing. **Known issue:** currently disconnects
+  on unknown message types in `parseHeader`; should instead skip and continue
+  (see §3).
