@@ -30,7 +30,11 @@ The camera ships with a wide-angle lens that needs to be replaced with the 25mm 
 
 - Finish the camera modifications as described above to get the camera ready for use with PushNav. This involves replacing the stock lens with the 25mm M12 lens and ensuring it is securely mounted and focused.
 - 3D print the camera housing parts (base, hood, dust cap). Refer to the  3D models section of the documentation
-- Secure the camera inside the housing base using glue gun or double-sided tape. Make sure the camera is firmly held in place and that the lens is properly aligned with the opening in the hood. Remember that we are gluing the white camera base to the housing, not the PCB itself, to avoid damaging any components. *TODO: design a more secure mounting solution in the future that doesn't involve glue.*
+- Secure the camera inside the housing base. Choice of adhesive depends on whether you want to remove the camera later:
+    - **Hot glue gun** — use if you may want to remove the camera to refit or reuse later. It's reversible (peels off with gentle prying), but the thick bead can introduce small alignment errors, so press the camera flat while the glue sets.
+    - **Super glue (or other thin adhesives)** — use once you're satisfied with alignment and focus and don't plan to remove the camera. Thin adhesives give a much more precise, rigid bond with no alignment drift.
+
+    In both cases, glue the **white camera base** to the housing — never the PCB — to avoid damaging components. *TODO: design a more secure, glue-free mounting solution in the future.*
 - **IMPORTANT** focusing notes: 
     - Focus the camera by adjusting the position of the lens in its mount before attaching the hood. 
     - Focus is best done with the camera looking at real stars in the night sky.
