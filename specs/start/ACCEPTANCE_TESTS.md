@@ -1,11 +1,37 @@
 # ACCEPTANCE_TESTS.md — PushNav
 
-Version: 2.0
+Version: 2.1
 Status: Reflects Current Implementation
 Applies: macOS, Linux, Windows
 
 Goal:
 A developer must be able to run these tests end-to-end without guessing.
+
+## Test automation legend
+
+Each section below is one of:
+
+- **Manual** — requires a user at a telescope or a real third-party client
+  (Stellarium, SkySafari, etc.). Run visually, check boxes as you go.
+- **Automated** — covered by a `pytest` test under `tests/`; run with
+  `uv run pytest tests/`. Automated sections name the concrete test file.
+
+Current coverage:
+
+| Section | Type      | Test file(s) under `tests/`                                  |
+|---------|-----------|--------------------------------------------------------------|
+| A       | Manual    | —                                                            |
+| B       | Mixed     | `test_camera.py`, `test_subprocess_mgr.py` (protocol/mock)   |
+| C       | Mixed     | `test_sync.py` (math); manual for the UI wizard flow         |
+| D       | Manual    | —                                                            |
+| E       | Manual    | —                                                            |
+| F       | Mixed     | `test_stellarium.py` (protocol); manual for end-to-end       |
+| G       | Mixed     | `test_subprocess_mgr.py` (restart logic); manual for crash   |
+| H       | Manual    | `test_audio.py` (loader); manual for actual audio playback   |
+| I       | Manual    | —                                                            |
+| J       | Manual    | —                                                            |
+| K       | Automated | `test_solver_offline.py`, `test_phase1.py`, `test_offline_full.py`, `test_navigation.py`, `test_sync.py` |
+| L       | Mixed     | `test_epoch.py`, `test_lx200_protocol.py`, `test_lx200_server.py` (L8); manual for L1–L7                |
 
 ---
 
@@ -220,27 +246,35 @@ These tests verify solver correctness using known sample images, without needing
 
 Location: `tests/samples/`
 
-| Image   | Difficulty                  | Known RA  | Known Dec | Notes                                    |
-|---------|-----------------------------|-----------|-----------|------------------------------------------|
-| a.png   | Difficult (dark, Capella)   | 79.025    | 46.762    | Requires max_area=2000 for bright star   |
-| b.png   | Easy                        | 132.88    | 46.37     |                                          |
-| c.png   | Easy                        | 49.76     | 57.84     |                                          |
-| d.png   | Moderate (JPEG artifacts)   | 30.83     | 49.19     |                                          |
+| Image     | Difficulty                  | Known RA  | Known Dec | Notes                                    |
+|-----------|-----------------------------|-----------|-----------|------------------------------------------|
+| a.png     | Difficult (dark, Capella)   | 79.025    | 46.762    | Requires max_area=2000 for bright star   |
+| b.png     | Easy                        | 132.88    | 46.37     |                                          |
+| c.png     | Easy                        | 49.76     | 57.84     |                                          |
+| d.png     | Moderate (JPEG artifacts)   | 30.83     | 49.19     |                                          |
+| orion.png | Additional                  | ~82       | ~-5       | Used by the UI debug-sample injection feature and by some manual SkySafari goto verifications (Orion region). |
 
-All four images solve successfully with `hip8_database` using the parameters from SPEC_ARCHITECTURE.md section 8.2.
+There's also a `tests/samples/targets/` subdirectory with smaller crops used
+by a subset of targeted solver tests.
 
 RA/Dec values are in degrees (J2000). A correct solve should match within ~2 degrees of the known values.
+
+All sample images solve successfully with `hip8_database` using the parameters from SPEC_ARCHITECTURE.md section 8.2.
 
 ### K2. Offline solver test procedure
 
 1. Load `hip8_database` as normal.
 2. For each sample image:
-   a. Open with PIL: `Image.open(path).convert("L")`
-   b. Extract centroids and solve with spec parameters.
-   c. Assert `result['RA'] is not None`.
-   d. Assert RA within 2 degrees of known value.
-   e. Assert Dec within 2 degrees of known value.
-3. All four must pass.
+   a. Read raw file bytes (`open(path, "rb").read()`) — the solver is given
+      the original JPEG/PNG bytes and handles decoding internally via
+      `PlateSolver.solve_frame()`. Callers do not need to convert to
+      grayscale or extract centroids manually.
+   b. Call `solver.solve_frame(image_bytes)` and assert
+      `result['RA'] is not None`.
+   c. Assert RA within 2 degrees of known value.
+   d. Assert Dec within 2 degrees of known value.
+3. All four core samples must pass; `orion.png` is optional in automated
+   runs since it's primarily a UI-injection fixture.
 
 ### K3. Offline Stellarium protocol test
 
@@ -281,8 +315,8 @@ RA/Dec values are in degrees (J2000). A correct solve should match within ~2 deg
 See `specs/start/SPEC_PROTOCOL_LX200.md` §10 for the authoritative list.
 Summary of verification points:
 
-- **L1** — SkySafari (iOS/Android/macOS) Meade LX-200 GPS, Equatorial Push-To, TCP Direct to host:4030: crosshair follows pointing within 2 s; RA/Dec match on-screen within 1 arcmin.
-- **L2** — SkySafari goto: right-click object → GoTo; PushNav logs the GOTO, navigation chevrons appear.
+- **L1** — SkySafari (iOS/Android/macOS) connected via Settings → Telescope → Presets → Add Device → Other, with Mount Type **AltAz GoTo** and Scope Type **Meade LX200 Classic**, pointed at host:4030: crosshair follows pointing within 2 s; RA/Dec match on-screen within 1 arcmin. (Push-To mount types do not drive the Stop/GoTo button transitions correctly — use AltAz GoTo.)
+- **L2** — SkySafari GoTo: tap object → tap GoTo; PushNav logs the GOTO, navigation chevrons appear; SkySafari's button flips from "Stop" to "GoTo" via the `:D#` slew-status reply when plate-solve lands within 0.5° of target.
 - **L3** — Stellarium Mobile PLUS: TCP connection to host:4030 auto-detects LX200; position tracks pointing.
 - **L4** — INDI `indi_lx200basic` with Connection → TCP host:4030: KStars crosshair matches PushNav pointing.
 - **L5** — ASCOM "Meade Generic" driver TCP mode to host:4030: N.I.N.A. mount tab shows matching RA/Dec.

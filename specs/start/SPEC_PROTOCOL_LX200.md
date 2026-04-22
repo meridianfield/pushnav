@@ -42,7 +42,8 @@ Just like the Stellarium server, this server is **read-mostly from the client's 
 LX200 is ASCII. Commands from the client are framed as `:<cmd>#` (leading colon, trailing hash). Responses are:
 
 - **Fixed-width ASCII** terminated by `#` for getters (`:GR#`, `:GD#`, `:GVP#`, …)
-- **A single ASCII digit with no terminator** for target-set acknowledgments (`:Sr`, `:Sd`, `:MS`) — `1` = accepted, `0` = rejected (for `:MS#`, `0` = slew started, `1<msg>#` = objection)
+- **A single ASCII digit with no terminator** for target-set acknowledgments (`:Sr`, `:Sd`) — `1` = accepted, `0` = parse failed.
+- For `:MS#`, **either** a single `0` (slew started — both pending RA and Dec were set) **or** a `#`-terminated objection string of the form `1<msg>#` (the only objection PushNav currently emits is `1<no target set>#` when one or both pending values are missing).
 - **Nothing at all** for fire-and-forget commands (`:Q#`, `:U#`, unknown commands)
 
 There is no length prefix, no checksum, no keep-alive. The socket stays open; the client polls `:GR#`/`:GD#` at 1–5 Hz.
@@ -70,16 +71,16 @@ Precision mode: start in **high-precision** (HH:MM:SS / sDD*MM:SS). `:U#` toggle
 
 **Why no clock / site replies.** Empirical testing with SkySafari 7 confirmed it never polls `:GC#`, `:GL#`, `:GS#`, `:GG#`, `:Gt#`, `:Gg#`, or `:Gc#` — altitude and "below horizon" checks are done using SkySafari's own Observer location from its Settings, not the mount's reported site. If a user sees "target below horizon" errors, the fix is to set SkySafari's own Observer location correctly. We may add these handlers if a future client is observed polling them; for now they fall through to §3.3 (silent ignore).
 
-### 3.2 Target setters (used for goto)
+### 3.2 Target setters + actions (used for goto)
 
 | Command | Argument | Response |
 |---------|----------|----------|
 | `:Sr HH:MM:SS#` or `:Sr HH:MM.T#` | Target RA | `1` accepted, `0` malformed |
 | `:Sd sDD*MM:SS#` or `:Sd sDD*MM#` | Target Dec | `1` accepted, `0` malformed |
-| `:MS#` | Slew to stored target | `0` = slew started (we always return `0`; push-to mount is the operator) |
+| `:MS#` | Slew to stored target | `0` = slew started (when both pending RA and Dec are set); `1<no target set>#` if either is missing. Push-to mount is the operator — we never "reject" a valid target. |
 | `:CM#` | Sync to stored target | `Coordinates matched.        #` *(29-byte reply; matches the Meade reference implementation; SkySafari accepts variable-length padding)* |
-| `:Q#` | Stop slew / abort | (no response) |
-| `:D#` | Distance / slew-status poll | `\x7f#` while slewing, `#` when done — see §3.2.1 |
+| `:Q#` | Stop slew / abort (clears pending RA/Dec on the context) | (no response) |
+| `:D#` | Distance / slew-status poll (not a setter — grouped here because the mount-state it reports is driven by `:Sr`/`:Sd`/`:MS#`) | `\x7f#` while slewing, `#` when done — see §3.2.1 |
 
 On `:MS#` we treat the stored (RA, Dec) exactly like a Stellarium binary GOTO: write to `GotoTarget`, play the ack sound, log at INFO.
 
@@ -98,9 +99,20 @@ After SkySafari sends `:MS#` it polls `:D#` ~1 Hz and transitions its button fro
 
 0.5° is a typical low-power eyepiece FOV — tight enough that SkySafari only flips to "GoTo" when the user has actually pushed to the target, loose enough that arc-minute plate-solve jitter doesn't bounce the button.
 
-### 3.3 Tolerated but ignored (reply nothing)
+### 3.3 Tolerated (reply nothing)
 
-`:U#` (toggle precision), `:RG#` `:RC#` `:RM#` `:RS#` (slew rate), `:Me#` `:Mw#` `:Mn#` `:Ms#` (move), `:Qe#` etc. (stop), `:ED#`, `:$BDG#`, everything else. No reply, no log spam above DEBUG.
+**With side effect on per-connection state:**
+- `:U#` — toggles this client's precision mode (`state.precision_hi`);
+  subsequent `:GR#`/`:GD#` use the flipped precision. No reply either way.
+
+**Silently consumed — no reply, no state change:**
+- `:RG#` `:RC#` `:RM#` `:RS#` — slew rate
+- `:Me#` `:Mw#` `:Mn#` `:Ms#` — manual move
+- `:Qe#` etc. — directional stop
+- `:ED#`, `:$BDG#` — ASCOM Meade Generic probes
+- everything else not listed in §3.1 or §3.2
+
+Unknown commands log at DEBUG only; no log spam above that level.
 
 ---
 
@@ -338,9 +350,9 @@ Trade-off: two simultaneous clients both issuing gotos will race (last `:Sr`/`:S
           goto_target.set(ra_j2000_deg, dec_j2000_deg)  # same as Stellarium path
           (GotoTarget.set() already plays the ack sound internally)
           log INFO "LX200 GOTO: ..."
+          reply "0"  # slew started; push-to — we never reject a valid target
         else:
           reply "1<no target set>#"
-        reply "0" otherwise — push-to has no motor; we never reject
 :CM#  → reply "Coordinates matched.        #" (29 bytes)
         log INFO "LX200 :CM# received (informational, no state change)"
         # Per §1.1: one-way data flow; no calibration writes, no PointingState updates
@@ -418,36 +430,62 @@ Shared helper (new): `python/evf/engine/pointing.py` gains `PointingSnapshot.ra_
 ## 8. Client Configuration
 
 ### 8.1 SkySafari Plus/Pro
-- Settings → Telescope → Setup
-- Scope Type: **Meade LX-200 GPS** (or **LX-200 Classic** — either works)
-- Mount Type: **Equatorial Push-To** (or **Alt-Az Push-To** if the user is set up that way)
-- Connection: **WiFi**, "Use WiFi-to-Serial adapter or TCP/IP" → **Direct TCP/IP**
-- IP = PushNav host; Port = **4030**
-- "Auto-Detect SkyFi" may also find us if we answer the SkyFi discovery UDP broadcast on port 4031 — **optional**, add in a later revision if demand warrants.
+
+Real in-app flow, verified against SkySafari Plus. Note: earlier revisions of
+this spec recommended "Equatorial Push-To" + the "WiFi-to-Serial adapter"
+toggle; field testing showed **AltAz GoTo is required** — Push-To modes don't
+drive SkySafari's Stop/GoTo button transitions correctly when the `:D#`
+slew-status reply flips.
+
+1. **Settings → Telescope → Presets → Add Device → Other**
+2. Fill in:
+   - **Mount Type**: AltAz GoTo (the "GoTo" part matters — see above)
+   - **Scope Type**: Meade LX200 Classic
+   - **IP Address**: PushNav host (shown in PushNav's Settings panel)
+   - **Port**: `4030` (default is fine)
+3. Tap **Check Connection Now** → "Connection verified"
+4. **Save Preset**
+
+No Communication Settings section needs to be configured; SkySafari handles
+the TCP details internally once the preset is saved.
 
 **To see the scope crosshair on SkySafari's star map:**
 
-SkySafari draws the scope crosshair only if a FOV indicator is defined and crosshairs are toggled on — this is independent of our protocol.
-- SkySafari 8: **Observe → Scope Display**, define a FOV indicator for the scope, enable **Crosshairs**, and in the settings icon turn on *"Show Even If Not Connected"* if you want the crosshair to stay visible when briefly disconnected.
-- SkySafari 7: **Settings → Telescope Display**.
-- If the crosshair still isn't visible, the star map is likely panned away from the scope's reported RA/Dec; use the Scope Control panel's *center-on-scope* button to snap the view.
+SkySafari won't draw the crosshair until a FOV indicator is active. Tap the
+**FOV display** at the top right of the star chart and pick any FOV / rings
+preset — only then does the telescope pointing crosshair appear.
 
 **"Below horizon" errors on GoTo:**
-SkySafari computes altitude from **its own Observer location and clock**, not the values the mount reports. Set SkySafari → Settings → Observer to your real location before using GoTo.
+SkySafari computes altitude from **its own Observer location and clock**, not
+the values the mount reports. Set SkySafari → Settings → Observer to your
+real location before using GoTo.
+
+**Connection drops are normal.** SkySafari opens a fresh TCP connection per
+poll (~1 Hz). Our server handles this silently — the per-connection reconnect
+churn is expected behavior, not a bug. The pending-target state is held at the
+server level (§6.2.1) precisely because of this.
 
 ### 8.2 Stellarium Mobile PLUS
 - Menu → Observing Tools → Telescope → Add
 - Connection: **Network (TCP)**; IP = PushNav host; Port = **4030**
 - Protocol: leave on auto-detect; answering `:GVP#` with `LX200 Classic` is enough.
 
-### 8.3 INDI (KStars / Ekos, CCDCiel, PHD2)
+### 8.3 INDI (KStars)
 On the desktop:
 ```
 indiserver -v indi_lx200basic
 ```
-In KStars → Ekos → Profile Editor → Mount: **LX200 Basic**. Then in the driver's Connection tab: **TCP**, Host = PushNav host, Port = 4030.
+In KStars → Ekos → Profile Editor → Mount: **LX200 Basic**. Then in the
+driver's Connection tab: **TCP**, Host = PushNav host, Port = 4030. Ekos
+is the device-management panel used to connect the mount whether you're
+observing visually or imaging.
 
-### 8.4 ASCOM (Windows — N.I.N.A., SharpCap, TheSkyX, APT)
+### 8.4 ASCOM (Windows)
+Most ASCOM clients (N.I.N.A., SharpCap, APT) are astrophotography workflows
+that expect a motorized mount and aren't a natural fit for a push-to. The
+practical ASCOM use case for PushNav is **Stellarium on Windows via its ASCOM
+telescope plugin**, or **TheSkyX** as a planetarium.
+
 - Install [ASCOM Platform 6.6+](https://ascom-standards.org/) and the Meade LX200 driver.
 - Chooser → **Meade Generic** (preferred) or **Meade Classic and Autostar I**.
 - Properties → COM Port → set to the driver's **TCP mode**; Host = PushNav host, Port = 4030.
@@ -460,10 +498,10 @@ Out of scope for v1 of this spec. A native Alpaca `ITelescopeV3` HTTP endpoint u
 
 ## 9. Interaction with Existing Specs
 
-- **SPEC_PROTOCOL_STELLARIUM.md** — unchanged. The binary Stellarium server continues on its own port (10001). Both servers can run simultaneously.
-- **SPEC_ARCHITECTURE.md** — add `Lx200Server` next to `StellariumSrv` in the Core Engine box.
-- **SPEC_PRODUCT.md** — LX200 support is an additive external-control feature; no UI wizard changes required. A single toggle in config ("Enable LX200 server / port") is sufficient.
-- **ACCEPTANCE_TESTS.md** — add cases per §10.
+- **SPEC_PROTOCOL_STELLARIUM.md** — unchanged. The binary Stellarium server continues on its own port (10001). Both servers run simultaneously.
+- **SPEC_ARCHITECTURE.md** — documents the LX200 thread (§4.4), the `Lx200Server` entry in the Core Engine box (§2), and the LX200 step in the shutdown sequence (§12.1).
+- **SPEC_PRODUCT.md** — §5.2 documents the LX200 server as one of three external integrations. No UI wizard changes are needed; the main window's Settings panel surfaces the LX200 address alongside the Stellarium and mobile-web addresses.
+- **ACCEPTANCE_TESTS.md** — §L covers the LX200-specific verification points.
 
 ---
 
@@ -485,7 +523,7 @@ End-to-end, pointed at a known target (tests/samples/ + goto targets):
 
 ## 11. Non-Goals
 
-- Mount motion control — PushNav is push-to; we always reply `0` to `:MS#` and never emit step pulses.
+- Mount motion control — PushNav is push-to; `:MS#` is acknowledged with `0` when both pending RA and Dec are set (stored to `GotoTarget` for navigation guidance only), never by actually moving a motor. The only non-zero reply is `1<no target set>#` when the preceding `:Sr`/`:Sd` handshake was incomplete.
 - Sync / alignment input from clients — per §1.1, `:CM#` and any sync-like command is acknowledge-only. PushNav's calibration is owned internally (wizard Sync step).
 - Focuser, rotator, filter wheel commands — out of scope.
 - LX200 GPS-only commands (`:GG#`, `:Gg#`, etc. site/lat/long queries) — consume silently; a future revision may proxy these to the Stellarium Remote Control observer data we already fetch.

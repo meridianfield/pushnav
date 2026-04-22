@@ -1,8 +1,8 @@
 # SPEC_BUILD_RELEASE.md — PushNav
 
-Version: 2.0
+Version: 2.1
 Status: Reflects Current Implementation
-Date: 2026-02-19
+Date: 2026-04-20
 Target: macOS, Linux, Windows
 
 ---
@@ -25,11 +25,14 @@ pushnav/
     evf/
       main.py
       paths.py
+      network.py        # LAN-IP probe shared by webserver + engine
       engine/
       ui/
       camera/
       solver/
       stellarium/
+      lx200/            # LX200 Classic TCP protocol server
+      webserver/        # aiohttp mobile web interface
       config/
     vendor/tetra3/
   pyproject.toml
@@ -38,7 +41,6 @@ pushnav/
     mac/              # Swift camera server (SwiftPM)
     linux/            # C/V4L2 camera server
     windows/          # C/DirectShow camera server
-    protocol/         # protocol definitions
 
   data/
     hip8_database.npz
@@ -115,7 +117,10 @@ scripts/build_mac.sh
 
 Key Nuitka flags:
 - `--standalone` (NOT `--onefile` — `.dist/` directory approach)
-- `--output-filename=main`
+- `--output-filename=evf` (binary name; macOS/Linux) or `evf.exe` (Windows)
+- `--include-package=erfa` (bundles the pyerfa C extension used by the LX200
+  J2000↔JNow precession helpers)
+- `--include-package=` for `dearpygui`, `numpy`, `scipy`, `PIL`, `playsound3`, `tetra3`
 - Data files are NOT bundled via Nuitka — copied manually post-build
 
 ---
@@ -130,7 +135,7 @@ Expected `.app` layout:
 PushNav.app/
   Contents/
     MacOS/
-      main               # Nuitka standalone dist (all files)
+      evf                # Nuitka standalone dist (CFBundleExecutable)
       camera_server      # Swift binary
       ...                # Nuitka support files
     Resources/
@@ -168,7 +173,8 @@ Uses Nuitka `--standalone`. Post-build assembles an AppImage:
 - Downloads `appimagetool`
 - Creates AppDir with Nuitka dist, camera binary, data files
 - Includes `linux/pushnav.desktop` for desktop integration
-- Produces: `PushNav-{ARCH}.AppImage`
+- Produces both `PushNav-linux-{ARCH}.tar.gz` (raw standalone dist) and
+  `PushNav-linux-{ARCH}.AppImage` (self-contained single-file distributable)
 
 ---
 
@@ -189,8 +195,10 @@ scripts\build_windows.bat
 
 Uses Nuitka `--standalone`. Post-build:
 - Copies camera binary, data files, marketing assets
-- Runs Inno Setup (`scripts/pushnav.iss`) to create installer
-- Produces: `PushNav-windows-x64-setup.exe`
+- Produces `PushNav-windows-x64.zip` (raw standalone dist, always)
+- If Inno Setup is installed (`ISCC.exe` on PATH), also runs
+  `scripts/pushnav.iss` to build `PushNav-windows-x64-setup.exe`. The
+  installer step is skipped silently when Inno Setup is not present.
 
 DPI awareness is handled at runtime (not build-time) via Windows API calls in `main.py`.
 
@@ -269,10 +277,12 @@ Launch with `--dev` flag for debug features.
 
 ```json
 {
-  "app_version": "0.1.0",
+  "app_version": "<x.y.z>",
   "protocol_version": 1,
   "hip_db_version": "hip8_mag8_21200stars"
 }
 ```
 
+Concrete values drift per release; `protocol_version` and `hip_db_version` are
+stable across minor releases while `app_version` tracks `pyproject.toml`.
 Logged at startup (INFO).

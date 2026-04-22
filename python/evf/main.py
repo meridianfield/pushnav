@@ -30,19 +30,75 @@ from evf.ui.window import UI
 
 logger = logging.getLogger(__name__)
 
-_VP_WIDTH = 1280 // 2 + 320 + 35  # 995
+_VP_WIDTH = 1280 // 2 + 320  # 960 — content width only
 _VP_HEIGHT = 720 // 2 + 60  # 420
+_CHROME_BUFFER = 60  # Windows chrome + side-panel padding; does not scale with DPI
 
 
-def _windows_primary_monitor_dpi() -> int:
-    """Return primary monitor's effective DPI on Windows, or 96 on failure.
+def _windows_disable_maximize_button(title: str) -> None:
+    """Strip the maximize-box window style from our viewport on Windows.
 
-    Uses GetScaleFactorForMonitor which returns the user-configured scale
-    percentage (100, 125, 150, ...) even for DPI-unaware processes, unlike
-    GetDpiForMonitor which virtualizes to 96 in that mode.
+    `resizable=False` greys out the maximize button but leaves it clickable
+    (and Windows 11 still shows snap layouts on hover). This actually hides
+    it via SetWindowLong + SetWindowPos(SWP_FRAMECHANGED). Best-effort —
+    silently no-ops if the window isn't found or a Win32 call fails.
     """
     if sys.platform != "win32":
-        return 96
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        GWL_STYLE = -16
+        WS_MAXIMIZEBOX = 0x00010000
+        SWP_NOMOVE = 0x0002
+        SWP_NOSIZE = 0x0001
+        SWP_NOZORDER = 0x0004
+        SWP_FRAMECHANGED = 0x0020
+
+        user32 = ctypes.windll.user32
+        hwnd = user32.FindWindowW(None, title)
+        if not hwnd:
+            # Title exact-match failed; fall back to partial-match enum.
+            found = []
+
+            def _cb(h, _):
+                length = user32.GetWindowTextLengthW(h)
+                if length:
+                    buf = ctypes.create_unicode_buffer(length + 1)
+                    user32.GetWindowTextW(h, buf, length + 1)
+                    if "PushNav" in buf.value:
+                        found.append(h)
+                return True
+
+            proc = ctypes.WINFUNCTYPE(
+                wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
+            )(_cb)
+            user32.EnumWindows(proc, 0)
+            if not found:
+                return
+            hwnd = found[0]
+
+        style = user32.GetWindowLongW(hwnd, GWL_STYLE)
+        user32.SetWindowLongW(hwnd, GWL_STYLE, style & ~WS_MAXIMIZEBOX)
+        user32.SetWindowPos(
+            hwnd, 0, 0, 0, 0, 0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+        )
+    except Exception:
+        pass
+
+
+def _windows_primary_monitor_scale() -> int:
+    """Return primary monitor's scale percentage (100, 125, 150, ...).
+
+    Uses GetScaleFactorForMonitor, which returns the user-configured scale
+    even for DPI-unaware processes (unlike GetDpiForMonitor, which
+    virtualizes to 96 in that mode). Returns 100 on non-Windows or on
+    failure.
+    """
+    if sys.platform != "win32":
+        return 100
     try:
         import ctypes
         from ctypes import wintypes
@@ -55,10 +111,10 @@ def _windows_primary_monitor_dpi() -> int:
         if ctypes.windll.shcore.GetScaleFactorForMonitor(
             hmon, ctypes.byref(scale)
         ) != 0:
-            return 96
-        return int(96 * scale.value / 100)
+            return 100
+        return int(scale.value)
     except Exception:
-        return 96
+        return 100
 
 
 def main() -> None:
@@ -67,13 +123,21 @@ def main() -> None:
     # Engine owns the ConfigManager — create it first so we can read hidpi
     engine = Engine()
 
-    # First-launch auto-enable of 4K mode on Windows HiDPI displays. After
-    # this runs once, the user's explicit checkbox choice always wins.
-    if sys.platform == "win32" and not engine.config.hidpi_autodetected:
-        if _windows_primary_monitor_dpi() >= 120 and not engine.config.hidpi:
-            engine.config.hidpi = True
-            logger.info("Auto-enabled 4K monitor compatibility mode (first launch)")
-        engine.config.hidpi_autodetected = True
+    # Auto-toggle 4K mode on Windows whenever the detected display scale
+    # changes (different monitor, docking, Windows scaling changed). Within a
+    # single scale, the user's checkbox choice is preserved.
+    if sys.platform == "win32":
+        current_scale = _windows_primary_monitor_scale()
+        if current_scale != engine.config.hidpi_last_scale:
+            should_hidpi = current_scale >= 150
+            if engine.config.hidpi != should_hidpi:
+                engine.config.hidpi = should_hidpi
+                logger.info(
+                    "Auto-%s 4K mode for %d%% display scale",
+                    "enabled" if should_hidpi else "disabled",
+                    current_scale,
+                )
+            engine.config.hidpi_last_scale = current_scale
 
     vp_scale = 2 if engine.config.hidpi else 1
 
@@ -82,7 +146,7 @@ def main() -> None:
     dpg.configure_app(manual_callback_management=True)
     dpg.create_viewport(
         title=f"PushNav {engine.app_version} - Plate-Solving Push-To System",
-        width=int(_VP_WIDTH * vp_scale),
+        width=int(_VP_WIDTH * vp_scale) + _CHROME_BUFFER,
         height=int(_VP_HEIGHT * vp_scale),
         resizable=False,
     )
@@ -98,6 +162,13 @@ def main() -> None:
 
     dpg.setup_dearpygui()
     dpg.show_viewport()
+
+    # Render one frame so Windows has actually created the HWND before we
+    # reach for it via FindWindowW / EnumWindows.
+    dpg.render_dearpygui_frame()
+    _windows_disable_maximize_button(
+        f"PushNav {engine.app_version} - Plate-Solving Push-To System"
+    )
 
     ui.update_splash("Initializing...")
     engine.startup_logging()

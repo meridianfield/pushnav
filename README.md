@@ -2,13 +2,17 @@
 
 ![Status](https://img.shields.io/badge/status-🚧%20Work%20in%20Progress-yellow)
 
-A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to Stellarium, SkySafari, and other planetarium apps in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required.
+A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to **Stellarium** on the desktop and to **SkySafari**, **Stellarium Mobile**, **INDI**, or **ASCOM** clients over Wi-Fi in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required.
+
+![PushNav Mounted](docs/assets/mounted.jpeg)
 
 ![Screenshot](docs/assets/pushnav_aldebran.png)
 
 It uses European Space Agency's (ESA) tetra3 fast lost-in-space plate solver for plate-solving. This effecient algorithm produces near real-time solutions on a live video feed.
 
 Power your non-GOTO manual telescope with PushNav and enjoy seamless push-to navigation, even in light-polluted urban skies. All for under **$50** with an off-the-shelf USB UVC camera and lens. The same technology that powers spacecraft navigation and advanced astrophotography apps is now available for your backyard stargazing sessions.
+
+📖 **Full documentation: [meridianfield.github.io/pushnav](https://meridianfield.github.io/pushnav)**
 
 ## Cross platform from ground up
 
@@ -31,8 +35,11 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 
 - Near real-time plate solving (~20–140 ms per frame)
 - One time, simple calibration. No named stars, just point at any bright star and sync
-- GOTO navigation guidance from Stellarium
-- Works with **SkySafari**, **Stellarium Mobile**, **INDI**, and **ASCOM** clients over Wi-Fi via the LX200 protocol
+- GOTO navigation guidance from any connected planetarium app (Stellarium, SkySafari, Stellarium Mobile, etc.)
+- Works with **SkySafari**, **Stellarium Mobile**, **INDI**, and **ASCOM** clients over Wi-Fi via the LX200 protocol, with `:D#` slew-status so SkySafari's "Stop / GoTo" button transitions correctly
+- **Mobile web interface** — scan a QR code in the Settings panel to open a live mobile view; no app install required, phone and laptop just need to be on the same Wi-Fi
+- Live activity indicators in the app showing when Stellarium or LX200 clients are talking
+- IAU 2006 J2000 ↔ JNow precession via `pyerfa` at the LX200 boundary (SkySafari expects JNow, PushNav stores J2000)
 - Audio feedback for lock/lost/GOTO events
 - Saves calibration for quick re-sync
 - Works from urban light-polluted skies with the right camera/lens combo (see hardware guide)
@@ -140,7 +147,7 @@ Build output goes to `build/`.
 uv run pytest tests/
 ```
 
-Tests include offline plate-solving against sample images, camera protocol tests with a mock server, Stellarium protocol tests, sync/calibration math, and navigation computations. No camera hardware required.
+Tests include offline plate-solving against sample images, camera protocol tests with a mock server, Stellarium and LX200 protocol tests, J2000↔JNow precession round-trips, sync/calibration math, and navigation computations. No camera hardware required.
 
 ## Stellarium Setup
 
@@ -156,16 +163,25 @@ To use **SkySafari**, **Stellarium Mobile**, **INDI**, or **ASCOM** instead, poi
 ## Project Structure
 
 ```
-python/evf/          Python application (engine, UI, camera client, solver, Stellarium server)
-python/vendor/tetra3/ Vendored tetra3 star pattern library
-camera/mac/          Swift camera server (macOS)
-camera/linux/        C/V4L2 camera server (Linux)
-camera/windows/      C/DirectShow camera server (Windows)
-data/                Star database, fonts, sounds, version metadata
-hardware/3d_models/  3D-printable camera housing and accessories (OpenSCAD + STLs)
-scripts/             Build and dev scripts
-tests/               Test suite
-specs/start/         Design specifications
+python/evf/            Python application
+  engine/              Core engine, state machine, plate-solve pointing, epoch helpers
+  ui/                  DearPyGui UI layer
+  camera/              TCP client + subprocess lifecycle for the native camera server
+  solver/              tetra3 plate-solve wrapper + body-frame sync
+  stellarium/          Stellarium binary TCP server (port 10001)
+  lx200/               LX200 Classic TCP server (port 4030, SkySafari / INDI / ASCOM)
+  webserver/           aiohttp HTTP + WebSocket mobile web interface (default port 8080)
+  config/              JSON config + logging setup
+  network.py           Shared LAN-IP probe used by webserver and engine
+python/vendor/tetra3/  Vendored tetra3 star pattern library
+camera/mac/            Swift camera server (macOS)
+camera/linux/          C/V4L2 camera server (Linux)
+camera/windows/        C/DirectShow camera server (Windows)
+data/                  Star database, fonts, sounds, web assets, version metadata
+hardware/3d_models/    3D-printable camera housing and accessories (OpenSCAD + STLs)
+scripts/               Build and dev scripts
+tests/                 Test suite
+specs/start/           Design specifications
 ```
 
 ## 3D-Printable Hardware
@@ -174,20 +190,12 @@ The [`hardware/3d_models/`](hardware/3d_models/) directory contains OpenSCAD sou
 
 | Part | Description |
 |------|-------------|
-| **PCB Base + Dovetail** | Holds the camera PCB with an integrated finder shoe dovetail rail. Two variants: self-tapping screw holes (2.7mm) or bolt-through (3.5mm for M3). |
-| **Hood + Baffle** | Lens shroud with an integral stepped light baffle that follows the camera's FOV cone to block stray light. |
-| **Dust Cap** | Friction-fit cap for the lens opening. |
-| **M12 Lens Adapter** | Replacement lens mount for cameras without standard M12 threading. |
-| **M12 Lock Ring** | Secures the lens at the correct focus position. |
+| **PCB Base + Dovetail** | Holds the camera PCB with an integrated finder shoe dovetail rail. Two variants: self-tapping screw holes (2.7mm, `housing_base_selftap.stl`) or bolt-through (3.5mm for M3, `housing_base_bolt.stl`). |
+| **Hood + Baffle** | Lens shroud with an integral stepped light baffle that follows the camera's FOV cone to block stray light (`housing_hood.stl`). |
+| **Dust Cap** | Friction-fit cap for the lens opening (`housing_cap.stl`). |
+| **M12 Lock Ring** | Secures the lens at the correct focus position (`lock_ring.stl`). |
 
 Pre-built STLs are in [`hardware/3d_models/stls/`](hardware/3d_models/stls/). See the [3D models README](hardware/3d_models/README.md) for print settings and build instructions.
-
-## Documentation
-
-- [Hardware Setup & Camera Guide](docs/hardware.md) — supported cameras, lens, DIY notes, shopping list
-- [Design Philosophy](docs/design.md) — why PushNav is built the way it is
-
-Full documentation is also available at [meridianfield.github.io/pushnav](https://meridianfield.github.io/pushnav).
 
 ## License
 
