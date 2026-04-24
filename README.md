@@ -4,6 +4,10 @@
 
 A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to **Stellarium** on the desktop and to **SkySafari**, **Stellarium Mobile**, **INDI**, or **ASCOM** clients over Wi-Fi in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required.
 
+> **What is plate-solving?**
+>
+> Any part of the night sky has a unique arrangement of stars. Plate-solving is a technique that takes a photo, matches that arrangement against a catalog, and reports exactly where the camera is pointing, down to a fraction of a degree. PushNav runs it continuously on the live camera feed, so the app always knows where your telescope is aimed.
+
 ![PushNav Mounted](docs/assets/mounted.jpeg)
 
 ![Screenshot](docs/assets/pushnav_aldebran.png)
@@ -13,6 +17,14 @@ It uses European Space Agency's (ESA) tetra3 fast lost-in-space plate solver for
 Power your non-GOTO manual telescope with PushNav and enjoy seamless push-to navigation, even in light-polluted urban skies. All for under **$50** with an off-the-shelf USB UVC camera and lens. The same technology that powers spacecraft navigation and advanced astrophotography apps is now available for your backyard stargazing sessions.
 
 📖 **Full documentation: [meridianfield.github.io/pushnav](https://meridianfield.github.io/pushnav)**
+
+## Push-to ops
+
+Pick a target in any planetarium app (Stellarium on the desktop, or SkySafari, Stellarium Mobile, INDI, or ASCOM on a phone or tablet) and PushNav guides you to push the telescope there. At the same time, your scope's live pointing moves on every connected app's sky chart, staying in sync across all clients.
+
+![PushNav tracking M42 across Stellarium and SkySafari](docs/assets/pushnav_ops.png)
+
+Above: **M42 (Orion Nebula)** is the active target on both **Stellarium** (desktop) and **SkySafari** (phone). As the scope is pushed, each plate-solve updates the telescope crosshair on every connected client simultaneously. No motors, no encoders, just a camera and Wi-Fi.
 
 ## Cross platform from ground up
 
