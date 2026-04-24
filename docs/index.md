@@ -14,6 +14,14 @@ PushNav uses the European Space Agency's [tetra3](https://github.com/esa/tetra3)
 
 ![Screenshot](assets/pushnav_aldebran.png)
 
+## Push-to ops
+
+Pick a target in any planetarium app (Stellarium on the desktop, or SkySafari, Stellarium Mobile, INDI, or ASCOM on a phone or tablet) and PushNav guides you to push the telescope there. At the same time, your scope's live pointing moves on every connected app's sky chart, staying in sync across all clients.
+
+![PushNav tracking M42 across Stellarium and SkySafari](assets/pushnav_ops.png)
+
+Above: **M42 (Orion Nebula)** is the active target on both **Stellarium** (desktop) and **SkySafari** (phone). As the scope is pushed, each plate-solve updates the telescope crosshair on every connected client simultaneously. No motors, no encoders, just a camera and Wi-Fi.
+
 ## Cross platform from ground up
 
 Supports **Windows**, **macOS**, and **Linux**. The core app is written in Python, while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.

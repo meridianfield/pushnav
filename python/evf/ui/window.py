@@ -1012,19 +1012,24 @@ class UI:
             self._show_stars = False
             dpg.set_value("show_stars_checkbox", False)
 
-        # Tracking button disabled during ERROR/RECONNECTING or while sync solving
+        # Tracking button: disabled during ERROR/RECONNECTING or while a sync
+        # solve is in progress. In SYNC state after a failed solve, the button
+        # stays enabled but relabels to "Retry" so the user knows clicking it
+        # re-attempts the solve rather than advancing past the error.
         sync_solving = (
             self._sync_in_progress_getter() if self._sync_in_progress_getter else False
+        )
+        sync_error = (
+            self._sync_error_getter() if self._sync_error_getter else None
         )
         btn_enabled = state not in (EngineState.ERROR, EngineState.RECONNECTING)
         if state == EngineState.SYNC and sync_solving:
             btn_enabled = False
         dpg.configure_item("tracking_btn", enabled=btn_enabled)
+        if state == EngineState.SYNC and sync_error and not sync_solving:
+            dpg.configure_item("tracking_btn", label="Retry")
 
         # Sync status label
-        sync_error = (
-            self._sync_error_getter() if self._sync_error_getter else None
-        )
         if state == EngineState.SYNC and sync_solving:
             dpg.set_value("sync_status_label", "Solving...")
             dpg.configure_item("sync_status_label", show=True)

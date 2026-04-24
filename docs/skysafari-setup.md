@@ -30,6 +30,11 @@ Next to each address there's a small dot that lights up when a client is activel
 
     **Important:** connect the laptop to the hotspot **before** launching PushNav. PushNav reads the LAN IP at startup and shows it in the Telescope Control panel; if you start PushNav first and then switch networks, the displayed address will be stale and SkySafari won't reach it. If this happens, just quit PushNav and relaunch.
 
+!!! tip "Moving between networks: update the app's preset each time"
+    PushNav's IP address is assigned by whichever network you're on, so it changes between your home Wi-Fi, an observing-site Wi-Fi, and a phone hotspot. A SkySafari / Stellarium Mobile / INDI / ASCOM preset saved on one network won't connect on another. The IP in the preset points to an address that doesn't exist on the new network.
+
+    Each time you switch networks, check PushNav's current IP in the **Telescope Control** panel and **update your app's preset IP to match** (or keep a separate preset per network you observe from).
+
 ---
 
 ## SkySafari (iOS, Android, macOS, Windows)
