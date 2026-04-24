@@ -8,6 +8,9 @@ Plate-Solving Push-To System for Manual Telescopes
 
 A cross-platform plate-solving push-to system for manual telescopes. PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to Stellarium, SkySafari, and other planetarium apps in real-time. Point your scope at any bright star, sync, and PushNav will track your pointing as you push to your next target — no encoders, no motors, no GOTO mount required. Just a USB camera, a lens, and your laptop — under **$50** in total hardware.
 
+!!! info "What is plate-solving?"
+    Any part of the night sky has a unique arrangement of stars. Plate-solving is a technique that takes a photo, matches that arrangement against a catalog, and reports exactly where the camera is pointing, down to a fraction of a degree. PushNav runs it continuously on the live camera feed, so the app always knows where your telescope is aimed.
+
 ![PushNav Mounted](assets/mounted.jpeg)
 
 PushNav uses the European Space Agency's [tetra3](https://github.com/esa/tetra3) fast lost-in-space plate solver — the same algorithm family that powers spacecraft navigation. This efficient solver produces near real-time solutions on a live video feed, enabling seamless push-to navigation even in light-polluted urban skies.
