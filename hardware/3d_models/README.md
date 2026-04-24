@@ -1,10 +1,35 @@
 # PushNav 3D Models
 
-3D-printable parts for the PushNav camera system. All models are written in [OpenSCAD](https://openscad.org/) and designed for FDM printing without supports.
+3D-printable parts for the PushNav camera system. All models are written in [OpenSCAD](https://openscad.org/) for FDM printing. The hood, cap, and accessories print without supports; the base needs localised slicer supports (see [Print Settings](#print-settings)).
 
 ## Parts
 
-### Camera Housing (`housing.scad`)
+### Camera Housing v2 (`housing_v2.scad`) — recommended
+
+Redesigned cylindrical housing with a **threaded connection** between the base and hood — no external screws, bolts, or tools needed. The hood hand-screws directly into the base.
+
+Three parts controlled by `RENDER_*` flags:
+
+| Part | Flag | Description |
+|------|------|-------------|
+| PCB Base + Lip + Dovetail | `RENDER_BASE` | Cylindrical 50 mm shell with internal 44 mm female thread, PCB pocket, and finder-shoe dovetail |
+| Hood + Thread + Baffle | `RENDER_HOOD` | Matching male thread, stepped flange, baffled lens shroud |
+| Dust Cap | `RENDER_CAP` | Friction-fit cap over the hood's lens opening |
+
+**Improvements over v1:**
+- No fasteners — hood screws onto the base by hand.
+- Cylindrical outer shell.
+- Coarse thread (44 mm × 3 mm pitch, 30° flank) — prints cleanly on FDM and gives a confident hand-tight grip.
+- Back of the base has a chord-flat to shorten the USB plug tunnel.
+- Upper PCB pocket has filleted corners so thread material never cantilevers over the pocket (no internal supports needed).
+
+Uses [`vendor/threads.scad`](vendor/threads.scad) by Ryan Colyer (CC0) for the thread generation.
+
+> **Thread fit:** `lip_thread_tolerance` (default 0.4 mm) sets the clearance between the male and female threads. If the hood binds on your printer, bump it to 0.5 mm; if it's sloppy, drop to 0.3 mm. Re-render base and hood STLs after changing.
+
+To export a single part: set its flag to `true`, all others to `false`, then Render (F6) and export as STL.
+
+### Camera Housing v1 (`housing.scad`) — legacy (bolted)
 
 Complete enclosure for the 25mm UVC camera module with M12 lens. Contains three parts controlled by `RENDER_*` flags:
 
@@ -54,10 +79,13 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 
 | File | Description |
 |------|-------------|
-| `housing_base_selftap.stl` | PCB Base + Dovetail (2.7mm self-tap holes) |
-| `housing_base_bolt.stl` | PCB Base + Dovetail (3.5mm bolt-through holes) |
-| `housing_hood.stl` | Hood + Baffle |
-| `housing_cap.stl` | Dust Cap |
+| `housing_v2_base.stl` | **v2** PCB Base + Thread + Dovetail |
+| `housing_v2_hood.stl` | **v2** Hood + Male Thread + Baffle |
+| `housing_v2_cap.stl`  | **v2** Dust Cap |
+| `housing_base_selftap.stl` | v1 Base (2.7mm self-tap holes) |
+| `housing_base_bolt.stl` | v1 Base (3.5mm bolt-through holes) |
+| `housing_hood.stl` | v1 Hood + Baffle |
+| `housing_cap.stl` | v1 Dust Cap |
 | `lens_adapter.stl` | M12 Lens Adapter |
 | `lock_ring.stl` | M12 Lock Ring |
 
@@ -68,7 +96,14 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 | Layer height | 0.2mm | 0.2mm |
 | Perimeters | 3 | 3 |
 | Infill | 20% | 100% |
-| Supports | None | None |
+| Supports | Base only (see below) | None |
+
+**Base supports.** The hood and cap are support-free, but the base needs slicer supports in two places:
+
+- **USB cutout roof** (v1 and v2) — the top edge of the USB slot is an unsupported span.
+- **Upper edge of the chord-flat** (v2 only) — above `back_flat_y`, the back of the cylinder returns to its full diameter and overhangs the chord-flat below.
+
+Most slicers (Cura, PrusaSlicer, OrcaSlicer, Bambu Studio) will place both automatically with "Supports on build plate only" or tree supports; custom support blockers aren't needed.
 
 ## Building Housing STLs from Source
 
@@ -77,21 +112,29 @@ Requires [OpenSCAD](https://openscad.org/) (command line or GUI).
 ### Command Line
 
 ```bash
-# Base — self-tapping variant
+# v2 (threaded) — recommended
+openscad -o stls/housing_v2_base.stl \
+  -D 'RENDER_BASE=true' -D 'RENDER_HOOD=false' -D 'RENDER_CAP=false' housing_v2.scad
+openscad -o stls/housing_v2_hood.stl \
+  -D 'RENDER_BASE=false' -D 'RENDER_HOOD=true' -D 'RENDER_CAP=false' housing_v2.scad
+openscad -o stls/housing_v2_cap.stl \
+  -D 'RENDER_BASE=false' -D 'RENDER_HOOD=false' -D 'RENDER_CAP=true' housing_v2.scad
+
+# v1 (bolted) — base self-tapping variant
 openscad -o stls/housing_base_selftap.stl \
   -D 'RENDER_BASE=true' -D 'RENDER_HOOD=false' -D 'RENDER_CAP=false' \
   -D 'SELF_TAP_SCREWS=true' housing.scad
 
-# Base — bolt-through variant
+# v1 — base bolt-through variant
 openscad -o stls/housing_base_bolt.stl \
   -D 'RENDER_BASE=true' -D 'RENDER_HOOD=false' -D 'RENDER_CAP=false' \
   -D 'SELF_TAP_SCREWS=false' housing.scad
 
-# Hood + Baffle
+# v1 — Hood + Baffle
 openscad -o stls/housing_hood.stl \
   -D 'RENDER_BASE=false' -D 'RENDER_HOOD=true' -D 'RENDER_CAP=false' housing.scad
 
-# Cap
+# v1 — Cap
 openscad -o stls/housing_cap.stl \
   -D 'RENDER_BASE=false' -D 'RENDER_HOOD=false' -D 'RENDER_CAP=true' housing.scad
 ```
