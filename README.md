@@ -186,13 +186,16 @@ specs/start/           Design specifications
 
 ## 3D-Printable Hardware
 
-The [`hardware/3d_models/`](hardware/3d_models/) directory contains OpenSCAD source and pre-built STLs for the camera housing and accessories. All parts are designed for FDM printing without supports.
+The [`hardware/3d_models/`](hardware/3d_models/) directory contains OpenSCAD source and pre-built STLs for the camera housing and accessories. The hood, cap, and lens accessories print without supports; the base needs localised slicer supports at the USB cutout and (for the threaded variant) the back chord-flat — any modern slicer places these automatically.
 
 | Part | Description |
 |------|-------------|
-| **PCB Base + Dovetail** | Holds the camera PCB with an integrated finder shoe dovetail rail. Two variants: self-tapping screw holes (2.7mm, `housing_base_selftap.stl`) or bolt-through (3.5mm for M3, `housing_base_bolt.stl`). |
-| **Hood + Baffle** | Lens shroud with an integral stepped light baffle that follows the camera's FOV cone to block stray light (`housing_hood.stl`). |
-| **Dust Cap** | Friction-fit cap for the lens opening (`housing_cap.stl`). |
+| **PCB Base + Threaded Lip + Dovetail** (threaded, recommended) | Cylindrical 50 mm shell; internal 44 mm female thread accepts the hood; finder-shoe dovetail (`housing_v2_base.stl`). |
+| **Hood + Male Thread + Baffle** (threaded, recommended) | Matching male thread; stepped flange and baffled lens shroud (`housing_v2_hood.stl`). |
+| **Dust Cap** (threaded) | Friction-fit cap over the hood's narrow end (`housing_v2_cap.stl`). |
+| **PCB Base + Dovetail** (bolted, legacy) | Older design — self-tapping (2.7mm, `housing_base_selftap.stl`) or bolt-through (3.5mm, `housing_base_bolt.stl`). |
+| **Hood + Baffle** (bolted, legacy) | Hood with bolt-plate flange (`housing_hood.stl`). |
+| **Dust Cap** (bolted, legacy) | Original friction-fit cap (`housing_cap.stl`). |
 | **M12 Lock Ring** | Secures the lens at the correct focus position (`lock_ring.stl`). |
 
 Pre-built STLs are in [`hardware/3d_models/stls/`](hardware/3d_models/stls/). See the [3D models README](hardware/3d_models/README.md) for print settings and build instructions.

@@ -34,7 +34,8 @@ use <vendor/threads.scad>
 //     2. Render (F6) and export as STL
 //   To preview the full assembly, set all flags to true and preview (F5).
 //
-// All parts print without supports on any FDM printer.
+// Hood and cap print without supports; the base needs slicer supports
+// at the USB cutout roof and at the upper edge of the chord-flat.
 // Recommended: 0.2mm layer height, 3 perimeters, 20% infill.
 
 
