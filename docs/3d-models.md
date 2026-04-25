@@ -12,7 +12,7 @@ All parts are designed in [OpenSCAD](https://openscad.org/) for FDM printing. Th
 
 ![Threaded housing](assets/3d_model_v2.png)
 
-Complete enclosure for the camera module with M12 lens. Three parts that screw and friction-fit together — no external fasteners needed.
+Complete enclosure for the camera module with M12 lens. Three parts that screw and friction-fit together. No external fasteners needed.
 
 ### PCB Base + Threaded Lip + Dovetail
 
@@ -33,7 +33,7 @@ Friction-fit cap that protects the lens when not in use. Slips over the hood's n
 [:material-download: Download Cap](https://github.com/meridianfield/pushnav/raw/main/hardware/3d_models/stls/housing_v2_cap.stl){ .md-button .md-button--primary }
 
 !!! tip "Thread fit on your printer"
-    The threads are toleranced for typical FDM printers (0.4 mm clearance between male and female). If the hood binds or feels too loose on your printer, edit `lip_thread_tolerance` at the top of [`housing_v2.scad`](https://github.com/meridianfield/pushnav/blob/main/hardware/3d_models/housing_v2.scad) — increase for a looser fit, decrease for tighter — then re-render the base and hood STLs.
+    The threads are toleranced for typical FDM printers (0.4 mm clearance between male and female). If the hood binds or feels too loose on your printer, edit `lip_thread_tolerance` at the top of [`housing_v2.scad`](https://github.com/meridianfield/pushnav/blob/main/hardware/3d_models/housing_v2.scad) (increase for a looser fit, decrease for tighter), then re-render the base and hood STLs.
 
 ---
 
@@ -41,7 +41,7 @@ Friction-fit cap that protects the lens when not in use. Slips over the hood's n
 
 ![Bolted housing](assets/3d_model_v1.png)
 
-Original bolted design — retained for existing builds. Requires four M3 screws to attach the hood to the base.
+Original bolted design, retained for existing builds. Requires four M3 screws to attach the hood to the base.
 
 ### PCB Base + Dovetail Rail
 
@@ -93,10 +93,10 @@ Lock ring that secures the M12 lens at the correct focus position. Features a ta
 !!! note "Base supports"
     The hood and cap are support-free, but the **base** needs slicer supports in two places:
 
-    - **USB cutout roof** (threaded *and* bolted) — the top edge of the USB slot is an unsupported span.
-    - **Upper edge of the chord-flat** (threaded only) — above the flat, the back of the cylinder returns to its full diameter and overhangs the chord below.
+    - **USB cutout roof** (threaded *and* bolted): the top edge of the USB slot is an unsupported span.
+    - **Upper edge of the chord-flat** (threaded only): above the flat, the back of the cylinder returns to its full diameter and overhangs the chord below.
 
-    Enable supports in your slicer (Cura, PrusaSlicer, OrcaSlicer, Bambu Studio) with "Supports on build plate only" or tree supports — both regions are detected automatically.
+    Enable supports in your slicer (Cura, PrusaSlicer, OrcaSlicer, Bambu Studio) with "Supports on build plate only" or tree supports. Both regions are detected automatically.
 
 !!! note
     The lock ring should be printed at 100% infill and 0.12mm layer height for thread strength and a smooth finish. Use opaque filament for the housing to prevent stray light leaking through the walls.
