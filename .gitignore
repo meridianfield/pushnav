@@ -26,3 +26,8 @@ Version
 
 # Claude Code
 .claude/
+
+# React front-end
+web/node_modules/
+web/dist/
+web/.vite/
