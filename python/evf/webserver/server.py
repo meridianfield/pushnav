@@ -32,6 +32,7 @@ from typing import Callable
 from aiohttp import web
 
 from evf.config.manager import ConfigManager
+from evf.engine.frame_buffer import LatestFrame
 from evf.engine.goto_target import GotoTarget
 from evf.engine.navigation import compute_navigation, edge_arrow_position
 from evf.engine.pointing import PointingState
@@ -42,6 +43,9 @@ from evf.paths import sounds_dir, web_dir
 logger = logging.getLogger(__name__)
 
 _MAX_WS_CLIENTS = 10  # cap concurrent WebSocket connections
+_MAX_MJPEG_CLIENTS = 4
+_MJPEG_BOUNDARY = b"frame"
+_MJPEG_INTERVAL = 0.1  # 10 Hz
 
 # Must match window.py constants exactly
 _FOV_H = 8.86   # horizontal FOV in degrees
@@ -109,7 +113,7 @@ class WebServer:
         goto_target: GotoTarget,
         config: ConfigManager,
         *,
-        frame_buffer=None,
+        frame_buffer: LatestFrame | None = None,
         solver_failures: Callable[[], int] | None = None,
         stellarium_object: Callable[[], dict | None] | None = None,
     ) -> None:
@@ -122,6 +126,7 @@ class WebServer:
         self._stellarium_object = stellarium_object
 
         self._clients: set[web.WebSocketResponse] = set()
+        self._mjpeg_clients: int = 0
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
         self._url: str | None = None
@@ -182,10 +187,14 @@ class WebServer:
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", port)
         await site.start()
-        # Capture the actual bound port (matters when port=0 is passed in tests).
-        try:
-            self._port = site._server.sockets[0].getsockname()[1]
-        except Exception:
+        # Capture the actually-bound port only when caller asked for ephemeral.
+        # Reaches into aiohttp internals, so we restrict to the test path.
+        if port == 0:
+            try:
+                self._port = site._server.sockets[0].getsockname()[1]
+            except Exception:
+                self._port = port
+        else:
             self._port = port
         logger.info("Web server listening on port %d", self._port)
 
@@ -196,9 +205,6 @@ class WebServer:
 
     # -- MJPEG frame stream ---------------------------------------------------
 
-    _MJPEG_BOUNDARY = b"frame"
-    _MJPEG_INTERVAL = 0.1  # 10 Hz
-
     async def _handle_mjpeg(self, request: web.Request) -> web.StreamResponse:
         """Multipart MJPEG stream of the latest camera frame.
 
@@ -207,34 +213,41 @@ class WebServer:
         """
         if self._frame_buffer is None:
             return web.Response(status=503, text="No frame buffer")
-        resp = web.StreamResponse(
-            status=200,
-            headers={
-                "Content-Type": (
-                    "multipart/x-mixed-replace; "
-                    f"boundary={self._MJPEG_BOUNDARY.decode()}"
-                ),
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-            },
-        )
-        await resp.prepare(request)
-        last_frame_id = -1
+        if self._mjpeg_clients >= _MAX_MJPEG_CLIENTS:
+            logger.warning("MJPEG client limit reached (%d), rejecting", _MAX_MJPEG_CLIENTS)
+            raise web.HTTPServiceUnavailable(reason="Too many MJPEG clients")
+        self._mjpeg_clients += 1
         try:
-            while True:
-                jpeg, _ts, fid = self._frame_buffer.get()
-                if jpeg is not None and fid != last_frame_id:
-                    last_frame_id = fid
-                    part = (
-                        b"--" + self._MJPEG_BOUNDARY + b"\r\n"
-                        b"Content-Type: image/jpeg\r\n"
-                        b"Content-Length: " + str(len(jpeg)).encode() + b"\r\n\r\n"
-                        + jpeg + b"\r\n"
-                    )
-                    await resp.write(part)
-                await asyncio.sleep(self._MJPEG_INTERVAL)
-        except (asyncio.CancelledError, ConnectionResetError):
-            pass
+            resp = web.StreamResponse(
+                status=200,
+                headers={
+                    "Content-Type": (
+                        "multipart/x-mixed-replace; "
+                        f"boundary={_MJPEG_BOUNDARY.decode()}"
+                    ),
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                },
+            )
+            await resp.prepare(request)
+            last_frame_id = -1
+            try:
+                while True:
+                    jpeg, _ts, fid = self._frame_buffer.get()
+                    if jpeg is not None and fid != last_frame_id:
+                        last_frame_id = fid
+                        part = (
+                            b"--" + _MJPEG_BOUNDARY + b"\r\n"
+                            b"Content-Type: image/jpeg\r\n"
+                            b"Content-Length: " + str(len(jpeg)).encode() + b"\r\n\r\n"
+                            + jpeg + b"\r\n"
+                        )
+                        await resp.write(part)
+                    await asyncio.sleep(_MJPEG_INTERVAL)
+            except (asyncio.CancelledError, ConnectionResetError):
+                pass
+        finally:
+            self._mjpeg_clients -= 1
         return resp
 
     async def _handle_ws(self, request: web.Request) -> web.WebSocketResponse:

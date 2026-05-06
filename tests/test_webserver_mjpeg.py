@@ -67,3 +67,22 @@ async def test_mjpeg_returns_multipart_with_jpeg_part(server):
             # Read first part: should contain a JPEG SOI marker (0xFFD8).
             chunk = await resp.content.read(4096)
             assert b"\xff\xd8" in chunk
+
+
+@pytest.mark.asyncio
+async def test_mjpeg_client_limit(server):
+    """5th concurrent MJPEG stream should be rejected with 503."""
+    import contextlib
+    async with ClientSession() as s:
+        async with contextlib.AsyncExitStack() as stack:
+            # Open 4 streams (the cap)
+            for _ in range(4):
+                resp = await stack.enter_async_context(
+                    s.get(f"http://127.0.0.1:{server._port}/frame.mjpg")
+                )
+                assert resp.status == 200
+                # Read one chunk to ensure the handler is registered as active
+                await resp.content.read(64)
+            # 5th should be rejected
+            async with s.get(f"http://127.0.0.1:{server._port}/frame.mjpg") as resp5:
+                assert resp5.status == 503
