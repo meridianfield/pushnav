@@ -162,6 +162,12 @@ class Engine:
     def clear_goto_target(self) -> None:
         self._goto_target.clear()
 
+    def set_audio_enabled(self, enabled: bool) -> None:
+        self.audio_enabled = enabled
+
+    def set_hidpi(self, enabled: bool) -> None:
+        self._config.hidpi = enabled
+
     @property
     def stellarium_status(self) -> dict | None:
         if self._stellarium:
@@ -313,6 +319,7 @@ class Engine:
                     "webserver": {"url": self.web_url},
                     "audio_enabled": self.audio_enabled,
                 },
+                actions=self,
             )
             self._webserver.start()
         except Exception as exc:

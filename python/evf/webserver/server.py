@@ -27,7 +27,7 @@ import logging
 import math
 import threading
 import time
-from typing import Callable
+from typing import Callable, Protocol
 
 from aiohttp import web
 
@@ -51,6 +51,19 @@ _MJPEG_INTERVAL = 0.1  # 10 Hz
 _FOV_H = 8.86   # horizontal FOV in degrees
 _IMG_W = 1280
 _IMG_H = 720
+
+
+class EngineActions(Protocol):
+    """Action surface the WebServer calls into. Implemented by Engine."""
+
+    def step_advance(self) -> None: ...
+    def sync_retry(self) -> None: ...
+    def set_sync_selected(self, idx: int) -> None: ...
+    def use_previous_calibration(self) -> None: ...
+    def set_control(self, name: str, value: int) -> None: ...
+    def clear_goto_target(self) -> None: ...
+    def set_audio_enabled(self, enabled: bool) -> None: ...
+    def set_hidpi(self, enabled: bool) -> None: ...
 
 
 def _compute_origin(config: ConfigManager) -> tuple[float, float]:
@@ -119,6 +132,7 @@ class WebServer:
         camera_controls: Callable[[], list[dict] | None] | None = None,
         sync_state: Callable[[], dict] | None = None,
         activity: Callable[[], dict] | None = None,
+        actions: "EngineActions | None" = None,
     ) -> None:
         self._pointing = pointing
         self._state_machine = state_machine
@@ -130,6 +144,7 @@ class WebServer:
         self._camera_controls = camera_controls
         self._sync_state = sync_state
         self._activity = activity
+        self._actions = actions
 
         self._clients: set[web.WebSocketResponse] = set()
         self._mjpeg_clients: int = 0
@@ -186,6 +201,13 @@ class WebServer:
         app.router.add_get("/", self._handle_index)
         app.router.add_get("/ws", self._handle_ws)
         app.router.add_get("/frame.mjpg", self._handle_mjpeg)
+        app.router.add_post("/api/wizard/advance", self._api_wizard_advance)
+        app.router.add_post("/api/sync/retry", self._api_sync_retry)
+        app.router.add_post("/api/sync/select", self._api_sync_select)
+        app.router.add_post("/api/calibration/use-previous", self._api_use_previous_calibration)
+        app.router.add_post("/api/control", self._api_set_control)
+        app.router.add_post("/api/goto/clear", self._api_goto_clear)
+        app.router.add_post("/api/settings", self._api_settings)
         app.router.add_static("/sounds", sounds_dir(), name="sounds")
         app.router.add_static("/assets", web_dir(), name="assets")
 
@@ -296,6 +318,50 @@ class WebServer:
                 except Exception:
                     dead.add(ws)
             self._clients -= dead
+
+    # -- API actions ----------------------------------------------------------
+
+    async def _handle_api(self, request: web.Request, fn) -> web.Response:
+        """Run a synchronous engine action and return 204."""
+        if self._actions is None:
+            return web.Response(status=503, text="No actions wired")
+        try:
+            await asyncio.get_event_loop().run_in_executor(None, fn)
+        except Exception as exc:
+            logger.exception("API action failed: %s", exc)
+            return web.Response(status=500, text=str(exc))
+        return web.Response(status=204)
+
+    async def _api_wizard_advance(self, request):
+        return await self._handle_api(request, self._actions.step_advance)
+
+    async def _api_sync_retry(self, request):
+        return await self._handle_api(request, self._actions.sync_retry)
+
+    async def _api_sync_select(self, request):
+        body = await request.json()
+        idx = int(body["idx"])
+        return await self._handle_api(request, lambda: self._actions.set_sync_selected(idx))
+
+    async def _api_use_previous_calibration(self, request):
+        return await self._handle_api(request, self._actions.use_previous_calibration)
+
+    async def _api_set_control(self, request):
+        body = await request.json()
+        name = str(body["name"])
+        value = int(body["value"])
+        return await self._handle_api(request, lambda: self._actions.set_control(name, value))
+
+    async def _api_goto_clear(self, request):
+        return await self._handle_api(request, self._actions.clear_goto_target)
+
+    async def _api_settings(self, request):
+        body = await request.json()
+        if "audio_enabled" in body:
+            await self._handle_api(request, lambda: self._actions.set_audio_enabled(bool(body["audio_enabled"])))
+        if "hidpi" in body:
+            await self._handle_api(request, lambda: self._actions.set_hidpi(bool(body["hidpi"])))
+        return web.Response(status=204)
 
     # -- payload --------------------------------------------------------------
 
