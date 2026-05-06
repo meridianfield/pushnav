@@ -18,6 +18,7 @@ dependencies = [
 dev = [
     "nuitka>=4.0.2",
     "pytest",
+    "pytest-asyncio>=0.23",
 ]
 docs = [
     "mkdocs-material>=9.5",
@@ -32,3 +33,6 @@ packages = ["python/evf"]
 
 [tool.uv.sources]
 tetra3 = { path = "python/vendor/tetra3", editable = true }
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

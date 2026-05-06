@@ -109,6 +109,7 @@ class WebServer:
         goto_target: GotoTarget,
         config: ConfigManager,
         *,
+        frame_buffer=None,
         solver_failures: Callable[[], int] | None = None,
         stellarium_object: Callable[[], dict | None] | None = None,
     ) -> None:
@@ -116,6 +117,7 @@ class WebServer:
         self._state_machine = state_machine
         self._goto_target = goto_target
         self._config = config
+        self._frame_buffer = frame_buffer
         self._solver_failures = solver_failures
         self._stellarium_object = stellarium_object
 
@@ -123,6 +125,7 @@ class WebServer:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
         self._url: str | None = None
+        self._port: int | None = None  # actual bound port (for tests on ephemeral port)
 
     # -- lifecycle ------------------------------------------------------------
 
@@ -171,6 +174,7 @@ class WebServer:
         app = web.Application(middlewares=[_security_headers_middleware])
         app.router.add_get("/", self._handle_index)
         app.router.add_get("/ws", self._handle_ws)
+        app.router.add_get("/frame.mjpg", self._handle_mjpeg)
         app.router.add_static("/sounds", sounds_dir(), name="sounds")
         app.router.add_static("/assets", web_dir(), name="assets")
 
@@ -178,12 +182,60 @@ class WebServer:
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", port)
         await site.start()
-        logger.info("Web server listening on port %d", port)
+        # Capture the actual bound port (matters when port=0 is passed in tests).
+        try:
+            self._port = site._server.sockets[0].getsockname()[1]
+        except Exception:
+            self._port = port
+        logger.info("Web server listening on port %d", self._port)
 
         await self._broadcast_loop()
 
     async def _handle_index(self, request: web.Request) -> web.FileResponse:
         return web.FileResponse(web_dir() / "index.html")
+
+    # -- MJPEG frame stream ---------------------------------------------------
+
+    _MJPEG_BOUNDARY = b"frame"
+    _MJPEG_INTERVAL = 0.1  # 10 Hz
+
+    async def _handle_mjpeg(self, request: web.Request) -> web.StreamResponse:
+        """Multipart MJPEG stream of the latest camera frame.
+
+        Browsers and OS webviews render multipart/x-mixed-replace natively in
+        an <img> tag, so the React UI does not need any JS-side JPEG decoding.
+        """
+        if self._frame_buffer is None:
+            return web.Response(status=503, text="No frame buffer")
+        resp = web.StreamResponse(
+            status=200,
+            headers={
+                "Content-Type": (
+                    "multipart/x-mixed-replace; "
+                    f"boundary={self._MJPEG_BOUNDARY.decode()}"
+                ),
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+            },
+        )
+        await resp.prepare(request)
+        last_frame_id = -1
+        try:
+            while True:
+                jpeg, _ts, fid = self._frame_buffer.get()
+                if jpeg is not None and fid != last_frame_id:
+                    last_frame_id = fid
+                    part = (
+                        b"--" + self._MJPEG_BOUNDARY + b"\r\n"
+                        b"Content-Type: image/jpeg\r\n"
+                        b"Content-Length: " + str(len(jpeg)).encode() + b"\r\n\r\n"
+                        + jpeg + b"\r\n"
+                    )
+                    await resp.write(part)
+                await asyncio.sleep(self._MJPEG_INTERVAL)
+        except (asyncio.CancelledError, ConnectionResetError):
+            pass
+        return resp
 
     async def _handle_ws(self, request: web.Request) -> web.WebSocketResponse:
         # Reject if connection cap reached

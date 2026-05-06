@@ -286,6 +286,7 @@ class Engine:
                 self._state_machine,
                 self._goto_target,
                 self._config,
+                frame_buffer=self._frame_buffer,
                 stellarium_object=lambda: self.stellarium_object,
             )
             self._webserver.start()
