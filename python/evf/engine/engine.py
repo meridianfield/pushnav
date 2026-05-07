@@ -299,7 +299,8 @@ class Engine:
                     "in_progress": self.sync_in_progress,
                     "candidates": [
                         {"idx": i, "name": f"Star #{i + 1}",
-                         "ra_deg": c.ra, "dec_deg": c.dec, "magnitude": c.mag}
+                         "ra_deg": c.ra, "dec_deg": c.dec, "magnitude": c.mag,
+                         "pixel_x": c.x, "pixel_y": c.y}
                         for i, c in enumerate(self.sync_candidates or [])
                     ],
                     "selected_idx": self.sync_selected_idx,

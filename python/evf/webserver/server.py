@@ -428,6 +428,8 @@ class WebServer:
             "image_h": _IMG_H,
             "finder_rotation": self._config.finder_rotation,
             "fov_h_deg": _FOV_H,
+            "has_calibration": self._config.has_calibration,
+            "image_size": list(snap.image_size) if snap.valid and snap.image_size else None,
             "controls": controls or [],
             "sync": sync_blk,
             "stellarium": activity_blk.get("stellarium", {"active": False, "address": None}),
