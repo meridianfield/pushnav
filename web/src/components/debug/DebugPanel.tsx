@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
@@ -10,8 +10,25 @@ interface Props {
   state: EnginePayload;
 }
 
+// Optimistic-local marker for the sample the user just clicked, so rapid
+// re-clicks don't read stale `state.sample_active` from the WS payload
+// (which lags ~100ms behind a click). `undefined` = follow server state.
+type Pending = string | null | undefined;
+
 export function DebugPanel({ state }: Props) {
   const [captureMsg, setCaptureMsg] = useState<string>("");
+  const [pending, setPending] = useState<Pending>(undefined);
+
+  // The truth source for what's active: optimistic if set, otherwise server.
+  const activeSample =
+    pending !== undefined ? pending : state.sample_active;
+
+  // Once the server agrees with our optimistic value, drop it.
+  useEffect(() => {
+    if (pending !== undefined && state.sample_active === pending) {
+      setPending(undefined);
+    }
+  }, [state.sample_active, pending]);
 
   async function onCapture() {
     try {
@@ -24,8 +41,12 @@ export function DebugPanel({ state }: Props) {
   }
 
   function toggleSample(name: string) {
-    const next = state.sample_active === name ? null : name;
-    api.dev.injectSample(next).catch(console.error);
+    const next = activeSample === name ? null : name;
+    setPending(next);
+    api.dev.injectSample(next).catch((e) => {
+      console.error(e);
+      setPending(undefined); // server didn't accept — fall back to its truth
+    });
   }
 
   return (
@@ -58,7 +79,7 @@ export function DebugPanel({ state }: Props) {
           </div>
           <div className="space-y-1">
             {SAMPLES.map((n) => {
-              const active = state.sample_active === n;
+              const active = activeSample === n;
               return (
                 <Button
                   key={n}
