@@ -3,6 +3,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Radix data-orientation / data-state variants used by shadcn primitives.
+   Tailwind v4 doesn't ship these out of the box, and the shadcn CLI
+   doesn't register them — so utilities like `data-horizontal:h-1` on
+   <Slider>/<ScrollArea>/<Separator>/<Tabs> would otherwise resolve to
+   nothing and the components render with zero-height tracks. */
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical   (&[data-orientation="vertical"]);
+@custom-variant data-disabled   (&[data-disabled]);
+@custom-variant data-active     (&[data-state="active"]);
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -120,5 +130,3 @@
   }
 }
 
-/* Always render in shadcn dark mode (toggled via .dark class on <html> in main.tsx) */
-html { color-scheme: dark; }
