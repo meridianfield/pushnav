@@ -20,12 +20,22 @@ const base: EnginePayload = {
 describe("Wizard", () => {
   it("renders the setup step in SETUP state", () => {
     render(<Wizard state={{ ...base, state: "SETUP" }} />);
-    expect(screen.getByRole("button", { name: /begin sync/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Make sure you can see stars/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^next$/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders the sync step in SYNC state", () => {
     render(<Wizard state={{ ...base, state: "SYNC" }} />);
-    expect(screen.getByRole("button", { name: /solve frame/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Pick any bright star/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^next$/i }),
+    ).toBeInTheDocument();
   });
 
   it("renders LOCK badge when tracking is valid", () => {
