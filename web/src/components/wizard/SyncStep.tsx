@@ -12,16 +12,14 @@ export function SyncStep({ state }: { state: EnginePayload }) {
         <CardDescription>
           Pick any bright star you can see in the sky. It doesn't matter
           which one. You don't need to know its name. Sirius, Vega,
-          Betelgeuse, or just "that bright one over there" will do.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Center that star in your eyepiece as accurately as you can. Use a
+          Betelgeuse, or just "that bright one over there" will do. Center
+          that star in your eyepiece as accurately as you can. Use a
           higher-magnification eyepiece for better accuracy. The more
           centered it is, the more accurate your push-to guidance will be
           for the rest of the session.
-        </p>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
         {state.sync.error && (
           <Alert variant="destructive">
             <AlertDescription>{state.sync.error}</AlertDescription>
