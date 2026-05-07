@@ -12,6 +12,8 @@
 @custom-variant data-vertical   (&[data-orientation="vertical"]);
 @custom-variant data-disabled   (&[data-disabled]);
 @custom-variant data-active     (&[data-state="active"]);
+@custom-variant data-checked    (&[data-state="checked"]);
+@custom-variant data-unchecked  (&[data-state="unchecked"]);
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);

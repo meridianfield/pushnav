@@ -25,7 +25,7 @@ function useLocalStorageBool(key: string, defaultValue: boolean) {
 
 export default function App() {
   const state = useEngineState();
-  const [showStars, setShowStars] = useLocalStorageBool("pushnav.show_stars", true);
+  const [showStars, setShowStars] = useLocalStorageBool("pushnav.show_stars", false);
 
   return (
     <>
