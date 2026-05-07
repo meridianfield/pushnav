@@ -60,7 +60,7 @@ export function TrackingStep({ state }: { state: EnginePayload }) {
         </div>
         <CardDescription>
           {p.valid
-            ? `RA ${p.ra_deg.toFixed(2)}° / Dec ${p.dec_deg.toFixed(2)}° / age ${p.solve_age_s}s`
+            ? `RA ${p.ra_deg.toFixed(2)}° / Dec ${p.dec_deg.toFixed(2)}° / age ${(p.solve_age_s ?? 0).toFixed(1)}s`
             : "Acquiring stars…"}
         </CardDescription>
       </CardHeader>
