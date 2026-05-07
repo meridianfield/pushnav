@@ -39,7 +39,7 @@ export function PlateSolveStats({ state }: Props) {
         <div className="pt-1 border-t border-border" />
         <div>Matches: <span className="text-muted-foreground">{p.valid ? p.matches : "--"}</span></div>
         <div>Prob: <span className="text-muted-foreground">{p.valid ? p.prob.toExponential(1) : "--"}</span></div>
-        <div>Last solve: <span className="text-muted-foreground">{p.solve_age_s !== null ? `${p.solve_age_s}s ago` : "--"}</span></div>
+        <div>Last solve: <span className="text-muted-foreground">{p.solve_age_s !== null ? `${p.solve_age_s.toFixed(1)}s ago` : "--"}</span></div>
         <div>Failures: <span className="text-muted-foreground">{state.failures}</span></div>
       </CardContent>
     </Card>
