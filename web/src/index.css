@@ -120,30 +120,5 @@
   }
 }
 
-/* PushNav astronomy theme — dark with red-orange accents to preserve night vision */
-:root,
-.dark {
-  --background: oklch(0.08 0 0);          /* near-black */
-  --foreground: oklch(0.78 0.08 22);      /* dim red text */
-  --card: oklch(0.12 0.005 0);
-  --card-foreground: oklch(0.85 0.10 22);
-  --popover: oklch(0.10 0 0);
-  --popover-foreground: oklch(0.85 0.10 22);
-  --primary: oklch(0.62 0.18 22);         /* #FF4646 ish — bright red */
-  --primary-foreground: oklch(0.10 0 0);
-  --secondary: oklch(0.18 0.015 22);
-  --secondary-foreground: oklch(0.78 0.08 22);
-  --muted: oklch(0.15 0.005 22);
-  --muted-foreground: oklch(0.55 0.06 22);
-  --accent: oklch(0.20 0.02 22);
-  --accent-foreground: oklch(0.85 0.10 22);
-  --destructive: oklch(0.65 0.22 22);
-  --destructive-foreground: oklch(0.10 0 0);  /* near-black on bright red */
-  --border: oklch(0.25 0.04 22);
-  --input: oklch(0.18 0.02 22);
-  --ring: oklch(0.55 0.15 22);
-}
-
-/* Always render in dark mode */
+/* Always render in shadcn dark mode (toggled via .dark class on <html> in main.tsx) */
 html { color-scheme: dark; }
-body { background: var(--background); color: var(--foreground); }
