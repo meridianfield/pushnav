@@ -59,7 +59,13 @@ function StatColumn({
   );
 }
 
-function HeaderStats({ state }: { state: EnginePayload }) {
+function HeaderStats({
+  state,
+  className,
+}: {
+  state: EnginePayload;
+  className?: string;
+}) {
   if (!TRACKING_STATES.includes(state.state)) return null;
   const p = state.pointing;
   const ra = p.valid ? formatRa(p.ra_deg) : "--";
@@ -71,7 +77,7 @@ function HeaderStats({ state }: { state: EnginePayload }) {
     p.solve_age_s !== null ? `${p.solve_age_s.toFixed(1)}s` : "--";
 
   return (
-    <div className="flex items-stretch gap-4">
+    <div className={cn("flex items-stretch gap-4", className)}>
       <StatColumn>
         <Stat label="RA" value={ra} />
         <Stat label="Dec" value={dec} />
@@ -91,29 +97,37 @@ function HeaderStats({ state }: { state: EnginePayload }) {
 
 export function StateHeader({ state }: Props) {
   return (
-    <div className="flex items-center justify-between gap-4 pb-3 border-b border-border">
-      <img
-        src={`${import.meta.env.BASE_URL}inapp-title.png`}
-        alt="PushNav"
-        className="h-8 w-auto"
-      />
-      <div className="flex items-center gap-4">
-        <HeaderStats state={state} />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() =>
-            api.setSettings({ audio_enabled: !state.audio_enabled })
-          }
-          title={state.audio_enabled ? "Mute audio" : "Unmute audio"}
-        >
-          {state.audio_enabled ? (
-            <Volume2 className="w-4 h-4" />
-          ) : (
-            <VolumeX className="w-4 h-4" />
-          )}
-        </Button>
+    <>
+      {/* Top header: logo + (inline stats at lg+) + audio toggle */}
+      <div className="flex items-center justify-between gap-4 pb-3 border-b border-border">
+        <img
+          src={`${import.meta.env.BASE_URL}inapp-title.png`}
+          alt="PushNav"
+          className="h-8 w-auto"
+        />
+        <div className="flex items-center gap-4">
+          <HeaderStats state={state} className="hidden lg:flex" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() =>
+              api.setSettings({ audio_enabled: !state.audio_enabled })
+            }
+            title={state.audio_enabled ? "Mute audio" : "Unmute audio"}
+          >
+            {state.audio_enabled ? (
+              <Volume2 className="w-4 h-4" />
+            ) : (
+              <VolumeX className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
       </div>
-    </div>
+      {/* Stats island: shown below the header at < lg */}
+      <HeaderStats
+        state={state}
+        className="lg:hidden justify-end mt-3 pb-3 border-b border-border"
+      />
+    </>
   );
 }
