@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import { QRCodeSVG } from "qrcode.react";
 import { ActivityDot } from "@/components/ActivityDot";
 import { api } from "@/lib/api";
@@ -63,30 +64,30 @@ export function Settings({ state, showStars, setShowStars }: Props) {
         <div>
           <div className="text-sm font-medium mb-2 text-primary">Advanced solver</div>
           <Row label="Min matches">
-            <input
+            <Input
               type="number"
               min={3}
               max={50}
               step={1}
               defaultValue={state.min_matches}
               key={`min-${state.min_matches}`}
-              className="w-20 bg-input text-foreground rounded px-2 py-1 text-sm border border-border"
+              className="w-20 h-8"
               onBlur={(e) =>
-                api.setAdvanced({ min_matches: Number(e.target.value) })
+                api.setAdvanced({ min_matches: Number(e.currentTarget.value) })
               }
             />
           </Row>
           <Row label="Max prob">
-            <input
+            <Input
               type="number"
               min={0}
               max={1}
               step={0.01}
               defaultValue={state.max_prob}
               key={`max-${state.max_prob}`}
-              className="w-20 bg-input text-foreground rounded px-2 py-1 text-sm border border-border"
+              className="w-20 h-8"
               onBlur={(e) =>
-                api.setAdvanced({ max_prob: Number(e.target.value) })
+                api.setAdvanced({ max_prob: Number(e.currentTarget.value) })
               }
             />
           </Row>

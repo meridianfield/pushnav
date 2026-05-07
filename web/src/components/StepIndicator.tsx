@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import type { EnginePayload, EngineState } from "@/lib/types";
 
 const STEPS: { num: number; label: string; states: EngineState[] }[] = [
@@ -16,13 +17,13 @@ export function StepIndicator({ state }: { state: EnginePayload }) {
         return (
           <div
             key={step.num}
-            className={[
+            className={cn(
               "px-2 py-2 text-center border border-border",
-              i > 0 ? "border-l-0" : "",
+              i > 0 && "border-l-0",
               active
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground",
-            ].join(" ")}
+            )}
           >
             <span className="font-mono mr-1.5">{step.num}</span>
             {step.label}

@@ -1,4 +1,10 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { EnginePayload } from "@/lib/types";
 
 interface Props { state: EnginePayload | null }
@@ -8,8 +14,10 @@ export function Splash({ state }: Props) {
     return (
       <Dialog open>
         <DialogContent>
-          <DialogHeader><DialogTitle>Connecting…</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Waiting for engine.</p>
+          <DialogHeader>
+            <DialogTitle>Connecting…</DialogTitle>
+            <DialogDescription>Waiting for engine.</DialogDescription>
+          </DialogHeader>
         </DialogContent>
       </Dialog>
     );
@@ -18,8 +26,12 @@ export function Splash({ state }: Props) {
     return (
       <Dialog open>
         <DialogContent>
-          <DialogHeader><DialogTitle>Camera not found</DialogTitle></DialogHeader>
-          <p className="text-sm">Plug in the USB camera and restart PushNav.</p>
+          <DialogHeader>
+            <DialogTitle>Camera not found</DialogTitle>
+            <DialogDescription>
+              Plug in the USB camera and restart PushNav.
+            </DialogDescription>
+          </DialogHeader>
         </DialogContent>
       </Dialog>
     );

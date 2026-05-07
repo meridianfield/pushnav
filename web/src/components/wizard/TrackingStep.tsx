@@ -24,6 +24,28 @@ function mountDeltas(
   return { right, up };
 }
 
+function MountDeltaLine({ state }: { state: EnginePayload }) {
+  const p = state.pointing;
+  const nav = state.nav;
+  if (!nav || nav.pixel_x === null || nav.pixel_y === null || !p.valid) {
+    return null;
+  }
+  const m = mountDeltas(
+    nav.pixel_x, nav.pixel_y,
+    state.origin_x, state.origin_y,
+    state.fov_h_deg, state.image_w, state.finder_rotation,
+  );
+  const rightLabel = m.right >= 0 ? "Right" : "Left";
+  const upLabel = m.up >= 0 ? "Up" : "Down";
+  return (
+    <div className="text-xs font-mono text-muted-foreground">
+      Dist: {nav.separation_deg?.toFixed(2)}°
+      {" · "}{rightLabel} {Math.abs(m.right).toFixed(2)}°
+      {" · "}{upLabel} {Math.abs(m.up).toFixed(2)}°
+    </div>
+  );
+}
+
 export function TrackingStep({ state }: { state: EnginePayload }) {
   const p = state.pointing;
   const nav = state.nav;
@@ -51,22 +73,7 @@ export function TrackingStep({ state }: { state: EnginePayload }) {
                 Clear
               </Button>
             </div>
-            {nav.pixel_x !== null && nav.pixel_y !== null && p.valid && (() => {
-              const m = mountDeltas(
-                nav.pixel_x, nav.pixel_y,
-                state.origin_x, state.origin_y,
-                state.fov_h_deg, state.image_w, state.finder_rotation,
-              );
-              const rightLabel = m.right >= 0 ? "Right" : "Left";
-              const upLabel = m.up >= 0 ? "Up" : "Down";
-              return (
-                <div className="text-xs font-mono text-muted-foreground">
-                  Dist: {nav.separation_deg?.toFixed(2)}°
-                  {" · "}{rightLabel} {Math.abs(m.right).toFixed(2)}°
-                  {" · "}{upLabel} {Math.abs(m.up).toFixed(2)}°
-                </div>
-              );
-            })()}
+            <MountDeltaLine state={state} />
             {(!nav.in_fov || !p.valid) && nav.separation_deg !== null && (
               <div className="text-xs font-mono text-muted-foreground">
                 {nav.direction_text} · {nav.separation_deg.toFixed(2)}°
