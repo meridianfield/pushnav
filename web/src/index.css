@@ -136,24 +136,24 @@
    stay subtle and bright text reads clearly red.
    MUST live AFTER the stock .dark block — same specificity, last wins. */
 .dark {
-  --background:             oklch(0.12  0.06 18);
-  --foreground:             oklch(0.62  0.26 18);
-  --card:                   oklch(0.18  0.10 18);
-  --card-foreground:        oklch(0.62  0.26 18);
-  --popover:                oklch(0.18  0.10 18);
-  --popover-foreground:     oklch(0.62  0.26 18);
-  --primary:                oklch(0.70  0.24 18);
-  --primary-foreground:     oklch(0.12  0.06 18);
-  --secondary:              oklch(0.28  0.16 18);
-  --secondary-foreground:   oklch(0.62  0.26 18);
-  --muted:                  oklch(0.25  0.14 18);
-  --muted-foreground:       oklch(0.50  0.22 18);
-  --accent:                 oklch(0.35  0.20 18);
-  --accent-foreground:      oklch(0.62  0.26 18);
-  --destructive:            oklch(0.70  0.24 18);
-  --destructive-foreground: oklch(0.12  0.06 18);
-  --border:                 oklch(0.50  0.22 25 / 35%);
-  --input:                  oklch(0.40  0.20 25 / 25%);
-  --ring:                   oklch(0.70  0.24 18);
+  --background:             oklch(0.10  0.06 22);
+  --foreground:             oklch(0.50  0.22 22);
+  --card:                   oklch(0.16  0.10 22);
+  --card-foreground:        oklch(0.50  0.22 22);
+  --popover:                oklch(0.16  0.10 22);
+  --popover-foreground:     oklch(0.50  0.22 22);
+  --primary:                oklch(0.55  0.24 22);
+  --primary-foreground:     oklch(0.96  0.04 22);
+  --secondary:              oklch(0.24  0.14 22);
+  --secondary-foreground:   oklch(0.50  0.22 22);
+  --muted:                  oklch(0.22  0.12 22);
+  --muted-foreground:       oklch(0.42  0.20 22);
+  --accent:                 oklch(0.32  0.18 22);
+  --accent-foreground:      oklch(0.50  0.22 22);
+  --destructive:            oklch(0.55  0.24 22);
+  --destructive-foreground: oklch(0.96  0.04 22);
+  --border:                 oklch(0.45  0.20 22 / 35%);
+  --input:                  oklch(0.35  0.18 22 / 25%);
+  --ring:                   oklch(0.55  0.24 22);
 }
 
