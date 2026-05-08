@@ -183,6 +183,42 @@ class Engine:
     def set_hidpi(self, enabled: bool) -> None:
         self._config.hidpi = enabled
 
+    @property
+    def location(self) -> dict:
+        """Resolve the active observer location.
+
+        Priority:
+          1. Stellarium status 'location' field, when a Stellarium client is
+             actively reporting one (source='stellarium').
+          2. ConfigManager.location, when manually set (source='manual').
+          3. None — neither available (source=None, lat/lon both None).
+        """
+        if self._stellarium is not None:
+            status = self._stellarium.stellarium_status
+            if status:
+                loc = status.get("location") if isinstance(status, dict) else None
+                if loc and loc.get("latitude") is not None and loc.get("longitude") is not None:
+                    return {
+                        "latitude": float(loc["latitude"]),
+                        "longitude": float(loc["longitude"]),
+                        "source": "stellarium",
+                    }
+        manual = self._config.location
+        if manual is not None:
+            return {
+                "latitude": manual[0],
+                "longitude": manual[1],
+                "source": "manual",
+            }
+        return {"latitude": None, "longitude": None, "source": None}
+
+    def set_location(self, latitude: float | None, longitude: float | None) -> None:
+        """Persist a manual location. Pass (None, None) to clear."""
+        if latitude is None or longitude is None:
+            self._config.location = None
+        else:
+            self._config.location = (float(latitude), float(longitude))
+
     def inject_sample(self, name: str | None) -> None:
         """Start/stop continuous injection of a sample image (dev only).
 
