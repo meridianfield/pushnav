@@ -19,7 +19,7 @@ export function Settings({ state, showStars, setShowStars }: Props) {
       <CardHeader>
         <CardTitle className="text-primary">Settings</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2">
         <Row label="Show detected stars">
           <Switch
             checked={showStars}
@@ -99,7 +99,7 @@ export function Settings({ state, showStars, setShowStars }: Props) {
 
 function Row({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-1">
+    <div className="flex items-center justify-between">
       <span className="text-sm">{label}</span>
       {children}
     </div>
