@@ -43,7 +43,14 @@ export default function App() {
               <div className="md:col-span-2 flex flex-col gap-2">
                 <LiveView state={state} showStars={showStars} />
                 <StepIndicator state={state} />
-                <Wizard state={state} />
+                {/* Wizard fills the remaining column height so its bottom
+                    aligns with the right column's Settings card. The
+                    [&>*]:flex-1 selector targets Wizard's direct DOM child
+                    (the Card emitted by whichever step renders) and makes
+                    it flex-1 within this growing wrapper. */}
+                <div className="flex-1 flex flex-col [&>*]:flex-1">
+                  <Wizard state={state} />
+                </div>
               </div>
               <div className="flex flex-col gap-2">
                 <CameraControls controls={state.controls} />
