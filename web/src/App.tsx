@@ -4,6 +4,7 @@ import { LiveView } from "@/components/live-view/LiveView";
 import { CameraControls } from "@/components/controls/CameraControls";
 import { Wizard } from "@/components/wizard/Wizard";
 import { Settings } from "@/components/settings/Settings";
+import { Connectivity } from "@/components/settings/Connectivity";
 import { Splash } from "@/components/splash/Splash";
 import { ErrorModal } from "@/components/ErrorModal";
 import { StateHeader } from "@/components/StateHeader";
@@ -42,6 +43,7 @@ export default function App() {
             </div>
             <div className="space-y-2">
               <CameraControls controls={state.controls} />
+              <Connectivity state={state} />
               <Settings
                 state={state}
                 showStars={showStars}
