@@ -25,11 +25,16 @@ export function AxesOverlay({ state }: Props) {
   const halfDiag = Math.sqrt(state.image_w ** 2 + state.image_h ** 2) / 2;
   const labelDist = 200;
 
+  // SVG (CW) rotation needed so each label's baseline runs along the axis
+  // it sits on. UP/DOWN sit on the mount-right axis at angle finder_rotation;
+  // RIGHT/LEFT sit on the mount-up axis (perpendicular, finder_rotation - 90).
+  const upDownRot = state.finder_rotation;
+  const leftRightRot = state.finder_rotation - 90;
   const labels = [
-    { text: "UP",    x: cx - rightDx * labelDist, y: cy - rightDy * labelDist },
-    { text: "DOWN",  x: cx + rightDx * labelDist, y: cy + rightDy * labelDist },
-    { text: "RIGHT", x: cx + upDx * labelDist,    y: cy + upDy * labelDist },
-    { text: "LEFT",  x: cx - upDx * labelDist,    y: cy - upDy * labelDist },
+    { text: "UP",    x: cx - rightDx * labelDist, y: cy - rightDy * labelDist, rot: upDownRot },
+    { text: "DOWN",  x: cx + rightDx * labelDist, y: cy + rightDy * labelDist, rot: upDownRot },
+    { text: "RIGHT", x: cx + upDx * labelDist,    y: cy + upDy * labelDist,    rot: leftRightRot },
+    { text: "LEFT",  x: cx - upDx * labelDist,    y: cy - upDy * labelDist,    rot: leftRightRot },
   ];
 
   return (
@@ -52,6 +57,7 @@ export function AxesOverlay({ state }: Props) {
           key={l.text}
           x={l.x}
           y={l.y}
+          transform={`rotate(${l.rot} ${l.x} ${l.y})`}
           textAnchor="middle"
           dominantBaseline="middle"
           fontSize={24}
