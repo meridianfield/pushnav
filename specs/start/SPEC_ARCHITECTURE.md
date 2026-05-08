@@ -23,14 +23,17 @@ Supports Future Headless Mode
 ```
 ┌───────────────────────────────────────────────┐
 │                 UI Layer                      │
-│          (DearPyGui Main Thread)              │
+│       (pywebview window — OS webview)         │
 │                                               │
-│  - Live view rendering                        │
+│  - React UI loaded from http://localhost:8080 │
+│    (prod) or http://localhost:5000 (dev,      │
+│    Vite HMR)                                  │
 │  - Step wizard (Camera → Sync → Roll → Track) │
-│  - Exposure/Gain controls                     │
-│  - Navigation guidance overlay                │
-│  - Star overlay (detected + matched)          │
-│  - Status display                             │
+│  - Live view via /frame.mjpg + SVG overlays   │
+│  - Exposure/Gain control sliders              │
+│  - Navigation guidance + star overlay         │
+│  - Subscribes to /ws for state                │
+│  - POSTs to /api/* for actions                │
 └───────────────────────────────────────────────┘
                      │
                      ▼
@@ -68,12 +71,12 @@ Supports Future Headless Mode
 
 ```
 Main Python Process
-    ├── UI Thread (Main Thread)
+    ├── Main Thread (pywebview event loop — hosts the React UI)
     ├── Solver Thread
     ├── Stellarium Thread
     ├── LX200 Thread
     ├── Web Server Thread (aiohttp event loop)
-    └── Camera TCP Client (non-blocking in UI thread)
+    └── Camera TCP Client (non-blocking, owned by the engine)
 
 Camera Subprocess (separate OS process)
     └── Platform-native TCP server
@@ -85,65 +88,24 @@ Camera Subprocess (separate OS process)
 
 ## 4.1 UI Thread
 
-Responsibilities:
+Main thread runs the pywebview event loop. The OS webview renders the
+React UI which:
 
-- Step wizard (Camera → Sync → Roll → Track)
-- Receive frames from the camera client (owned by SubprocessManager)
-- Store latest JPEG (protected by Lock)
-- Decode JPEG → RGB texture for display
-- Display solver status, navigation guidance, star overlays
-- Modify exposure/gain
-- Never call tetra3
+- Subscribes to `/ws` over WebSocket for state (~10 Hz)
+- Displays `/frame.mjpg` as a continuous MJPEG stream in an `<img>` tag
+- Renders star overlays, navigation guidance, and the wizard via SVG
+- POSTs to `/api/*` for actions (wizard advance, sync select, control set,
+  settings, dev injection)
 
-Must remain responsive at all times.
-
-### DearPyGui Live Texture Update Pattern
-
-DearPyGui requires textures as flat float32 arrays with RGBA values in [0.0, 1.0].
-
-Setup (once at startup):
-
-    import dearpygui.dearpygui as dpg
-    import numpy as np
-
-    WIDTH, HEIGHT = 1280, 720
-    CHANNELS = 4  # RGBA
-
-    # Create initial blank texture data
-    initial_data = [0.0] * (WIDTH * HEIGHT * CHANNELS)
-
-    with dpg.texture_registry():
-        texture_id = dpg.add_raw_texture(
-            width=WIDTH, height=HEIGHT,
-            default_value=initial_data,
-            format=dpg.mvFormat_Float_rgba,
-        )
-
-    # Display in window
-    with dpg.window(label="Live View"):
-        dpg.add_image(texture_id)
-
-Per-frame update (called from render loop callback):
-
-    from PIL import Image
-    import io
-
-    def update_texture(jpeg_bytes: bytes):
-        img = Image.open(io.BytesIO(jpeg_bytes)).convert("RGB")
-        img = img.resize((WIDTH, HEIGHT))
-
-        # Convert to float32 RGBA, normalized to [0.0, 1.0]
-        rgb = np.array(img, dtype=np.float32) / 255.0
-        alpha = np.ones((*rgb.shape[:2], 1), dtype=np.float32)
-        rgba = np.concatenate([rgb, alpha], axis=2)
-
-        dpg.set_value(texture_id, rgba.flatten().tolist())
+The Python main thread does no rendering of its own; once
+`webview.start()` is called it blocks until the window closes, at which
+point the engine shuts down.
 
 Rules:
-- Call update_texture from the DearPyGui render callback (main thread only).
-- Do NOT decode JPEG or call NumPy from the solver thread.
-- Texture dimensions are fixed at startup; resize incoming frames to match.
-- Use `.tolist()` to pass flat Python list to `set_value` (DearPyGui requirement).
+- The solver thread never calls into the UI; communication is one-way
+  via PointingState + the WebServer's broadcast loop.
+- No JPEG decoding or NumPy work happens in the UI process — the browser
+  decodes MJPEG natively.
 
 ---
 
@@ -245,10 +207,13 @@ Runs an aiohttp-based HTTP + WebSocket server on `0.0.0.0:<webserver.port>`
 (default 8080) in its own asyncio event loop on a dedicated daemon thread.
 
 ```
-HTTP GET /           → serves data/web/index.html (single-page mobile UI)
-HTTP GET /sounds/*   → serves WAV audio files
-HTTP GET /assets/*   → serves static UI assets
-WebSocket /ws        → pushes JSON state at ~10 Hz to every connected client
+HTTP GET /              → serves the React build (web_dist_dir/index.html);
+                          dev workflow uses Vite on :5000 instead
+HTTP GET /static/*      → React build assets
+HTTP GET /frame.mjpg    → multipart MJPEG of the latest camera frame (~10 Hz)
+HTTP GET /sounds/*      → serves WAV audio files
+WebSocket /ws           → pushes JSON state at ~10 Hz to every connected client
+HTTP POST /api/*        → wizard, sync, controls, settings, dev actions
 ```
 
 Security hardening:
@@ -640,7 +605,9 @@ When the user closes the application, execute the following sequence in order:
 
 - Shutdown must complete within 10 seconds total.
 - Each step has independent timeouts — a hung thread must not block later steps.
-- No signal handlers (SIGTERM/SIGINT) in v1. DearPyGui's window close event triggers the sequence.
+- The pywebview window's close event triggers the shutdown sequence
+  when running with the GUI; SIGTERM/SIGINT triggers it when running
+  with `--no-window`.
 - If any step fails, log the error and continue with the next step.
 
 ---

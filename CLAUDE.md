@@ -5,7 +5,7 @@
 A cross-platform desktop app that plate-solves live camera frames to determine telescope pointing,
 enabling push-to navigation for manual telescopes.
 
-Python (DearPyGui UI + tetra3 solver) talks to a native camera subprocess over TCP.
+Python (React UI in a pywebview window + tetra3 solver) talks to a native camera subprocess over TCP.
 Camera servers are platform-specific: Swift (macOS), C/V4L2 (Linux), C/DirectShow (Windows).
 
 External integrations run in-process on three TCP servers: a **Stellarium** binary-protocol
@@ -16,9 +16,17 @@ server on `0.0.0.0:8080` for the phone-scannable mobile web interface.
 ## Build & Run
 
 ```bash
-uv sync                    # install all deps from lockfile
-uv run python -m evf.main  # launch app
-uv run python -m evf.main --dev  # launch in dev mode
+uv sync                          # install Python deps from lockfile
+(cd web && npm install)          # install Node deps
+
+# Production-style — launches engine + pywebview window with built React UI
+(cd web && npm run build)
+uv run python -m evf.main
+
+# Dev mode (HMR) — Vite serves UI on :5000 with hot reload
+uv run python -m evf.main --dev --no-window     # terminal 1: engine only
+(cd web && npm run dev)                          # terminal 2: Vite dev server
+# Open http://localhost:5000 in your browser
 ```
 
 ### Platform-specific camera build
@@ -51,7 +59,7 @@ uv run pytest tests/
 ```
 pyproject.toml                  # project config (hatchling build, uv sources)
 python/evf/                     # main Python package
-  main.py                       # entry point
+  main.py                       # entry point — engine + pywebview
   paths.py                      # centralized path resolution (dev vs release bundles)
   network.py                    # shared LAN-IP probe used by webserver + engine
   engine/                       # core engine, state machine, threading
@@ -61,10 +69,9 @@ python/evf/                     # main Python package
     pointing.py                 # telescope pointing state
     navigation.py               # goto-target navigation logic
     goto_target.py              # thread-safe goto target container
+    sample_injector.py          # dev-mode sample-image injector
     audio.py                    # audio feedback (lock/lost sounds)
     epoch.py                    # J2000 <-> JNow precession (pyerfa)
-  ui/                           # DearPyGui UI layer
-    window.py                   # main UI window
   camera/                       # TCP camera client
     client.py                   # camera TCP client
     protocol.py                 # camera protocol (de)serialization
@@ -79,12 +86,23 @@ python/evf/                     # main Python package
   lx200/                        # LX200 Classic TCP protocol server
     server.py                   # TCP server (select-based, multi-client)
     protocol.py                 # LX200 ASCII parsing + dispatch
-  webserver/                    # aiohttp HTTP + WebSocket mobile web interface
-    server.py                   # HTTP routes + /ws 10 Hz state broadcast
+  webserver/                    # aiohttp HTTP + WebSocket server
+    server.py                   # serves React build, MJPEG, /ws, /api/*
   config/                       # configuration
     manager.py                  # JSON config read/write
     logging_setup.py            # logging configuration
 python/vendor/tetra3/           # vendored tetra3 (local editable dep via uv)
+web/                            # React + Vite + TS + Tailwind + shadcn/ui front-end
+  package.json
+  vite.config.ts
+  src/
+    App.tsx
+    main.tsx
+    components/                 # LiveView, Wizard, Settings, DebugPanel, ...
+    hooks/                      # useEngineState (WebSocket subscription)
+    lib/                        # api client, types
+  public/                       # logo, inapp-title, favicons
+  dist/                         # build output (gitignored)
 camera/
   mac/                          # Swift camera server (macOS)
   linux/                        # C/V4L2 camera server (Linux)
@@ -92,9 +110,9 @@ camera/
 data/
   hip8_database.npz             # tetra3 star database (~85 MB)
   VERSION.json                  # app + protocol + db version metadata
-  fonts/                        # Inter font files for UI
+  fonts/                        # font files (legacy DPG; kept for tools/scripts)
   sounds/                       # audio feedback WAVs (lock, lost, goto_ack)
-  web/                          # mobile web interface assets (index.html, logos)
+  web_dist/                     # React build output (release-only — copied here by build scripts)
 docs/                           # GitHub Pages documentation
   index.md                      # GitHub Pages landing page
   hardware.md                   # camera, lens, DIY, shopping list
@@ -127,11 +145,12 @@ specs/start/                    # design specifications
 ## Key Dependencies
 
 - **tetra3** — vendored at `python/vendor/tetra3/`, wired as editable local dep in `[tool.uv.sources]`
-- **DearPyGui** — UI framework (requires display context; import-only works headless)
+- **pywebview** — wraps the OS webview (WebKit/WebView2/GTK) for the desktop window
+- **React + Vite + TypeScript + Tailwind + shadcn/ui** — front-end stack (under `web/`)
 - **numpy**, **scipy**, **Pillow** — tetra3 dependencies
 - **playsound3** — audio feedback for solve lock/lost events
-- **aiohttp** — HTTP + WebSocket server for the mobile web interface
-- **qrcode[pil]** — QR-code rendering for the mobile-web pairing flow in the Settings panel
+- **aiohttp** — HTTP + WebSocket server (serves the React build, /ws state, /frame.mjpg, /api/*)
+- **qrcode[pil]** — QR-code rendering for the LAN URL in the Settings panel
 - **pyerfa** — IAU 2006 precession (J2000 ↔ JNow) for the LX200 protocol server
 
 Dev dependencies: **nuitka** (builds), **pytest** (tests).

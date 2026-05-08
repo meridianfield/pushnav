@@ -37,9 +37,9 @@ This system acts as a real-time electronic encoder replacement using plate solvi
 
 ### Live View
 - Continuous MJPEG stream from camera subprocess.
-- Displayed in DearPyGui panel.
+- Displayed in the React UI via the webserver's `/frame.mjpg` endpoint.
 - No frame buffering beyond latest frame.
-- Optional star overlay (detected + matched centroids).
+- Optional star overlay (detected + matched centroids), drawn in SVG.
 - Optional zoom slider for preview.
 
 ### Camera Controls

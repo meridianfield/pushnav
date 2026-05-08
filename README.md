@@ -28,7 +28,7 @@ Above: **M42 (Orion Nebula)** is the active target on both **Stellarium** (deskt
 
 ## Cross platform from ground up
 
-Supports **Windows**, **macOS**, and **Linux**. The core app is written in Python with a DearPyGui UI, while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.
+Supports **Windows**, **macOS**, and **Linux**. The core app is written in Python with a React UI hosted in a pywebview window (OS-native WebKit/WebView2/GTK), while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.
 
 ## How It Works
 
@@ -177,19 +177,19 @@ To use **SkySafari**, **Stellarium Mobile**, **INDI**, or **ASCOM** instead, poi
 ```
 python/evf/            Python application
   engine/              Core engine, state machine, plate-solve pointing, epoch helpers
-  ui/                  DearPyGui UI layer
   camera/              TCP client + subprocess lifecycle for the native camera server
   solver/              tetra3 plate-solve wrapper + body-frame sync
   stellarium/          Stellarium binary TCP server (port 10001)
   lx200/               LX200 Classic TCP server (port 4030, SkySafari / INDI / ASCOM)
-  webserver/           aiohttp HTTP + WebSocket mobile web interface (default port 8080)
+  webserver/           aiohttp HTTP + WebSocket server (serves React, /ws, /frame.mjpg, /api/*)
   config/              JSON config + logging setup
   network.py           Shared LAN-IP probe used by webserver and engine
+web/                   React + Vite + TypeScript + Tailwind + shadcn/ui front-end
 python/vendor/tetra3/  Vendored tetra3 star pattern library
 camera/mac/            Swift camera server (macOS)
 camera/linux/          C/V4L2 camera server (Linux)
 camera/windows/        C/DirectShow camera server (Windows)
-data/                  Star database, fonts, sounds, web assets, version metadata
+data/                  Star database, sounds, version metadata (web_dist/ added on release builds)
 hardware/3d_models/    3D-printable camera housing and accessories (OpenSCAD + STLs)
 scripts/               Build and dev scripts
 tests/                 Test suite
