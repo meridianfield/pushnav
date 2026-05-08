@@ -138,3 +138,27 @@ async def test_settings_returns_500_when_first_setter_raises(server_and_actions)
             assert resp.status == 500
     actions.set_audio_enabled.assert_called_once_with(False)
     actions.set_hidpi.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_settings_location(server_and_actions):
+    ws, actions = server_and_actions
+    async with ClientSession() as s:
+        async with s.post(
+            f"http://127.0.0.1:{ws._port}/api/settings",
+            json={"location": {"latitude": 13.0878, "longitude": 80.2785}},
+        ) as resp:
+            assert resp.status == 204
+    actions.set_location.assert_called_once_with(13.0878, 80.2785)
+
+
+@pytest.mark.asyncio
+async def test_settings_location_clear(server_and_actions):
+    ws, actions = server_and_actions
+    async with ClientSession() as s:
+        async with s.post(
+            f"http://127.0.0.1:{ws._port}/api/settings",
+            json={"location": None},
+        ) as resp:
+            assert resp.status == 204
+    actions.set_location.assert_called_once_with(None, None)

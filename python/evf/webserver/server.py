@@ -71,6 +71,9 @@ class EngineActions(Protocol):
     def capture_frame(self): ...  # returns Path | None
     def set_min_matches(self, value: int) -> None: ...
     def set_max_prob(self, value: float) -> None: ...
+    def set_location(
+        self, latitude: float | None, longitude: float | None,
+    ) -> None: ...
 
 
 def _compute_origin(config: ConfigManager) -> tuple[float, float]:
@@ -430,6 +433,20 @@ class WebServer:
                 request,
                 lambda: self._actions.set_max_prob(float(body["max_prob"])),
             )
+            if resp.status >= 400:
+                return resp
+        if "location" in body:
+            loc = body["location"]
+            if loc is None:
+                resp = await self._handle_api(
+                    request, lambda: self._actions.set_location(None, None),
+                )
+            else:
+                lat = float(loc["latitude"])
+                lon = float(loc["longitude"])
+                resp = await self._handle_api(
+                    request, lambda: self._actions.set_location(lat, lon),
+                )
             if resp.status >= 400:
                 return resp
         return web.Response(status=204)
