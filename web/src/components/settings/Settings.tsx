@@ -73,9 +73,7 @@ export function Settings({ state, showStars, setShowStars, className }: Props) {
             />
           </Row>
           <p className="text-xs text-muted-foreground leading-snug">
-            Minimum stars matched before a plate-solve is accepted. Higher
-            is stricter (fewer false locks); lower is more permissive (may
-            accept noise).
+            Stars matched before a solve is accepted. Higher = stricter.
           </p>
           <Row label="Max prob">
             <Input
@@ -94,9 +92,7 @@ export function Settings({ state, showStars, setShowStars, className }: Props) {
             />
           </Row>
           <p className="text-xs text-muted-foreground leading-snug">
-            Maximum solve probability of being a false match. Lower is
-            stricter (more confident solves only); higher accepts less
-            certain solves.
+            Max false-match probability. Lower = stricter.
           </p>
         </div>
         <Button
