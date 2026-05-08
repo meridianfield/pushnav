@@ -12,6 +12,7 @@ interface Props {
   location: { latitude: number; longitude: number } | null;
   evalAt: Date;
   onTargetSet?: () => void;
+  className?: string;
 }
 
 function formatTimeLocal(t: Date | null): string {
@@ -25,13 +26,19 @@ function buddyUrl(id: string): string {
   return `https://stargazingbuddy.com/objects/${id}`;
 }
 
-export function CatalogDetail({ object, location, evalAt, onTargetSet }: Props) {
+export function CatalogDetail({
+  object,
+  location,
+  evalAt,
+  onTargetSet,
+  className,
+}: Props) {
   const [setting, setSetting] = useState(false);
   const [setOk, setSetOk] = useState<null | "ok" | "error">(null);
 
   if (!object) {
     return (
-      <Card className="px-4 py-3 text-sm text-muted-foreground">
+      <Card className={cn("px-4 py-3 text-sm text-muted-foreground", className)}>
         Select an object on the left to see details.
       </Card>
     );
@@ -84,7 +91,7 @@ export function CatalogDetail({ object, location, evalAt, onTargetSet }: Props) 
     : [];
 
   return (
-    <Card className="px-4 py-3 gap-3 text-sm">
+    <Card className={cn("px-4 py-3 gap-3 text-sm", className)}>
       <div className="flex items-baseline justify-between gap-2">
         <div className="min-w-0">
           <div className="font-mono text-base">{object.designation}</div>

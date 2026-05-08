@@ -84,7 +84,7 @@ export function WhatToSee({ state, onSwitchToNavigation }: Props) {
 
         <div className="border-t border-border/60 -mx-3" />
 
-        <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto -mx-3 px-3">
+        <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto pushnav-scrollbar -mx-3 px-3">
           <CatalogTable
             objects={objects}
             filters={filters}
@@ -96,15 +96,15 @@ export function WhatToSee({ state, onSwitchToNavigation }: Props) {
         </div>
       </Card>
 
-      {/* Right island: detail panel */}
-      <div className="lg:col-span-1 lg:min-h-0 lg:overflow-y-auto">
-        <CatalogDetail
-          object={selected}
-          location={location}
-          evalAt={evalAt}
-          onTargetSet={onSwitchToNavigation}
-        />
-      </div>
+      {/* Right island: detail panel — Card is the grid item directly so it
+          stretches to the full row height, matching the left island. */}
+      <CatalogDetail
+        object={selected}
+        location={location}
+        evalAt={evalAt}
+        onTargetSet={onSwitchToNavigation}
+        className="lg:col-span-1 lg:min-h-0 lg:overflow-y-auto pushnav-scrollbar"
+      />
     </div>
   );
 }

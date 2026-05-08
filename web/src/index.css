@@ -167,6 +167,29 @@
   animation: pushnav-ants 0.6s linear infinite;
 }
 
+/* Themed thin scrollbar for catalog scroll regions. Track is transparent
+   so the Card gradient shows through; thumb picks up the muted red border
+   token, brightening on hover. Firefox uses scrollbar-* shorthands; Chromium
+   / WebKit uses ::-webkit-scrollbar pseudo-elements. */
+.pushnav-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.40 0.15 22 / 50%) transparent;
+}
+.pushnav-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.pushnav-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pushnav-scrollbar::-webkit-scrollbar-thumb {
+  background-color: oklch(0.40 0.15 22 / 50%);
+  border-radius: 4px;
+}
+.pushnav-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.55 0.20 22 / 75%);
+}
+
 /* Subtle red-tinted vertical gradient on every shadcn Card.
    Top: slightly lighter and faintly red-tinted; bottom: a touch darker.
    Chroma kept low (≤ 0.03) so contrast against the foreground tokens
