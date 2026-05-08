@@ -4,7 +4,7 @@ import type { EnginePayload, EngineState } from "@/lib/types";
 const STEPS: { num: number; label: string; states: EngineState[] }[] = [
   { num: 1, label: "Camera Setup",          states: ["SETUP"] },
   { num: 2, label: "Sync Scope",            states: ["SYNC", "SYNC_CONFIRM"] },
-  { num: 3, label: "Orientation detection", states: ["CALIBRATE"] },
+  { num: 3, label: "Record roll", states: ["CALIBRATE"] },
   { num: 4, label: "Tracking",              states: ["WARMING_UP", "TRACKING"] },
 ];
 
