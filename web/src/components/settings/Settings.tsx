@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { EnginePayload } from "@/lib/types";
 
 const DEFAULT_SHOW_STARS = false;
@@ -15,9 +16,10 @@ interface Props {
   state: EnginePayload;
   showStars: boolean;
   setShowStars: (v: boolean) => void;
+  className?: string;
 }
 
-export function Settings({ state, showStars, setShowStars }: Props) {
+export function Settings({ state, showStars, setShowStars, className }: Props) {
   function resetToDefaults() {
     setShowStars(DEFAULT_SHOW_STARS);
     api
@@ -32,11 +34,11 @@ export function Settings({ state, showStars, setShowStars }: Props) {
   }
 
   return (
-    <Card>
+    <Card className={cn(className)}>
       <CardHeader>
         <CardTitle className="text-primary">Settings</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="flex flex-col flex-1 space-y-2">
         <Row label="Show detected stars">
           <Switch
             checked={showStars}
@@ -100,7 +102,7 @@ export function Settings({ state, showStars, setShowStars }: Props) {
         <Button
           variant="outline"
           size="sm"
-          className="w-full"
+          className="w-full mt-auto"
           onClick={resetToDefaults}
         >
           Reset to defaults
