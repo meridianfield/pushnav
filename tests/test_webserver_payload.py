@@ -42,3 +42,21 @@ def test_payload_contains_new_fields(tmp_path, monkeypatch):
     assert "camera" in payload  # centroid arrays
     # Roundtrip JSON-serializable
     assert json.dumps(payload)
+
+
+def test_payload_contains_location_field(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    cfg = ConfigManager(config_dir=tmp_path / "evf-config")
+    ws = WebServer(
+        PointingState(), StateMachine(), GotoTarget(), cfg,
+        frame_buffer=LatestFrame(),
+        location=lambda: {
+            "latitude": 13.0878,
+            "longitude": 80.2785,
+            "source": "manual",
+        },
+    )
+    payload = ws._build_payload()
+    assert "location" in payload
+    assert payload["location"]["source"] == "manual"
+    assert payload["location"]["latitude"] == 13.0878

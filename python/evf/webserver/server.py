@@ -141,6 +141,7 @@ class WebServer:
         sync_state: Callable[[], dict] | None = None,
         activity: Callable[[], dict] | None = None,
         stellarium_location: Callable[[], dict | None] | None = None,
+        location: Callable[[], dict] | None = None,
         dev_mode: bool = False,
         sample_active: Callable[[], str | None] | None = None,
         actions: "EngineActions | None" = None,
@@ -156,6 +157,7 @@ class WebServer:
         self._sync_state = sync_state
         self._activity = activity
         self._stellarium_location = stellarium_location
+        self._location_fn = location
         self._dev_mode = dev_mode
         self._sample_active = sample_active
         self._actions = actions
@@ -498,6 +500,10 @@ class WebServer:
         else:
             stellarium_blk.setdefault("location", None)
 
+        location_blk = self._location_fn() if self._location_fn else {
+            "latitude": None, "longitude": None, "source": None,
+        }
+
         return {
             "state": state.value,
             "failures": failures,
@@ -518,6 +524,7 @@ class WebServer:
             "webserver":  activity_blk.get("webserver",  {"url": None}),
             "audio_enabled": activity_blk.get("audio_enabled", True),
             "camera": camera_blk,
+            "location": location_blk,
             "dev_mode": self._dev_mode,
             "min_matches": self._config.min_matches,
             "max_prob": self._config.max_prob,

@@ -437,6 +437,7 @@ class Engine:
                     (self.stellarium_status or {}).get("location")
                     if self.stellarium_status else None
                 ),
+                location=lambda: self.location,
                 dev_mode=self._dev_mode,
                 sample_active=lambda: self._sample_injector.active_name,
                 actions=self,
