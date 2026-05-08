@@ -33,18 +33,19 @@ export function AxesOverlay({ state }: Props) {
   ];
 
   return (
-    <g stroke="rgba(255, 70, 70, 0.78)" fill="rgba(255, 70, 70, 0.86)">
-      {/* Dashed cross axis 1 (mount-up direction) */}
+    <g stroke="rgba(180, 35, 35, 0.95)" fill="rgba(255, 70, 70, 0.86)">
+      {/* Cross axis 1 (mount-up direction) — solid, darker so it's not
+          confused with the marching-ants nav line. */}
       <line
         x1={cx - rightDx * halfDiag} y1={cy - rightDy * halfDiag}
         x2={cx + rightDx * halfDiag} y2={cy + rightDy * halfDiag}
-        strokeDasharray="12 8" strokeWidth={1}
+        strokeWidth={1}
       />
-      {/* Dashed cross axis 2 (mount-right direction) */}
+      {/* Cross axis 2 (mount-right direction) */}
       <line
         x1={cx - upDx * halfDiag} y1={cy - upDy * halfDiag}
         x2={cx + upDx * halfDiag} y2={cy + upDy * halfDiag}
-        strokeDasharray="12 8" strokeWidth={1}
+        strokeWidth={1}
       />
       {labels.map((l) => (
         <text

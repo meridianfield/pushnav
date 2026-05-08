@@ -111,20 +111,30 @@ export function NavOverlay({ state }: Props) {
     // Arrow tip 68px inward from edge — same as DPG behavior
     const tipX = nav.edge_x - Math.sin(angleRad) * 68;
     const tipY = nav.edge_y + Math.cos(angleRad) * 68;
-    const labelOffsetX = 70;
-    const labelX = tipX - Math.sin(angleRad) * -10 + Math.cos(angleRad) * 0;
-    const labelY = tipY + Math.cos(angleRad) * -10 + Math.sin(angleRad) * 0;
+    // Perpendicular to the push direction (eyepiece → comet tip), used to
+    // place the distance label off to one side so it doesn't overlap the
+    // arrow body.
+    const dx = tipX - ox;
+    const dy = tipY - oy;
+    const len = Math.hypot(dx, dy) || 1;
+    const perpX = -dy / len;
+    const perpY = dx / len;
+    const labelOffset = 38;
+    const labelX = tipX + perpX * labelOffset;
+    const labelY = tipY + perpY * labelOffset;
     return (
       <g>
         <Reticle cx={ox} cy={oy} color="rgba(120, 25, 25, 0.63)"
                  ringR={12} armInner={4} armOuter={20} strokeW={1} />
-        <line x1={ox} y1={oy} x2={tipX} y2={tipY}
+        {/* Guide line extends all the way to the frame edge, not just to
+            the comet tip — the comet sits on the line near the edge. */}
+        <line x1={ox} y1={oy} x2={nav.edge_x} y2={nav.edge_y}
               stroke="rgba(255, 100, 50, 0.9)" strokeWidth={2}
               strokeDasharray="8 6"
               className="pushnav-marching-ants" />
         <CometArrow cx={tipX} cy={tipY}
                     angleDeg={nav.edge_angle_deg} />
-        <Pill x={labelX} y={labelY - labelOffsetX * 0}
+        <Pill x={labelX} y={labelY}
               text={formatDist(nav.separation_deg)}
               color="rgba(255, 100, 50, 1)" />
       </g>
