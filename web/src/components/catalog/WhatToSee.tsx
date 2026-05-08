@@ -64,15 +64,26 @@ export function WhatToSee({ state, onSwitchToNavigation }: Props) {
   }
 
   return (
-    <div className="flex flex-col lg:grid lg:grid-cols-3 gap-3 h-full lg:min-h-0">
+    <div className="flex flex-col lg:grid lg:grid-cols-3 lg:grid-rows-1 gap-3 h-full lg:min-h-0">
       {/* Left island: filters + selected chips + time + scrollable table */}
       <Card className="lg:col-span-2 flex flex-col gap-2 px-3 py-3 lg:min-h-0">
         <CatalogFilters value={filters} onChange={setFilters} />
         <SelectedFiltersLine value={filters} />
-        <TimeControl
-          appliedOffsetMin={appliedOffsetMin}
-          onApply={setAppliedOffsetMin}
-        />
+
+        <div className="border-t border-border/60 -mx-3" />
+
+        <div className="flex flex-col gap-1">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Observation Time
+          </div>
+          <TimeControl
+            appliedOffsetMin={appliedOffsetMin}
+            onApply={setAppliedOffsetMin}
+          />
+        </div>
+
+        <div className="border-t border-border/60 -mx-3" />
+
         <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto -mx-3 px-3">
           <CatalogTable
             objects={objects}
