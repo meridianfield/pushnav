@@ -138,6 +138,23 @@ export function NavOverlay({ state }: Props) {
     // 0.15° lock-zone ring
     const scale = state.image_w / (2 * Math.tan((state.fov_h_deg / 2) * (Math.PI / 180)));
     const lockR = Math.tan(LOCKED_THRESHOLD_DEG * (Math.PI / 180)) * scale;
+    // Direction from eyepiece reticle to target — in screen coords, "up" is -y,
+    // so atan2(dx, -dy) gives a clockwise-from-up angle in degrees.
+    const dx = tx - ox;
+    const dy = ty - oy;
+    const len = Math.hypot(dx, dy) || 1;
+    const arrowAngleDeg = (Math.atan2(dx, -dy) * 180) / Math.PI;
+    // Perpendicular unit vector (one of two possible — pick whichever, labels
+    // sit consistently on one side of the arrow). Rotated 90° CCW from
+    // direction-to-target in screen coords.
+    const perpX = -dy / len;
+    const perpY = dx / len;
+    const distLabelOffset = 38;
+    const nameLabelOffset = 64;
+    const distLabelX = tx + perpX * distLabelOffset;
+    const distLabelY = ty + perpY * distLabelOffset;
+    const nameLabelX = tx + perpX * nameLabelOffset;
+    const nameLabelY = ty + perpY * nameLabelOffset;
     return (
       <g>
         <Reticle cx={ox} cy={oy} color="rgba(200, 50, 50, 0.78)"
@@ -148,27 +165,25 @@ export function NavOverlay({ state }: Props) {
               stroke="rgba(255, 70, 70, 0.78)" strokeWidth={1}
               strokeDasharray="8 6"
               className="pushnav-marching-ants" />
-        {/* Target marker — glides between WS updates instead of teleporting.
-            Inner elements positioned at (0,0); outer <g>'s translate animates. */}
+        {/* Single arrow at target tip, oriented along the eyepiece→target
+            direction. Outer <g>'s translate+rotate animate together so the
+            arrow glides and re-aims smoothly between WS updates. */}
         <g
           style={{
-            transform: `translate(${tx}px, ${ty}px)`,
+            transform: `translate(${tx}px, ${ty}px) rotate(${arrowAngleDeg}deg)`,
             transition: "transform 100ms linear",
           }}
         >
-          <g stroke="rgba(255, 70, 70, 0.78)" strokeWidth={1} fill="none">
-            <circle cx={0} cy={0} r={8} />
-            <line x1={-14} y1={0} x2={-3} y2={0} />
-            <line x1={3} y1={0} x2={14} y2={0} />
-            <line x1={0} y1={-14} x2={0} y2={-3} />
-            <line x1={0} y1={3} x2={0} y2={14} />
-          </g>
+          <polygon
+            points="0,-22 -11,0 -3,0 -3,18 3,18 3,0 11,0"
+            fill="rgba(255, 70, 70, 0.86)"
+          />
         </g>
-        <Pill x={tx + 50} y={ty - 18}
+        <Pill x={distLabelX} y={distLabelY}
               text={formatDist(nav.separation_deg)}
               color="rgba(255, 70, 70, 0.86)" />
         {nav.target_name && (
-          <Pill x={tx + 60} y={ty + 24} text={nav.target_name}
+          <Pill x={nameLabelX} y={nameLabelY} text={nav.target_name}
                 color="rgba(255, 70, 70, 0.86)" />
         )}
       </g>
