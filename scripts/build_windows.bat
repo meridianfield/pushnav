@@ -61,6 +61,29 @@ if not exist "%CAMERA_BIN%" (
 popd
 
 REM -------------------------------------------------------------------------
+REM Phase 1b: Build React UI
+REM -------------------------------------------------------------------------
+echo ==^> Building React UI
+pushd "%REPO_ROOT%\web"
+call npm ci
+if errorlevel 1 (
+    echo ERROR: npm ci failed
+    popd
+    exit /b 1
+)
+call npm run build
+if errorlevel 1 (
+    echo ERROR: React build failed
+    popd
+    exit /b 1
+)
+popd
+if not exist "%REPO_ROOT%\web\dist\index.html" (
+    echo ERROR: React build did not produce web\dist\index.html
+    exit /b 1
+)
+
+REM -------------------------------------------------------------------------
 REM Phase 2: Build Python with Nuitka (standalone)
 REM -------------------------------------------------------------------------
 echo ==> Building Python app with Nuitka (standalone)
@@ -70,13 +93,14 @@ uv run python -m nuitka ^
     --windows-icon-from-ico="%REPO_ROOT%\marketing\logo.ico" ^
     --output-dir="%BUILD_DIR%" ^
     --output-filename=evf.exe ^
-    --include-package=dearpygui ^
     --include-package=numpy ^
     --include-package=scipy ^
     --include-package=PIL ^
     --include-package=playsound3 ^
     --include-package=tetra3 ^
     --include-package=erfa ^
+    --include-package=webview ^
+    --include-data-dir="%REPO_ROOT%\web\dist=data\web_dist" ^
     --nofollow-import-to=pytest ^
     --nofollow-import-to=setuptools ^
     --assume-yes-for-downloads ^

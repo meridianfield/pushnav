@@ -49,6 +49,16 @@ if [ ! -f "$CAMERA_BIN" ]; then
 fi
 
 # -------------------------------------------------------------------------
+# Phase 2a: Build React UI
+# -------------------------------------------------------------------------
+echo "==> Building React UI"
+(cd "$REPO_ROOT/web" && npm ci && npm run build)
+if [ ! -f "$REPO_ROOT/web/dist/index.html" ]; then
+    echo "ERROR: React build did not produce web/dist/index.html"
+    exit 1
+fi
+
+# -------------------------------------------------------------------------
 # Phase 2: Build Python with Nuitka (standalone)
 # -------------------------------------------------------------------------
 echo "==> Building Python app with Nuitka (standalone)"
@@ -57,19 +67,20 @@ uv run python -m nuitka \
     --static-libpython=no \
     --output-dir="$BUILD_DIR" \
     --output-filename=evf \
-    --include-package=dearpygui \
     --include-package=numpy \
     --include-package=scipy \
     --include-package=PIL \
     --include-package=playsound3 \
     --include-package=tetra3 \
     --include-package=erfa \
+    --include-package=webview \
+    --include-data-dir="$REPO_ROOT/web/dist=web_dist" \
     --nofollow-import-to=pytest \
     --nofollow-import-to=setuptools \
     `# Exclude stdlib C extensions that link to Homebrew dylibs — Nuitka 4.x` \
     `# bug: its macOS dep scanner finds them but the DLL inclusion phase` \
     `# doesn't bundle them, causing a FATAL in fixupBinaryDLLPathsMacOS.` \
-    `# None of these are needed by this app (DearPyGui + tetra3).` \
+    `# None of these are needed by this app (tetra3 + pywebview).` \
     --nofollow-import-to=_blake2 \
     --nofollow-import-to=_hashlib \
     --nofollow-import-to=_ssl \

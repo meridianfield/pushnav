@@ -48,6 +48,16 @@ fi
 echo "    Camera server: $(du -h "$CAMERA_BIN" | cut -f1)"
 
 # -------------------------------------------------------------------------
+# Phase 1b: Build React UI
+# -------------------------------------------------------------------------
+echo "==> Building React UI"
+(cd "$REPO_ROOT/web" && npm ci && npm run build)
+if [ ! -f "$REPO_ROOT/web/dist/index.html" ]; then
+    echo "ERROR: React build did not produce web/dist/index.html"
+    exit 1
+fi
+
+# -------------------------------------------------------------------------
 # Phase 2: Build Python with Nuitka (standalone)
 # -------------------------------------------------------------------------
 echo "==> Building Python app with Nuitka (standalone)"
@@ -55,13 +65,14 @@ uv run python -m nuitka \
     --standalone \
     --output-dir="$BUILD_DIR" \
     --output-filename=evf \
-    --include-package=dearpygui \
     --include-package=numpy \
     --include-package=scipy \
     --include-package=PIL \
     --include-package=playsound3 \
     --include-package=tetra3 \
     --include-package=erfa \
+    --include-package=webview \
+    --include-data-dir="$REPO_ROOT/web/dist=data/web_dist" \
     --nofollow-import-to=pytest \
     --nofollow-import-to=setuptools \
     --nofollow-import-to=linuxpy \
