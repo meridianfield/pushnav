@@ -166,3 +166,15 @@
 .pushnav-marching-ants {
   animation: pushnav-ants 0.6s linear infinite;
 }
+
+/* Subtle red-tinted vertical gradient on every shadcn Card.
+   Top: slightly lighter and faintly red-tinted; bottom: a touch darker.
+   Chroma kept low (≤ 0.03) so contrast against the foreground tokens
+   stays well above WCAG AA. */
+.dark [data-slot="card"] {
+  background-image: linear-gradient(
+    180deg,
+    oklch(0.225 0.025 22) 0%,
+    oklch(0.185 0.015 22) 100%
+  );
+}
