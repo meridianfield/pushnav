@@ -41,7 +41,7 @@ export default function App() {
           <section
             className={
               view === "catalog"
-                ? "h-screen flex flex-col overflow-hidden"
+                ? "min-h-screen lg:h-screen lg:overflow-hidden flex flex-col"
                 : "min-h-screen flex flex-col"
             }
           >

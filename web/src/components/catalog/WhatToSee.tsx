@@ -64,7 +64,7 @@ export function WhatToSee({ state, onSwitchToNavigation }: Props) {
   }
 
   return (
-    <div className="flex flex-col lg:grid lg:grid-cols-3 lg:grid-rows-1 gap-3 h-full min-h-0 overflow-y-auto lg:overflow-hidden pushnav-scrollbar">
+    <div className="flex flex-col lg:grid lg:grid-cols-3 lg:grid-rows-1 gap-3 lg:h-full lg:min-h-0 lg:overflow-hidden">
       {/* Left island: filters + selected chips + time + scrollable table.
           At narrow widths cap the Card at 70vh so the table-wrapper inside
           has a finite height to overflow against; at lg+ the grid row
