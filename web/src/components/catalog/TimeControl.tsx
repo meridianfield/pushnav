@@ -36,22 +36,23 @@ export function TimeControl({ appliedOffsetMin, onApply }: Props) {
   const dirty = preview !== appliedOffsetMin;
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2">
-      <div className="flex flex-col text-xs leading-tight min-w-[90px]">
+    <div className="flex items-center gap-3 w-full">
+      <div className="flex flex-col text-xs leading-tight shrink-0 min-w-[80px]">
         <span className="text-muted-foreground">{formatOffset(appliedOffsetMin)}</span>
         <span className="font-mono text-foreground">
           {appliedTimeLabel(appliedOffsetMin)}
         </span>
       </div>
-      <Slider
-        min={0}
-        max={MAX_MIN}
-        step={5}
-        value={[preview]}
-        onValueChange={([v]) => setPreview(v)}
-        className="flex-1"
-      />
-      <span className="text-xs text-muted-foreground min-w-[60px] text-right tabular-nums">
+      <div className="flex-1 min-w-0">
+        <Slider
+          min={0}
+          max={MAX_MIN}
+          step={5}
+          value={[preview]}
+          onValueChange={([v]) => setPreview(v)}
+        />
+      </div>
+      <span className="text-xs text-muted-foreground min-w-[60px] text-right tabular-nums shrink-0">
         {formatOffset(preview)}
       </span>
       <Button

@@ -30,8 +30,8 @@ interface RowData {
 export function CatalogTable({
   objects, filters, location, evalAt, selectedId, onSelect,
 }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>("alt");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("type");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const rows = useMemo<RowData[]>(() => {
     if (!location) return [];

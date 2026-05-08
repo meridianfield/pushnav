@@ -35,6 +35,38 @@ interface Props {
   onChange: (next: CatalogFilterState) => void;
 }
 
+export function SelectedFiltersLine({ value }: { value: CatalogFilterState }) {
+  const segs: string[] = [];
+  if (value.equipment.size < EQUIPMENT.length) {
+    segs.push(
+      "Equipment: " +
+        EQUIPMENT.filter((e) => value.equipment.has(e.value))
+          .map((e) => e.label)
+          .join(", "),
+    );
+  }
+  if (value.lp.size < LP.length) {
+    segs.push(
+      "LP: " +
+        LP.filter((l) => value.lp.has(l.value))
+          .map((l) => l.label)
+          .join(", "),
+    );
+  }
+  if (value.reward.size < REWARD.length) {
+    segs.push(
+      "Reward: " +
+        REWARD.filter((r) => value.reward.has(r.value))
+          .map((r) => r.label)
+          .join(", "),
+    );
+  }
+  if (segs.length === 0) return null;
+  return (
+    <div className="text-xs text-muted-foreground">{segs.join("  ·  ")}</div>
+  );
+}
+
 export function CatalogFilters({ value, onChange }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-2">

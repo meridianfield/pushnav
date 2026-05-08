@@ -68,8 +68,11 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="max-w-5xl mx-auto px-2 pt-3 pb-2 w-full flex-1">
-                <WhatToSee state={state} />
+              <div className="max-w-5xl mx-auto px-2 pt-3 pb-2 w-full flex-1 min-h-0">
+                <WhatToSee
+                  state={state}
+                  onSwitchToNavigation={() => setView("navigation")}
+                />
               </div>
             )}
           </section>

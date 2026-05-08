@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { Card } from "@/components/ui/card";
 import objectsData from "@/data/objects.json";
 import type { CatalogObject } from "@/lib/catalogTypes";
 import type { EnginePayload } from "@/lib/types";
-import { CatalogFilters, useCatalogFilters } from "./CatalogFilters";
+import {
+  CatalogFilters,
+  SelectedFiltersLine,
+  useCatalogFilters,
+} from "./CatalogFilters";
 import { CatalogTable } from "./CatalogTable";
 import { CatalogDetail } from "./CatalogDetail";
 import { TimeControl } from "./TimeControl";
@@ -11,14 +16,14 @@ const objects = objectsData as CatalogObject[];
 
 interface Props {
   state: EnginePayload;
+  onSwitchToNavigation: () => void;
 }
 
-export function WhatToSee({ state }: Props) {
+export function WhatToSee({ state, onSwitchToNavigation }: Props) {
   const [filters, setFilters] = useCatalogFilters();
   const [appliedOffsetMin, setAppliedOffsetMin] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Tick once a minute so "Now" stays current.
   const [tickNow, setTickNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setTickNow(Date.now()), 60_000);
@@ -43,7 +48,7 @@ export function WhatToSee({ state }: Props) {
 
   if (!location) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6 text-sm">
+      <Card className="p-6 text-sm">
         <h3 className="font-semibold mb-2">Set your observing location</h3>
         <p className="text-muted-foreground mb-3">
           The catalog computes which objects are above the horizon for you. We
@@ -54,37 +59,39 @@ export function WhatToSee({ state }: Props) {
           enter your coordinates manually, or connect Stellarium and we'll pick
           up its location automatically.
         </p>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="grid lg:grid-cols-3 gap-3">
-      {/* Left column: filters + time + table (spans 2 of 3 at lg+) */}
-      <div className="lg:col-span-2 flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CatalogFilters value={filters} onChange={setFilters} />
-          <TimeControl
-            appliedOffsetMin={appliedOffsetMin}
-            onApply={setAppliedOffsetMin}
+    <div className="flex flex-col lg:grid lg:grid-cols-3 gap-3 h-full lg:min-h-0">
+      {/* Left island: filters + selected chips + time + scrollable table */}
+      <Card className="lg:col-span-2 flex flex-col gap-2 px-3 py-3 lg:min-h-0">
+        <CatalogFilters value={filters} onChange={setFilters} />
+        <SelectedFiltersLine value={filters} />
+        <TimeControl
+          appliedOffsetMin={appliedOffsetMin}
+          onApply={setAppliedOffsetMin}
+        />
+        <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto -mx-3 px-3">
+          <CatalogTable
+            objects={objects}
+            filters={filters}
+            location={location}
+            evalAt={evalAt}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
           />
         </div>
-        <CatalogTable
-          objects={objects}
-          filters={filters}
-          location={location}
-          evalAt={evalAt}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-        />
-      </div>
+      </Card>
 
-      {/* Right column: detail panel */}
-      <div className="lg:col-span-1">
+      {/* Right island: detail panel */}
+      <div className="lg:col-span-1 lg:min-h-0 lg:overflow-y-auto">
         <CatalogDetail
           object={selected}
           location={location}
           evalAt={evalAt}
+          onTargetSet={onSwitchToNavigation}
         />
       </div>
     </div>

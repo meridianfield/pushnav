@@ -80,6 +80,8 @@ def strip_markdown(body: str) -> str:
     )
     # Drop heading lines
     body = re.sub(r"^#+ .*$", "", body, flags=re.MULTILINE)
+    # Drop "Finder map for ..." caption lines (figure caption, no value as prose)
+    body = re.sub(r"^Finder map for .*$", "", body, flags=re.MULTILINE)
     # Drop link syntax keep text: [text](url) -> text
     body = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", body)
     # Collapse multiple blank lines and trim

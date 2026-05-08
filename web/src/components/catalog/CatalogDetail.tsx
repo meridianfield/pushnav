@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { altAzFromRaDec, parseDec, parseRA, riseSetTransitUtc } from "@/lib/astronomy";
@@ -10,6 +11,7 @@ interface Props {
   object: CatalogObject | null;
   location: { latitude: number; longitude: number } | null;
   evalAt: Date;
+  onTargetSet?: () => void;
 }
 
 function formatTimeLocal(t: Date | null): string {
@@ -23,15 +25,15 @@ function buddyUrl(id: string): string {
   return `https://stargazingbuddy.com/objects/${id}`;
 }
 
-export function CatalogDetail({ object, location, evalAt }: Props) {
+export function CatalogDetail({ object, location, evalAt, onTargetSet }: Props) {
   const [setting, setSetting] = useState(false);
   const [setOk, setSetOk] = useState<null | "ok" | "error">(null);
 
   if (!object) {
     return (
-      <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+      <Card className="px-4 py-3 text-sm text-muted-foreground">
         Select an object on the left to see details.
-      </div>
+      </Card>
     );
   }
 
@@ -68,6 +70,7 @@ export function CatalogDetail({ object, location, evalAt }: Props) {
     try {
       await api.setGoto(raHours * 15, decDeg);
       setSetOk("ok");
+      onTargetSet?.();
     } catch {
       setSetOk("error");
     } finally {
@@ -76,8 +79,12 @@ export function CatalogDetail({ object, location, evalAt }: Props) {
     }
   }
 
+  const paragraphs = object.description
+    ? object.description.split(/\n\n+/).filter((p) => p.trim().length > 0)
+    : [];
+
   return (
-    <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3 text-sm">
+    <Card className="px-4 py-3 gap-3 text-sm">
       <div className="flex items-baseline justify-between gap-2">
         <div className="min-w-0">
           <div className="font-mono text-base">{object.designation}</div>
@@ -115,10 +122,17 @@ export function CatalogDetail({ object, location, evalAt }: Props) {
         <Fact label="Reward" value={object.visualReward} />
       </div>
 
-      {object.description && (
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          {object.description}
-        </p>
+      {paragraphs.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {paragraphs.map((para, i) => (
+            <p
+              key={i}
+              className="text-xs text-muted-foreground leading-relaxed"
+            >
+              {para}
+            </p>
+          ))}
+        </div>
       )}
 
       <div className="flex items-center gap-2 mt-1">
@@ -144,7 +158,7 @@ export function CatalogDetail({ object, location, evalAt }: Props) {
           <span className="text-xs text-destructive ml-auto">Failed</span>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
