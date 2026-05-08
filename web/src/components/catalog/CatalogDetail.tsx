@@ -92,10 +92,12 @@ export function CatalogDetail({
 
   return (
     <Card className={cn("px-4 py-3 gap-3 text-sm", className)}>
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex items-baseline justify-between gap-2 leading-tight">
         <div className="min-w-0">
-          <div className="font-mono text-base">{object.designation}</div>
-          <div className="text-muted-foreground truncate">{object.name}</div>
+          <div className="text-base text-foreground truncate">{object.name}</div>
+          <div className="text-xs text-muted-foreground font-mono">
+            {object.designation}
+          </div>
         </div>
         <span className="text-xs text-muted-foreground shrink-0">
           {object.subtype ?? object.type}
