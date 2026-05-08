@@ -61,8 +61,8 @@ export function Settings({ state, showStars, setShowStars }: Props) {
           <code className="text-xs">{state.lx200.address ?? "off"}</code>
         </Row>
         <Separator />
-        <div>
-          <div className="text-sm font-medium mb-2 text-primary">Advanced solver</div>
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-primary">Advanced solver</div>
           <Row label="Min matches">
             <Input
               type="number"
