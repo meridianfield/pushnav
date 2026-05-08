@@ -101,9 +101,14 @@ export function LocationPanel({ state }: Props) {
           Clear
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground leading-snug">
-        Latitude: + = North, − = South. Longitude: + = East, − = West.
-      </p>
+      <div className="text-xs text-muted-foreground leading-snug space-y-0.5">
+        <div>Latitude: + = North, − = South</div>
+        <div>Longitude: + = East, − = West</div>
+        <div className="pt-1">
+          e.g. New York <span className="font-mono">40.71, −74.01</span> ·
+          Sydney <span className="font-mono">−33.87, 151.21</span>
+        </div>
+      </div>
     </div>
   );
 }
