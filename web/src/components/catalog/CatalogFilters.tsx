@@ -36,34 +36,42 @@ interface Props {
 }
 
 export function SelectedFiltersLine({ value }: { value: CatalogFilterState }) {
-  const segs: string[] = [];
+  const segs: { label: string; values: string }[] = [];
   if (value.equipment.size < EQUIPMENT.length) {
-    segs.push(
-      "Equipment: " +
-        EQUIPMENT.filter((e) => value.equipment.has(e.value))
-          .map((e) => e.label)
-          .join(", "),
-    );
+    segs.push({
+      label: "Equipment",
+      values: EQUIPMENT.filter((e) => value.equipment.has(e.value))
+        .map((e) => e.label)
+        .join(", "),
+    });
   }
   if (value.lp.size < LP.length) {
-    segs.push(
-      "LP: " +
-        LP.filter((l) => value.lp.has(l.value))
-          .map((l) => l.label)
-          .join(", "),
-    );
+    segs.push({
+      label: "LP",
+      values: LP.filter((l) => value.lp.has(l.value))
+        .map((l) => l.label)
+        .join(", "),
+    });
   }
   if (value.reward.size < REWARD.length) {
-    segs.push(
-      "Reward: " +
-        REWARD.filter((r) => value.reward.has(r.value))
-          .map((r) => r.label)
-          .join(", "),
-    );
+    segs.push({
+      label: "Reward",
+      values: REWARD.filter((r) => value.reward.has(r.value))
+        .map((r) => r.label)
+        .join(", "),
+    });
   }
   if (segs.length === 0) return null;
   return (
-    <div className="text-xs text-muted-foreground">{segs.join("  ·  ")}</div>
+    <div className="text-xs text-muted-foreground">
+      {segs.map((s, i) => (
+        <span key={s.label}>
+          {i > 0 && "  ·  "}
+          <span className="font-semibold text-foreground">{s.label}:</span>{" "}
+          {s.values}
+        </span>
+      ))}
+    </div>
   );
 }
 
