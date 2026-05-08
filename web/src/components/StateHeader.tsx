@@ -99,7 +99,7 @@ export function StateHeader({ state }: Props) {
   return (
     <>
       {/* Top header: logo + (inline stats at lg+) + audio toggle */}
-      <div className="flex items-center justify-between gap-4 pb-3 border-b border-border">
+      <div className="flex items-center justify-between gap-4 pb-2 border-b border-border">
         <img
           src={`${import.meta.env.BASE_URL}inapp-title.png`}
           alt="PushNav"
@@ -126,7 +126,7 @@ export function StateHeader({ state }: Props) {
       {/* Stats island: shown below the header at < lg */}
       <HeaderStats
         state={state}
-        className="lg:hidden justify-end mt-3 pb-3 border-b border-border"
+        className="lg:hidden justify-end mt-2 pb-2 border-b border-border"
       />
     </>
   );

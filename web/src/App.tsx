@@ -31,16 +31,16 @@ export default function App() {
       <ErrorModal state={state} />
       {state && (
         <div className="min-h-screen bg-background text-foreground">
-          <div className="max-w-7xl mx-auto px-4 pt-4">
+          <div className="max-w-7xl mx-auto px-2 pt-2">
             <StateHeader state={state} />
           </div>
-          <div className="grid md:grid-cols-3 gap-4 max-w-7xl mx-auto p-4">
-            <div className="md:col-span-2 space-y-4">
+          <div className="grid md:grid-cols-3 gap-2 max-w-7xl mx-auto p-2">
+            <div className="md:col-span-2 space-y-2">
               <LiveView state={state} showStars={showStars} />
               <StepIndicator state={state} />
               <Wizard state={state} />
             </div>
-            <div className="space-y-4">
+            <div className="space-y-2">
               <CameraControls controls={state.controls} />
               <Settings
                 state={state}
