@@ -38,12 +38,10 @@ class SampleInjector:
     """Continuously injects a sample JPEG into the frame buffer."""
 
     _INTERVAL = 0.1  # 10 Hz
-    _FRAME_ID_BASE = 100_000  # offset to avoid collisions with real frames
 
     def __init__(self, frame_buffer: LatestFrame) -> None:
         self._fb = frame_buffer
         self._jpeg: bytes | None = None
-        self._frame_id = self._FRAME_ID_BASE
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
@@ -66,14 +64,18 @@ class SampleInjector:
                 self._thread.start()
 
     def _loop(self) -> None:
+        # Dynamically bump our frame_id above whatever's currently in the
+        # buffer so we always win against the camera's stream. The camera at
+        # 30 fps crosses any static offset in under an hour, which silently
+        # broke injection in long-running engine sessions.
         while not self._stop.is_set():
             with self._lock:
                 jpeg = self._jpeg
             if jpeg is None:
                 # No sample selected — exit thread; another set() will restart.
                 return
-            self._frame_id += 1
-            self._fb.set(jpeg, time.monotonic(), self._frame_id)
+            _, _, current_id = self._fb.get()
+            self._fb.set(jpeg, time.monotonic(), current_id + 1)
             self._stop.wait(self._INTERVAL)
 
     def stop(self) -> None:
