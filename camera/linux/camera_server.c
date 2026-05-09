@@ -113,6 +113,25 @@ static int xioctl(int fd, unsigned long request, void *arg)
 }
 
 /* ------------------------------------------------------------------ */
+/* Fatal disconnect: log and exit(1) so the engine respawns us         */
+/* ------------------------------------------------------------------ */
+
+static void fatal_disconnect(const char *where) __attribute__((noreturn));
+static void fatal_disconnect(const char *where)
+{
+    fprintf(stderr,
+            "Camera disconnected at %s (errno=%d %s) — exiting for engine recovery\n",
+            where, errno, strerror(errno));
+    exit(1);
+}
+
+/* errno values that signal "the V4L2 device is gone" mid-stream. */
+static int is_disconnect_errno(int e)
+{
+    return e == ENODEV || e == EIO || e == ENXIO;
+}
+
+/* ------------------------------------------------------------------ */
 /* Device discovery via sysfs                                          */
 /* ------------------------------------------------------------------ */
 
@@ -477,6 +496,8 @@ static int capture_frame(const unsigned char **out_data, size_t *out_len,
     if (xioctl(cam_fd, VIDIOC_DQBUF, &buf) < 0) {
         if (errno == EAGAIN)
             return -1;
+        if (is_disconnect_errno(errno))
+            fatal_disconnect("VIDIOC_DQBUF");
         perror("VIDIOC_DQBUF");
         return -1;
     }
@@ -491,7 +512,9 @@ static int capture_frame(const unsigned char **out_data, size_t *out_len,
         if (yuyv_to_jpeg(buffers[buf.index].start, buf.bytesused,
                          &jpeg_data, &jpeg_len) < 0) {
             /* Re-queue and report failure */
-            xioctl(cam_fd, VIDIOC_QBUF, &buf);
+            if (xioctl(cam_fd, VIDIOC_QBUF, &buf) < 0
+                && is_disconnect_errno(errno))
+                fatal_disconnect("VIDIOC_QBUF (yuyv re-queue)");
             return -1;
         }
         *out_data = jpeg_data;
@@ -509,7 +532,8 @@ static void requeue_buffer(int index)
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory = V4L2_MEMORY_MMAP;
     buf.index = (unsigned int)index;
-    xioctl(cam_fd, VIDIOC_QBUF, &buf);
+    if (xioctl(cam_fd, VIDIOC_QBUF, &buf) < 0 && is_disconnect_errno(errno))
+        fatal_disconnect("VIDIOC_QBUF (requeue)");
 }
 
 /* ------------------------------------------------------------------ */
@@ -831,7 +855,14 @@ static void handle_client(int client_fd)
         cam_poll.fd = cam_fd;
         cam_poll.events = POLLIN;
         int pr = poll(&cam_poll, 1, 100);
-        if (pr <= 0)
+        if (pr < 0) {
+            if (errno == EINTR)
+                continue;
+            fatal_disconnect("camera poll()");
+        }
+        if (cam_poll.revents & (POLLERR | POLLHUP | POLLNVAL))
+            fatal_disconnect("camera fd POLLERR/POLLHUP/POLLNVAL");
+        if (pr == 0)
             continue;
 
         const unsigned char *frame_data;
