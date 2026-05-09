@@ -24,7 +24,7 @@ def test_payload_contains_new_fields(tmp_path, monkeypatch):
         activity=lambda: {
             "stellarium": {"active": False, "address": "localhost:10001"},
             "lx200":      {"active": False, "address": "0.0.0.0:4030"},
-            "webserver":  {"url": "http://192.168.1.42:8080"},
+            "webserver":  {"url": "http://192.168.1.42:8765"},
             "audio_enabled": True,
         },
     )

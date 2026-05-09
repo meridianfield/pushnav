@@ -10,15 +10,15 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
   server: {
-    port: 5000,
+    port: 5173,
     strictPort: true,
     proxy: {
-      "/ws":         { target: "ws://localhost:8080", ws: true },
-      "/frame.mjpg": "http://localhost:8080",
-      "/frame.jpg":  "http://localhost:8080",
-      "/api":        "http://localhost:8080",
-      "/sounds":     "http://localhost:8080",
-      "/assets":     "http://localhost:8080",
+      "/ws":         { target: "ws://localhost:8765", ws: true },
+      "/frame.mjpg": "http://localhost:8765",
+      "/frame.jpg":  "http://localhost:8765",
+      "/api":        "http://localhost:8765",
+      "/sounds":     "http://localhost:8765",
+      "/assets":     "http://localhost:8765",
     },
   },
   test: {

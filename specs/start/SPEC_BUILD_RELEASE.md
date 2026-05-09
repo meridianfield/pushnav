@@ -230,7 +230,7 @@ Windows release:
 - `database_path()` — star database
 - `camera_binary_path()` — platform-specific camera server binary
 - `sounds_dir()` — audio files
-- `web_dist_dir()` — built React UI (release-only; in dev served by Vite on :5000)
+- `web_dist_dir()` — built React UI (release-only; in dev served by Vite on :5173)
 - `title_image()` — in-app branding
 
 Detection heuristics:

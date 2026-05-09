@@ -153,7 +153,7 @@ Re-run `npm run build` whenever you change `web/src/**`.
 ### B. Two-terminal run with HMR (for active UI work)
 
 Useful when you're iterating on React/Tailwind. The Python engine runs
-headless and Vite serves the UI on port `5000` with hot reload:
+headless and Vite serves the UI on port `5173` with hot reload:
 
 ```bash
 # terminal 1 — engine + camera, no window
@@ -163,15 +163,15 @@ uv run python -m evf.main --dev --no-window
 (cd web && npm run dev)
 ```
 
-Then open `http://localhost:5000/` in your browser. `--dev` also enables
+Then open `http://localhost:5173/` in your browser. `--dev` also enables
 the in-app DebugPanel and the `/api/dev/*` endpoints (sample injection,
 frame capture).
 
 ### Convenience scripts
 
 The helper scripts launch `evf.main`; the Python entry-point itself
-probes `localhost:5000` and uses Vite's HMR when it's running, falling
-back to the prebuilt bundle on `:8080` otherwise. So you can leave Vite
+probes `localhost:5173` and uses Vite's HMR when it's running, falling
+back to the prebuilt bundle on `:8765` otherwise. So you can leave Vite
 out and everything still works in one terminal:
 
 ```bash
@@ -183,7 +183,7 @@ scripts\run_dev_windows.bat  # Windows — assumes camera\windows\build.bat ran 
 ```
 
 If you want HMR, start `(cd web && npm run dev)` in another terminal
-*before* the script — `evf.main` will pick :5000 automatically.
+*before* the script — `evf.main` will pick :5173 automatically.
 
 Set `PUSHNAV_DEBUG=1` in the environment to enable the DebugPanel,
 `/api/dev/*` endpoints, and the WebKit inspector in the pywebview window.

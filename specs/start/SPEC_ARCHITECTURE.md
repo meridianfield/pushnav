@@ -25,8 +25,8 @@ Supports Future Headless Mode
 │                 UI Layer                      │
 │       (pywebview window — OS webview)         │
 │                                               │
-│  - React UI loaded from http://localhost:8080 │
-│    (prod) or http://localhost:5000 (dev,      │
+│  - React UI loaded from http://localhost:8765 │
+│    (prod) or http://localhost:5173 (dev,      │
 │    Vite HMR)                                  │
 │  - Step wizard (Camera → Sync → Roll → Track) │
 │  - Live view via /frame.mjpg + SVG overlays   │
@@ -204,11 +204,11 @@ break the session.
 ## 4.5 Web Server Thread
 
 Runs an aiohttp-based HTTP + WebSocket server on `0.0.0.0:<webserver.port>`
-(default 8080) in its own asyncio event loop on a dedicated daemon thread.
+(default 8765) in its own asyncio event loop on a dedicated daemon thread.
 
 ```
 HTTP GET /              → serves the React build (web_dist_dir/index.html);
-                          dev workflow uses Vite on :5000 instead
+                          dev workflow uses Vite on :5173 instead
 HTTP GET /static/*      → React build assets
 HTTP GET /frame.mjpg    → multipart MJPEG of the latest camera frame (~10 Hz)
 HTTP GET /sounds/*      → serves WAV audio files
@@ -638,7 +638,7 @@ Default configuration:
   "calibration": {"finder_rotation": 0.0, "sync_d_body": null},
   "logging": {"verbose": false},
   "audio": {"enabled": true},
-  "webserver": {"port": 8080}
+  "webserver": {"port": 8765}
 }
 ```
 

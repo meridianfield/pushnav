@@ -34,7 +34,7 @@ DEFAULT_CONFIG = {
     "calibration": {"finder_rotation": 0.0, "sync_d_body": None},
     "logging": {"verbose": False},
     "audio": {"enabled": True},
-    "webserver": {"port": 8080},
+    "webserver": {"port": 8765},
     "location": {"latitude": None, "longitude": None},
 }
 

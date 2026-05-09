@@ -11,7 +11,7 @@ Camera servers are platform-specific: Swift (macOS), C/V4L2 (Linux), C/DirectSho
 External integrations run in-process on three TCP servers: a **Stellarium** binary-protocol
 server on `localhost:10001`, an **LX200 Classic** ASCII server on `0.0.0.0:4030` for
 SkySafari / Stellarium Mobile / INDI / ASCOM clients, and an **aiohttp HTTP + WebSocket**
-server on `0.0.0.0:8080` for the phone-scannable mobile web interface.
+server on `0.0.0.0:8765` for the phone-scannable mobile web interface.
 
 The UI has two tabs:
 - **Navigation** — live camera frame, plate-solve overlay, sync wizard, push-to arrow.
@@ -32,10 +32,10 @@ uv sync                          # install Python deps from lockfile
 (cd web && npm run build)
 uv run python -m evf.main
 
-# Dev mode (HMR) — Vite serves UI on :5000 with hot reload
+# Dev mode (HMR) — Vite serves UI on :5173 with hot reload
 uv run python -m evf.main --dev --no-window     # terminal 1: engine only
 (cd web && npm run dev)                          # terminal 2: Vite dev server
-# Open http://localhost:5000 in your browser
+# Open http://localhost:5173 in your browser
 ```
 
 ### Platform-specific camera build

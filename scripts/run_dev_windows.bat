@@ -22,9 +22,9 @@ cd /d "%~dp0.."
 
 uv sync || exit /b 1
 
-REM evf.main auto-detects Vite on :5000 and otherwise loads the prebuilt
-REM bundle from :8080 -- make sure web\dist exists when Vite isn't running.
-netstat -an | findstr ":5000" | findstr "LISTENING" >nul
+REM evf.main auto-detects Vite on :5173 and otherwise loads the prebuilt
+REM bundle from :8765 -- make sure web\dist exists when Vite isn't running.
+netstat -an | findstr ":5173" | findstr "LISTENING" >nul
 if errorlevel 1 (
     if not exist "web\dist\index.html" (
         if not exist "web\node_modules" (
@@ -33,7 +33,7 @@ if errorlevel 1 (
             call npm install || ( popd & exit /b 1 )
             popd
         )
-        echo ==^> No Vite on :5000 and no web\dist -- building React bundle
+        echo ==^> No Vite on :5173 and no web\dist -- building React bundle
         pushd web
         call npm run build || ( popd & exit /b 1 )
         popd

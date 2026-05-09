@@ -90,7 +90,7 @@ Four-step wizard: Camera → Sync → Roll → Track
 - Audio can be enabled/disabled in settings.
 
 ### Mobile Web Interface
-- Built-in HTTP + WebSocket server on `0.0.0.0:<webserver.port>` (default 8080).
+- Built-in HTTP + WebSocket server on `0.0.0.0:<webserver.port>` (default 8765).
 - Serves `data/web/index.html` — a single-page mobile view with no install.
 - WebSocket pushes pointing / navigation / state JSON at ~10 Hz to connected clients.
 - Settings panel shows the LAN URL + QR code so a phone can scan-to-connect.
@@ -178,7 +178,7 @@ See `SPEC_PROTOCOL_LX200.md`.
 
 ## 5.3 Mobile web interface
 
-- HTTP + WebSocket server on `0.0.0.0:<webserver.port>` (default 8080).
+- HTTP + WebSocket server on `0.0.0.0:<webserver.port>` (default 8765).
 - Serves `data/web/index.html` — a single-page mobile companion view with no
   install needed, designed for at-the-eyepiece use.
 - WebSocket `/ws` pushes pointing, navigation, and state JSON at ~10 Hz to
@@ -307,7 +307,7 @@ Stored as JSON. Platform-specific paths:
     "enabled": true
   },
   "webserver": {
-    "port": 8080
+    "port": 8765
   }
 }
 ```

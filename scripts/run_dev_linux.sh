@@ -34,15 +34,15 @@ fi
 
 uv sync
 
-# evf.main auto-detects Vite on :5000 and otherwise loads the prebuilt
-# bundle from :8080 — make sure web/dist exists when Vite isn't running.
-if ! (exec 3<>/dev/tcp/localhost/5000) 2>/dev/null; then
+# evf.main auto-detects Vite on :5173 and otherwise loads the prebuilt
+# bundle from :8765 — make sure web/dist exists when Vite isn't running.
+if ! (exec 3<>/dev/tcp/localhost/5173) 2>/dev/null; then
     if [ ! -f web/dist/index.html ]; then
         if [ ! -d web/node_modules ]; then
             echo "==> Installing web/ npm dependencies"
             (cd web && npm install)
         fi
-        echo "==> No Vite on :5000 and no web/dist — building React bundle"
+        echo "==> No Vite on :5173 and no web/dist — building React bundle"
         (cd web && npm run build)
     fi
 fi

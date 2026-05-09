@@ -283,7 +283,7 @@ class WebServer:
         """Serve the React app shell from web_dist_dir().
 
         Returns 503 when the React build is missing (dev mode without
-        ``npm run build``); the dev workflow uses Vite on port 5000 instead.
+        ``npm run build``); the dev workflow uses Vite on port 5173 instead.
         """
         dist = web_dist_dir()
         index = dist / "index.html"
@@ -294,7 +294,7 @@ class WebServer:
             text=(
                 "React build not found at "
                 f"{dist}. Run 'npm run build' in web/ or use "
-                "'npm run dev' (Vite on :5000) for dev."
+                "'npm run dev' (Vite on :5173) for dev."
             ),
         )
 

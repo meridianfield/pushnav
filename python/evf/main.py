@@ -40,13 +40,13 @@ _VP_WIDTH = 1060
 _VP_HEIGHT = 760
 
 
-def _vite_running(port: int = 5000) -> bool:
+def _vite_running(port: int = 5173) -> bool:
     """True if **Vite's** dev server is reachable on localhost:`port`.
 
-    A bare TCP probe isn't enough — macOS reserves port 5000 for the
-    AirPlay Receiver (Control Center), which accepts connections but is
-    obviously not Vite. We probe `/@vite/client` (a JS module Vite
-    always serves) so unrelated listeners don't get mistaken for Vite.
+    A bare TCP probe isn't enough — common ports get squatted on by other
+    services (e.g. macOS uses 5000 for AirPlay Receiver). We probe
+    `/@vite/client` (a JS module Vite always serves) so unrelated
+    listeners don't get mistaken for Vite.
     """
     try:
         with urllib.request.urlopen(
@@ -92,9 +92,9 @@ def main() -> None:
     # Use Vite's HMR server when it's actually running; otherwise serve the
     # prebuilt bundle through the in-process aiohttp server. This decouples
     # URL choice from dev_mode, so PUSHNAV_DEBUG=1 (or --dev) without Vite
-    # still loads a working UI from :8080.
+    # still loads a working UI from :8765.
     target_url = (
-        "http://localhost:5000" if _vite_running() else "http://localhost:8080"
+        "http://localhost:5173" if _vite_running() else "http://localhost:8765"
     )
     title = f"PushNav {engine.app_version}"
 
