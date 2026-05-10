@@ -70,19 +70,25 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 
 ### Linux
 
-- GCC, libjpeg-dev, libfuse2 (camera server + AppImage build)
-- GStreamer 1 (audio playback)
-
 ```bash
-sudo apt install gcc libjpeg-dev libfuse2 gstreamer1.0-tools
+sudo apt install gcc libjpeg-dev gstreamer1.0-tools libfuse2
 ```
 
-`pywebview` uses its Qt backend on Linux — `pywebview[qt]` (QtPy + PyQt6 +
-PyQt6-WebEngine) is pulled in automatically by `uv sync`, no system
-PyGObject / WebKit2GTK packages required. `gstreamer1.0-tools` provides
-`gst-play-1.0`, which `playsound3` uses for the lock/lost/GOTO audio
-alerts (`aplay` from `alsa-utils` or `ffplay` from `ffmpeg` also work as
-fallbacks).
+| Package | Why |
+|---|---|
+| `gcc`, `libjpeg-dev` | Compile the V4L2 camera server (`make -C camera/linux`). MJPEG encoding uses libjpeg. |
+| `gstreamer1.0-tools` | Provides `gst-play-1.0`, which `playsound3` shells out to for the lock / lost / GOTO audio alerts. `aplay` (`alsa-utils`) or `ffplay` (`ffmpeg`) also work as fallbacks. |
+| `libfuse2` | Only needed if you'll run `scripts/build_linux.sh`'s AppImage stage. Plain dev runs and the `.tar.gz` build don't need it. |
+
+`pywebview` uses its **Qt** backend on Linux. `pywebview[qt]` (QtPy +
+PyQt6 + PyQt6-WebEngine) is pulled in automatically by `uv sync` as a
+normal pip dependency — there are **no** system PyGObject / GTK /
+WebKit2GTK packages to install. PyQt6 itself depends on the usual X11 /
+OpenGL / font / audio system libraries (`libxcb-*`, `libgl1`,
+`libfontconfig1`, `libxkbcommon-x11-0`, `libnss3`, ...) — every desktop
+Linux install ships these by default, so you only need to install them
+on minimal / server / container images that don't already have a desktop
+session.
 
 ### Windows
 

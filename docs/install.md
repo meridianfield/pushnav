@@ -66,10 +66,12 @@ You only need to do this once.
 
 ### Before you start: system packages
 
-PushNav bundles its own window toolkit (Qt) and audio libraries, but the
-AppImage format itself needs FUSE, and GStreamer drives the lock/lost
-audio alerts. Most desktop Linux installs already have these, but on a
-fresh or minimal system install them first:
+PushNav ships its own window toolkit (Qt/Chromium) inside the AppImage,
+so there's nothing GTK- or WebKit-related to install. You do need two
+small system pieces: **FUSE** (so the AppImage format can mount itself
+on first launch) and **GStreamer** (so the lock / lost / GOTO audio
+alerts can play). Most desktop Linux installs already have both, but on
+a fresh or minimal system install them first:
 
 **Ubuntu / Debian / Mint / Pop!_OS:**
 
@@ -90,8 +92,13 @@ sudo pacman -S fuse2 gst-plugins-base
 ```
 
 If FUSE is missing, the AppImage refuses to start with a message about
-mounting; if GStreamer is missing, you'll see "could not open audio
+mounting. If GStreamer is missing, you'll see "could not open audio
 device" warnings but the rest of the app still works.
+
+!!! note "What about PyGObject / GTK / WebKit2GTK?"
+    Older versions of PushNav used pywebview's GTK backend and required
+    `python3-gi`, `gir1.2-webkit2-4.1`, etc. The Linux build switched to
+    Qt — none of those packages are needed anymore.
 
 ### Install
 
