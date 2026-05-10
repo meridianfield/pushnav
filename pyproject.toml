@@ -25,6 +25,10 @@ dev = [
     "nuitka>=4.0.2",
     "pytest",
     "pytest-asyncio>=0.23",
+    # macOS DMG layout (writes .DS_Store directly via ds-store + mac-alias —
+    # avoids the Sequoia AppleScript / Finder Automation regression that
+    # breaks create-dmg's icon positioning). macOS-only at runtime.
+    "dmgbuild>=1.6.5; sys_platform == 'darwin'",
 ]
 docs = [
     "mkdocs-material>=9.5",

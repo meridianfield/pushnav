@@ -155,15 +155,23 @@ cp "$REPO_ROOT/marketing/inapp-title.png" "$RESOURCES/marketing/"
 echo "==> $APP_NAME.app assembled at $APP_DIR"
 
 # -------------------------------------------------------------------------
-# Phase 4: Create .dmg
+# Phase 4: Create styled .dmg via dmgbuild
+# -------------------------------------------------------------------------
+# dmgbuild (Python, in the repo's dev dep group) writes the volume's
+# .DS_Store directly via ds-store + mac-alias — bypassing the
+# AppleScript / Finder Automation path that broke for create-dmg on
+# Sequoia. Settings live in scripts/dmgbuild_settings.py; the .app and
+# background paths come in via env vars.
 # -------------------------------------------------------------------------
 DMG_PATH="$BUILD_DIR/$APP_NAME.dmg"
-echo "==> Creating $DMG_PATH"
-hdiutil create \
-    -volname "$APP_NAME" \
-    -srcfolder "$APP_DIR" \
-    -ov \
-    -format UDZO \
+echo "==> Creating styled $DMG_PATH"
+rm -f "$DMG_PATH"
+
+PUSHNAV_APP_PATH="$APP_DIR" \
+PUSHNAV_BG_PATH="$REPO_ROOT/marketing/dmg-background.png" \
+uv run dmgbuild \
+    -s "$SCRIPT_DIR/dmgbuild_settings.py" \
+    "$APP_NAME" \
     "$DMG_PATH"
 
 echo "==> Build complete!"
