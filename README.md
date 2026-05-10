@@ -207,6 +207,26 @@ scripts\build_windows.bat
 
 Build output goes to `build/`.
 
+### macOS Gatekeeper note
+
+The macOS `.dmg` is built with an ad-hoc code signature, **not** an Apple
+Developer ID. When you (or anyone you share the build with) downloads
+the `.dmg` from a browser, macOS Gatekeeper sees the quarantine flag and
+shows *"PushNav is damaged and can't be opened. You should move it to
+the Bin."* The app is fine — that dialog is just macOS refusing to
+launch an unsigned app it considers "downloaded from the internet".
+
+Strip the quarantine flag in Terminal once after copying to
+`/Applications`:
+
+```bash
+xattr -cr /Applications/PushNav.app
+```
+
+Then double-click as normal. (Locally-built `.app`s don't get the
+quarantine flag in the first place, so this only affects downloaded
+artifacts.)
+
 ## Running Tests
 
 ```bash

@@ -49,12 +49,19 @@ The first time PushNav starts, Windows Firewall will ask if you want to allow Pu
 
 Because PushNav is a free, open-source app and isn't sold through the Mac App Store, macOS will show a couple of prompts the first time you open it. This is normal.
 
-**Security warning.** macOS will say it can't verify the developer:
+**"PushNav is damaged and can't be opened. You should move it to the Bin."**
 
-- **macOS 14 and earlier**: Right-click PushNav in Applications → click **Open** → click **Open** again in the confirmation dialog
-- **macOS 15 (Sequoia) and later**: Double-click PushNav (it will be blocked), then go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**
+The app is fine — this is macOS Gatekeeper refusing to launch an unsigned app that your browser flagged as "downloaded from the internet". The dialog has only **Cancel** and **Move to Bin**, with no "Open Anyway" option.
 
-You only need to do this once.
+To fix it, open **Terminal** and run:
+
+```bash
+xattr -cr /Applications/PushNav.app
+```
+
+That removes the quarantine flag your browser set. Double-click PushNav again — it'll launch normally. You only need to do this once.
+
+If you instead see **"can't be opened because Apple cannot check it for malicious software"** (older quarantine dialog with an "Open Anyway" path), that one you can solve in **System Settings → Privacy & Security** — scroll down and click **Open Anyway**. Either path lands at the same end state.
 
 **Camera access.** macOS will ask if PushNav can use your camera. Click **Allow**. PushNav needs the camera to see the stars.
 
