@@ -98,11 +98,14 @@ def main() -> None:
     import webview
 
     # Use Vite's HMR server when it's actually running; otherwise serve the
-    # prebuilt bundle through the in-process aiohttp server. This decouples
-    # URL choice from dev_mode, so PUSHNAV_DEBUG=1 (or --dev) without Vite
-    # still loads a working UI from :8765.
+    # prebuilt bundle through the in-process aiohttp server. The prod URL
+    # is built from engine.config.web_port (single source of truth) so a
+    # user-customized port keeps the navigation URL and the bound webserver
+    # in sync — and old config files carried over from earlier installs
+    # don't desync the two sides.
+    web_port = engine.config.web_port
     target_url = (
-        "http://localhost:5173" if _vite_running() else "http://localhost:8765"
+        "http://localhost:5173" if _vite_running() else f"http://localhost:{web_port}"
     )
     title = f"PushNav {engine.app_version}"
 
