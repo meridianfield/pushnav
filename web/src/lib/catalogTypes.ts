@@ -81,3 +81,21 @@ export interface ManualEntry {
 }
 
 export type AdvancedEntry = NgcEntry | StarEntry | ManualEntry;
+
+// Pretty label for an OpenNGC type code.
+export const NGC_TYPE_LABELS: Record<string, string> = {
+  G:   "Galaxy",
+  GPair: "Galaxy pair",
+  GTrpl: "Galaxy triple",
+  GGroup: "Galaxy group",
+  OC:  "Open cluster",
+  GC:  "Globular cluster",
+  Cl:  "Cluster",
+  PN:  "Planetary nebula",
+  HII: "HII region",
+  EmN: "Emission nebula",
+  RfN: "Reflection nebula",
+  SNR: "Supernova remnant",
+  Neb: "Nebula",
+  Other: "Other",
+};
