@@ -1,0 +1,10 @@
+OpenNGC — open deep-sky object database
+Source: https://github.com/mattiaverga/OpenNGC
+Version vendored: v20260501
+Author: Mattia Verga
+License: CC-BY-SA 4.0 (see LICENSE in this directory)
+
+This data is unmodified from the upstream release. PushNav's
+scripts/build_catalogs.py reads NGC.csv at build time and emits a
+trimmed JSON projection at web/src/data/openngc.json; that derived
+JSON is therefore also distributed under CC-BY-SA 4.0.
