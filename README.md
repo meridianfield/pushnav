@@ -291,3 +291,18 @@ Pre-built STLs are in [`hardware/3d_models/stls/`](hardware/3d_models/stls/). Se
 Copyright (c) 2026 Arun Venkataswamy
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
 
+## Third-party data
+
+The Advanced catalog search is backed by two vendored astronomical
+databases. Each lives under `data/catalogs/<name>/` with its upstream
+`LICENSE` and a `NOTICE` file recording the exact vendored version.
+
+| Catalog | Upstream | License |
+|---|---|---|
+| OpenNGC | <https://github.com/mattiaverga/OpenNGC> | CC-BY-SA 4.0 |
+| HYG v3  | <https://github.com/astronexus/HYG-Database> | CC-BY-SA (see `data/catalogs/hyg/LICENSE`) |
+
+The build script `scripts/build_catalogs.py` trims these CSVs to the
+JSON projections under `web/src/data/`; those derived files inherit
+the CC-BY-SA licence.
+
