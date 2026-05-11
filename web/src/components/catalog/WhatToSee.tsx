@@ -1,15 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import objectsData from "@/data/objects.json";
-import type { CatalogObject } from "@/lib/catalogTypes";
+import type { AdvancedEntry, CatalogObject } from "@/lib/catalogTypes";
 import type { EnginePayload } from "@/lib/types";
 import { CatalogDetail } from "./CatalogDetail";
 import { LocationPanel } from "./LocationPanel";
 import { BuddyTab } from "./buddy/BuddyTab";
+import { AdvancedTab } from "./advanced/AdvancedTab";
 
 const objects = objectsData as CatalogObject[];
 const SELECTED_KEY = "pushnav.catalog.selected";
 const SUBTAB_KEY = "pushnav.catalog.subtab";
+const ADV_KEY = "pushnav.catalog.advanced.selected";
+
+function readAdvancedSelection(): AdvancedEntry | null {
+  try {
+    const raw = localStorage.getItem(ADV_KEY);
+    return raw ? (JSON.parse(raw) as AdvancedEntry) : null;
+  } catch {
+    return null;
+  }
+}
+function writeAdvancedSelection(e: AdvancedEntry | null) {
+  if (e === null) localStorage.removeItem(ADV_KEY);
+  else localStorage.setItem(ADV_KEY, JSON.stringify(e));
+}
 
 interface Props {
   state: EnginePayload;
@@ -49,6 +64,13 @@ export function WhatToSee({ state, onSwitchToNavigation }: Props) {
     () => objects.find((o) => o.id === selectedId) ?? null,
     [selectedId],
   );
+
+  const [advancedSelected, setAdvancedSelectedState] =
+    useState<AdvancedEntry | null>(() => readAdvancedSelection());
+  const setAdvancedSelected = (e: AdvancedEntry | null) => {
+    setAdvancedSelectedState(e);
+    writeAdvancedSelection(e);
+  };
 
   const [subtab, setSubtabState] = useState<"buddy" | "advanced">(() => {
     return localStorage.getItem(SUBTAB_KEY) === "advanced" ? "advanced" : "buddy";
@@ -99,16 +121,21 @@ export function WhatToSee({ state, onSwitchToNavigation }: Props) {
             setSelectedId={setSelectedId}
           />
         ) : (
-          <Card className="lg:col-span-2 flex items-center justify-center p-6 text-sm text-muted-foreground">
-            Advanced search — coming in Task 10.
-          </Card>
+          <AdvancedTab
+            selected={advancedSelected}
+            onSelect={setAdvancedSelected}
+          />
         )}
 
         <Card className="lg:col-span-1 lg:min-h-0 lg:overflow-y-auto pushnav-scrollbar flex flex-col gap-3 px-4 py-3 text-sm">
           <LocationPanel state={state} />
           <div className="border-t border-border/60 -mx-4" />
           <CatalogDetail
-            input={selected ? { kind: "buddy", object: selected } : null}
+            input={
+              subtab === "buddy"
+                ? (selected ? { kind: "buddy", object: selected } : null)
+                : (advancedSelected ? { kind: "advanced", entry: advancedSelected } : null)
+            }
             location={location}
             evalAt={evalAt}
             onTargetSet={onSwitchToNavigation}
