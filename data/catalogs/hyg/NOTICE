@@ -1,0 +1,11 @@
+HYG v3 — merged star catalog (Hipparcos + Yale Bright Star + Gliese)
+Source: https://github.com/astronexus/HYG-Database
+Commit vendored: c7f7f883fe678cc7680169a50ccd7dcc49b060ce
+Author: David Nash (astronexus.com)
+License: CC-BY-SA 4.0 (see LICENSE in this directory)
+
+This data is unmodified from the upstream snapshot. PushNav's
+scripts/build_catalogs.py reads hygdata_v3.csv at build time and emits a
+trimmed JSON projection (named stars, Bayer/Flamsteed designations, and
+all rows with mag ≤ 6.0) at web/src/data/hyg-bright.json; that derived
+JSON is therefore also distributed under CC-BY-SA 4.0.
