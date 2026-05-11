@@ -157,8 +157,17 @@ def main() -> None:
     # in sync — and old config files carried over from earlier installs
     # don't desync the two sides.
     web_port = engine.config.web_port
+    # Append a per-launch cache-buster to the entry URL. WKWebView keeps a
+    # persistent HTTP cache under ~/Library/Caches/com.pushnav.evf and
+    # aiohttp's FileResponse sends no Cache-Control, so heuristic freshness
+    # can keep serving a stale index.html past Cmd-Q + restart and the
+    # webview keeps booting an old JS bundle. A unique query per launch
+    # makes the URL miss any prior cache entry.
+    import time as _time
+    cache_buster = f"?v={int(_time.time())}"
     target_url = (
-        "http://localhost:5173" if _vite_running() else f"http://localhost:{web_port}"
+        f"http://localhost:5173{cache_buster}" if _vite_running()
+        else f"http://localhost:{web_port}/{cache_buster}"
     )
     title = f"PushNav {engine.app_version}"
 

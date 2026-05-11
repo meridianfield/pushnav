@@ -270,7 +270,13 @@ class WebServer:
         dist = web_dist_dir()
         index = dist / "index.html"
         if index.exists():
-            return web.FileResponse(index)
+            # Force revalidation on every load so a stale index.html in
+            # WKWebView's persistent NetworkCache can't pin the page to an
+            # obsolete content-hashed JS bundle. The bundle URLs themselves
+            # are content-addressed so they're safe to cache.
+            return web.FileResponse(
+                index, headers={"Cache-Control": "no-cache, must-revalidate"},
+            )
         return web.Response(
             status=503,
             text=(
