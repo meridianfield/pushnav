@@ -1,0 +1,7 @@
+Name;Type;RA;Dec;Const;V-Mag;B-Mag;M;NGC;IC;Common names;Identifiers
+NGC0224;G;00:42:44.30;+41:16:09.4;And;3.44;4.36;31;;;Andromeda Galaxy;PGC 2557,UGC 454
+NGC0598;G;01:33:50.89;+30:39:35.8;Tri;5.72;6.27;33;;;Triangulum Galaxy,Pinwheel Galaxy;PGC 5818
+NGC1976;Neb;05:35:17.30;-05:23:28.0;Ori;4.00;;;42;;Great Orion Nebula;
+NGC0001;G;00:07:15.86;+27:42:29.7;Peg;13.7;14.4;;;;;PGC 632
+DUMMY01;Dup;00:00:00.00;+00:00:00.0;;;;;;;;
+DUMMY02;*;00:00:00.00;+00:00:00.0;;;;;;;;
