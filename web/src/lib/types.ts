@@ -116,4 +116,8 @@ export interface EnginePayload {
   min_matches: number;
   max_prob: number;
   sample_active: string | null;
+  // ISO UTC string when PUSHNAV_TESTDATE is in effect on the server,
+  // null otherwise. Frontend treats null as "use real Date()", so an
+  // unset env var is a true no-op.
+  astro_now_iso: string | null;
 }

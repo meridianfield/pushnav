@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { altAzFromRaDec } from "@/lib/astronomy";
+import { astroNow } from "@/lib/astroNow";
 import { useThemeColors } from "./useThemeColors";
 import { SkyDomeCanvas } from "./SkyDomeCanvas";
 
@@ -13,6 +14,9 @@ interface Props {
   latDeg: number | null;
   lonDeg: number | null;
   className?: string;
+  // Optional override of "astronomical now" sourced from the engine's
+  // PUSHNAV_TESTDATE. When undefined/null the dome uses the real clock.
+  astroNowIso?: string | null;
 }
 
 export function SkyDome({
@@ -24,10 +28,11 @@ export function SkyDome({
   latDeg,
   lonDeg,
   className,
+  astroNowIso,
 }: Props) {
   const colors = useThemeColors();
   const hasLocation = latDeg !== null && lonDeg !== null;
-  const now = new Date();
+  const now = astroNow(astroNowIso);
 
   const pointing =
     hasLocation && pointingRaDeg !== null && pointingDecDeg !== null

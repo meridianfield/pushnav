@@ -64,6 +64,7 @@ export function Wizard({ state }: Props) {
             targetLabel={nav?.target_name ?? null}
             latDeg={state.location.latitude}
             lonDeg={state.location.longitude}
+            astroNowIso={state.astro_now_iso}
           />
         </CardContent>
       </Card>

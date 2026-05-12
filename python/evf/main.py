@@ -31,6 +31,7 @@ import urllib.error
 import urllib.request
 
 from evf.config.manager import ConfigManager
+from evf.engine.clock import init_test_date
 from evf.engine.engine import Engine
 
 logger = logging.getLogger(__name__)
@@ -128,6 +129,14 @@ def main() -> None:
     no_window = "--no-window" in sys.argv
     # --react is now the default; accept the flag as a no-op for back-compat
     _ = "--react" in sys.argv
+
+    # Optional override of "astronomical now" for screenshot work — read
+    # PUSHNAV_TESTDATE before the engine starts so the first payload push
+    # already carries the right value. A malformed value raises here on
+    # purpose: the operator wants immediate feedback, not silent fallback.
+    test_date = init_test_date()
+    if test_date is not None:
+        logger.info("PUSHNAV_TESTDATE active: astro_now_iso=%s", test_date)
 
     # Single-instance guard. Reads config first (we need web_port for the
     # probe) and reuses the same ConfigManager for the engine, so it isn't

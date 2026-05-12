@@ -33,6 +33,7 @@ from typing import Callable, Protocol
 from aiohttp import web
 
 from evf.config.manager import ConfigManager
+from evf.engine.clock import astro_now_iso as _astro_now_iso
 from evf.engine.frame_buffer import LatestFrame
 from evf.engine.goto_target import GotoTarget
 from evf.engine.navigation import compute_navigation, edge_arrow_position
@@ -596,6 +597,9 @@ class WebServer:
             "sample_active": (
                 self._sample_active() if self._sample_active else None
             ),
+            # Set ONLY when PUSHNAV_TESTDATE is in effect; null otherwise.
+            # The frontend treats null as "use real Date()".
+            "astro_now_iso": _astro_now_iso(),
         }
 
     def _build_nav(self, snap, target, origin_x, origin_y, dx_off, dy_off) -> dict | None:

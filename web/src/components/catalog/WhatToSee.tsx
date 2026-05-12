@@ -43,11 +43,20 @@ export function WhatToSee({ state, onSwitchToNavigation }: Props) {
     else localStorage.setItem(SELECTED_KEY, id);
   };
 
-  const [tickNow, setTickNow] = useState(() => Date.now());
+  // tickNow anchors evalAt. Normally it advances every minute; when
+  // state.astro_now_iso is set (server-side PUSHNAV_TESTDATE override) it
+  // is frozen to the test date so visibility/rise/set match the dome.
+  const [tickNow, setTickNow] = useState(() =>
+    state.astro_now_iso ? new Date(state.astro_now_iso).getTime() : Date.now(),
+  );
   useEffect(() => {
+    if (state.astro_now_iso) {
+      setTickNow(new Date(state.astro_now_iso).getTime());
+      return;
+    }
     const id = setInterval(() => setTickNow(Date.now()), 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [state.astro_now_iso]);
 
   const evalAt = useMemo(
     () => new Date(tickNow + appliedOffsetMin * 60_000),
