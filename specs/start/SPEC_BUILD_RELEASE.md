@@ -116,7 +116,11 @@ scripts/build_mac.sh
 
 Key Nuitka flags:
 - `--standalone` (NOT `--onefile` — `.dist/` directory approach)
-- `--output-filename=evf` (binary name; macOS/Linux) or `evf.exe` (Windows)
+- `--output-filename=PushNav` (binary name; macOS/Linux) or `PushNav.exe`
+  (Windows). The binary name matches the app/bundle name on purpose:
+  macOS TCC reads it for the camera permission prompt, Windows Defender
+  Firewall reads it (alongside the version-info `ProductName`) for the
+  network prompt, and on Linux it keeps `ps`/`top` output legible.
 - `--include-package=erfa` (bundles the pyerfa C extension used by the LX200
   J2000↔JNow precession helpers)
 - `--include-package=` for `numpy`, `scipy`, `PIL`, `playsound3`, `tetra3`, `webview`
@@ -135,7 +139,7 @@ Expected `.app` layout:
 PushNav.app/
   Contents/
     MacOS/
-      evf                # Nuitka standalone dist (CFBundleExecutable)
+      PushNav            # Nuitka standalone dist (CFBundleExecutable)
       camera_server      # Swift binary
       ...                # Nuitka support files
     Resources/

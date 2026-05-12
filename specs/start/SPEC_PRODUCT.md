@@ -32,6 +32,10 @@ This system acts as a real-time electronic encoder replacement using plate solvi
 - Single supported UVC camera model
 - No camera selection UI
 - No multiple camera support
+- Window size is **1060 × 820** (HiDPI-scaled by each platform's webview)
+  and **non-resizable** (`resizable=False` in `webview.create_window()`).
+  The React layout is designed around this single size; no fluid /
+  responsive scaling is expected on the desktop window.
 
 ## 2.2 Functional Capabilities
 

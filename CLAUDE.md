@@ -108,12 +108,17 @@ web/                            # React + Vite + TS + Tailwind + shadcn/ui front
     App.tsx
     main.tsx
     components/                 # LiveView, Wizard, Settings, DebugPanel, ...
-      catalog/                  # WhatToSee tab — table, filters, detail, time, LocationPanel
+      catalog/                  # WhatToSee tab — Buddy/Advanced sub-tabs, table, filters, detail, time, LocationPanel
+        advanced/               # AdvancedTab: search input + results + ManualEntry RA/Dec panel
+        buddy/                  # BuddyTab (curated 161 catalog)
       live-view/                # LiveView, NavOverlay, AxesOverlay, StarOverlay, ...
+        SkyDome/                # always-visible 3D dome (R3F) — pointing/target markers, telescope cylinder
     hooks/                      # useEngineState (WebSocket subscription), useView
-    lib/                        # api client, types, astronomy (altAz/rise/set), catalogTypes
+    lib/                        # api client, types, astronomy (altAz/rise/set), catalogTypes, advancedSearch
     data/
-      objects.json              # vendored deep-sky catalog (161 entries)
+      objects.json              # vendored buddy catalog (161 curated entries)
+      openngc.json              # OpenNGC trimmed to ~12.5k NGC objects (CC-BY-SA 4.0)
+      hyg-bright.json           # HYG v3 trimmed to ~8.8k bright stars (CC-BY-SA 4.0)
   public/                       # logo, inapp-title, favicons
   dist/                         # build output (gitignored)
 camera/
@@ -160,6 +165,7 @@ specs/start/                    # design specifications
 - **tetra3** — vendored at `python/vendor/tetra3/`, wired as editable local dep in `[tool.uv.sources]`
 - **pywebview** — wraps the OS webview (WebKit/WebView2/GTK) for the desktop window
 - **React + Vite + TypeScript + Tailwind + shadcn/ui** — front-end stack (under `web/`)
+- **three** + **@react-three/fiber** + **@react-three/drei** — WebGL rendering for the always-visible Sky View 3D dome (`web/src/components/live-view/SkyDome/`). Labels use drei `<Html>` to stay offline; `<Text>` is intentionally avoided so troika-three-text's CDN font-resolver is never loaded
 - **numpy**, **scipy**, **Pillow** — tetra3 dependencies
 - **playsound3** — audio feedback for solve lock/lost events
 - **aiohttp** — HTTP + WebSocket server (serves the React build, /ws state, /frame.mjpg, /api/*)

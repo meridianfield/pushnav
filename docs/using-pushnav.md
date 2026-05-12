@@ -100,5 +100,5 @@ If the directions ever feel wrong (e.g. after bumping the camera), just restart 
 
 - **Use a higher-magnification eyepiece for sync.** The more precisely you center the sync star, the more accurate the push-to guidance will be.
 - **Don't touch the camera after sync.** If the camera shifts on the telescope (loose finder shoe, bumped cable), the calibration is off. PushNav will still track, but the push directions will be wrong. Redo sync if this happens.
-- **Pick targets that are above the horizon.** Stellarium shows objects below the horizon too; if you send one of those to PushNav, the arrows will try to push you through the ground.
+- **Watch out for below-horizon targets.** PushNav's own *What to See* tab disables the **Set as target** button for objects below the horizon (and shows a "Below horizon" hint), but only when you've set a location — so set your location first. Targets coming in from external apps (Stellarium, SkySafari, INDI, ASCOM) can't be guarded the same way; if you send one of those that's below the horizon, the arrows will try to push you through the ground.
 - **Bright targets first.** For your first session, pick easy bright targets like the Orion Nebula, the Pleiades, or a bright double star. Once you're confident the system is working, go after fainter objects.
