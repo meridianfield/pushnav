@@ -34,7 +34,16 @@ REM reflected. Skipped when Vite is serving HMR on :5173 because the
 REM bundle isn't read in that path.
 netstat -an | findstr ":5173" | findstr "LISTENING" >nul
 if errorlevel 1 (
-    if not exist "web\node_modules" (
+    REM npm writes node_modules\.package-lock.json after install -- if
+    REM the repo's package-lock.json is newer (e.g. after a `git pull`
+    REM that added deps), reinstall before building. Also installs when
+    REM node_modules or its .package-lock.json is missing (fresh checkout).
+    set "NEEDS_INSTALL="
+    if not exist "web\node_modules" set "NEEDS_INSTALL=1"
+    if not exist "web\node_modules\.package-lock.json" set "NEEDS_INSTALL=1"
+    if not defined NEEDS_INSTALL powershell -NoProfile -Command "if ((Get-Item 'web\package-lock.json').LastWriteTime -gt (Get-Item 'web\node_modules\.package-lock.json').LastWriteTime) { exit 1 } else { exit 0 }"
+    if errorlevel 1 set "NEEDS_INSTALL=1"
+    if defined NEEDS_INSTALL (
         echo ==^> Installing web\ npm dependencies
         pushd web
         call npm install || ( popd & exit /b 1 )
