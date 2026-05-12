@@ -36,11 +36,14 @@ from evf.engine.engine import Engine
 logger = logging.getLogger(__name__)
 
 # Window dimensions sized to the React UI's `max-w-5xl` (1024px) layout
-# plus minimal padding. Resizable, so the user can adjust on bigger screens.
+# plus minimal padding. The window is non-resizable (see `resizable=False`
+# in create_window below) so the layout never has to deal with arbitrary
+# aspect ratios — the dome, controls and panels are all designed around
+# this single size.
 # Each platform's webview (WKWebView / WebKit2GTK / WebView2) handles HiDPI
 # scaling natively against its OS's DPI/scale settings — no app-side multiplier.
 _VP_WIDTH = 1060
-_VP_HEIGHT = 760
+_VP_HEIGHT = 820
 
 
 def _vite_running(port: int = 5173) -> bool:
@@ -176,7 +179,7 @@ def main() -> None:
         target_url,
         width=_VP_WIDTH,
         height=_VP_HEIGHT,
-        resizable=True,
+        resizable=False,
     )
     # On Linux, force pywebview's Qt backend (QtPy + PyQt6 + PyQt6-WebEngine,
     # pulled in by the pywebview[qt] extra in pyproject.toml). Without this,

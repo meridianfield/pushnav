@@ -50,7 +50,7 @@ export function TrackingStep({ state }: { state: EnginePayload }) {
   const p = state.pointing;
   const nav = state.nav;
   return (
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Tracking</CardTitle>

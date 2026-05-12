@@ -56,8 +56,10 @@ export default function App() {
                   {/* Wizard fills the remaining column height so its bottom
                       aligns with the right column's Settings card. The
                       [&>*]:flex-1 selector targets Wizard's direct DOM child
-                      (the Card emitted by whichever step renders) and makes
-                      it flex-1 within this growing wrapper. */}
+                      (the Card or grid emitted by whichever step renders)
+                      and makes it flex-1 within this growing wrapper —
+                      essential for TrackingStep, whose two-card grid would
+                      otherwise leave dead space below it. */}
                   <div className="flex-1 flex flex-col [&>*]:flex-1">
                     <Wizard state={state} />
                   </div>
