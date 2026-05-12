@@ -25,6 +25,6 @@ nuitka-crash-report.xml
 .claude/
 
 # React front-end
-web/node_modules/
+node_modules/
 web/dist/
 web/.vite/
