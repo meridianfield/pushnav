@@ -175,16 +175,32 @@ scripts\run_dev_windows.bat  # Windows — assumes camera\windows\build.bat ran 
 If you want HMR, start `(cd web && npm run dev)` in another terminal
 *before* the script — `evf.main` will pick :5173 automatically.
 
-Set `PUSHNAV_DEBUG=1` in the environment to enable the DebugPanel,
-`/api/dev/*` endpoints, and the WebKit inspector in the pywebview window.
+Set `PUSHNAV_DEBUG=1` (or pass `--dev`) for engine dev features, and
+`WEBVIEW_DEBUG=1` for the webview inspector — see the next section for
+details and a Linux caveat.
 
-### `PUSHNAV_DEBUG=1`
+### Dev-mode environment variables
 
-Setting `PUSHNAV_DEBUG=1` in the environment is equivalent to passing
-`--dev`. It enables the engine's dev features (DebugPanel, `/api/dev/*`,
-sample injection) and turns on the WebKit inspector inside the pywebview
-window — right-click → Inspect Element to see the console. Works on
-macOS, Linux, and Windows.
+Two independent toggles:
+
+- **`PUSHNAV_DEBUG=1`** (equivalent to `--dev`) — enables the engine's
+  in-app dev features: the React DebugPanel, the `/api/dev/*` endpoints,
+  sample-image injection, and frame capture. Works on macOS, Linux, and
+  Windows.
+- **`WEBVIEW_DEBUG=1`** — opens the webview inspector inside the
+  pywebview window (right-click → Inspect Element). Independent of
+  `PUSHNAV_DEBUG`; set both when you want dev features *and* the
+  inspector.
+
+**Linux caveat:** `WEBVIEW_DEBUG=1` on Linux starts QtWebEngine's
+remote-debugging server, which on this platform truncates aiohttp's
+static-file responses to ~440 bytes — the React bundle never finishes
+parsing and the window stays blank (dark red `<body>` only). Until
+that's resolved upstream, debug the React UI on Linux via the
+two-terminal Vite workflow above: leave `WEBVIEW_DEBUG` unset, run
+`uv run python -m evf.main --dev --no-window` plus `(cd web && npm run
+dev)`, then open `http://localhost:5173/` in regular Firefox or Chrome
+and use its native devtools.
 
 ## Building Release Binaries
 

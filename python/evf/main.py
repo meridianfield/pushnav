@@ -116,9 +116,15 @@ def _check_single_instance(port: int) -> None:
 
 
 def main() -> None:
-    # PUSHNAV_DEBUG=1 is equivalent to --dev (engine dev features +
-    # WebKit inspector) on every platform.
+    # PUSHNAV_DEBUG=1 / --dev toggles in-app dev features only (sample
+    # injection, frame capture, DebugPanel). Opening the webview's
+    # inspector is a separate opt-in via WEBVIEW_DEBUG=1: on Linux Qt,
+    # pywebview's debug=True starts QtWebEngine's remote-debugging server
+    # which truncates aiohttp static-file responses to ~440 bytes and
+    # leaves the React bundle unparseable, so we keep the inspector off
+    # by default even in dev_mode.
     dev_mode = "--dev" in sys.argv or os.environ.get("PUSHNAV_DEBUG") == "1"
+    webview_debug = os.environ.get("WEBVIEW_DEBUG") == "1"
     no_window = "--no-window" in sys.argv
     # --react is now the default; accept the flag as a no-op for back-compat
     _ = "--react" in sys.argv
@@ -191,7 +197,7 @@ def main() -> None:
     gui = "qt" if sys.platform.startswith("linux") else None
     # private_mode=False is harmless on Cocoa/WebView2/QtWebEngine and was
     # historically needed to keep localStorage alive on WebKit2GTK.
-    webview.start(gui=gui, debug=dev_mode, private_mode=False)
+    webview.start(gui=gui, debug=webview_debug, private_mode=False)
 
     engine.shutdown()
 
