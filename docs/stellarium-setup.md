@@ -98,7 +98,7 @@ Now press **Cmd+1** (Mac) or **Ctrl+1** (Windows / Linux). This sends the target
 
 Switch to PushNav. The side panel shows the target name and how far you need to push:
 
-![PushNav tracking the Great Orion Nebula](assets/pushnav_livex.png)
+![PushNav tracking the Great Orion Nebula](assets/pushnav.0.2.0-tracking.png)
 
 In this example, the Great Orion Nebula is **3.9°** away: push the telescope **left by 0.4°** and **down by 3.9°** to reach it. The main view shows arrows pointing in the push direction.
 

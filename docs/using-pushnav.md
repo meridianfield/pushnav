@@ -36,7 +36,7 @@ PushNav saves your sync and roll calibration between sessions. From the second s
 
 This is safe as long as you haven't physically moved the camera on the telescope since the last session. If you've remounted the camera or adjusted the finder shoe, do a fresh sync and roll calibration instead.
 
-![PushNav desktop app in tracking mode](assets/pushnav_livex.png)
+![PushNav desktop app in tracking mode](assets/pushnav.0.2.0-tracking.png)
 
 Now pick a target in Stellarium (click it, then **Cmd+1** / **Ctrl+1**), and PushNav will show you the push direction.
 
@@ -66,7 +66,7 @@ A couple of edge cases the dome handles:
 
 You don't need to keep looking at your laptop while pushing. Open PushNav's **Settings** panel, scan the **QR code** with your phone, and you'll get a live mobile view showing the same push direction and target info, right in your hand at the eyepiece.
 
-![PushNav mobile companion view](assets/pushnav-mobile.png)
+![PushNav mobile companion view](assets/pushnav.0.2.0-mobile.png)
 
 !!! tip "Prefer SkySafari or Stellarium Mobile?"
     PushNav also speaks the LX200 telescope protocol, so you can pick targets and see your scope's crosshair directly in **SkySafari**, **Stellarium Mobile PLUS**, **INDI** (KStars/Ekos), or **ASCOM** clients. See [SkySafari & Other Apps](skysafari-setup.md) for the one-time setup.
@@ -77,7 +77,11 @@ You don't have to switch back to Stellarium or SkySafari every time you want a n
 
 **Buddy.** A curated list of 161 hand-picked deep-sky objects. Filter by equipment (binoculars / small scope / large scope), light-pollution tolerance, and visual reward. Each entry carries a short observing note. Best for new observers — pick something tagged "beginner" and "high reward" on a moonless night and you can't really go wrong.
 
+![PushNav Buddy catalog tab](assets/pushnav.0.2.0-sgb.png)
+
 **Advanced.** A fuzzy search across **12,522 NGC objects** (OpenNGC) and **8,825 bright stars** (HYG). Type any name or designation — `M31`, `Andromeda`, `NGC 224`, `Sirius`, `Vega`, `α Lyr` — and you'll see scored matches sorted by brightness. Use this when you know what you want, or when you're hunting fainter objects than the curated Buddy list covers.
+
+![PushNav Advanced catalog tab](assets/pushnav.0.2.0-advanced.png)
 
 **Manual coordinates.** Inside the Advanced sub-tab there's a small panel for entering RA and Dec directly. Six fields (hours / minutes / seconds for RA, degrees / arcminutes / arcseconds for Dec, plus a `+` / `−` toggle on the Dec sign) — useful for transient events (comets, asteroids, satellites) where coordinates come from an ephemeris or a paper note, not a catalog.
 

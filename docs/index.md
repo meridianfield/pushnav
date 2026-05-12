@@ -15,7 +15,7 @@ A cross-platform plate-solving push-to system for manual telescopes. PushNav use
 
 PushNav uses the European Space Agency's (ESA) [tetra3](https://github.com/esa/tetra3) fast lost-in-space plate solver, the same algorithm family that powers spacecraft navigation. This efficient solver produces near real-time solutions on a live video feed, enabling seamless push-to navigation even in light-polluted urban skies.
 
-![Screenshot](assets/pushnav_aldebran.png)
+![Screenshot](assets/pushnav.0.2.0-tracking.png)
 
 ## Push-to ops
 
