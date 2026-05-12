@@ -82,7 +82,7 @@ uv run python -m nuitka \
     --standalone \
     --enable-plugin=pyqt6 \
     --output-dir="$BUILD_DIR" \
-    --output-filename=evf \
+    --output-filename=PushNav \
     --include-package=numpy \
     --include-package=scipy \
     --include-package=PIL \
@@ -164,7 +164,7 @@ cat > "$APPDIR/AppRun" <<'APPRUN'
 #!/bin/bash
 HERE="$(dirname "$(readlink -f "$0")")"
 export LD_LIBRARY_PATH="${HERE}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-exec "${HERE}/evf" "$@"
+exec "${HERE}/PushNav" "$@"
 APPRUN
 chmod +x "$APPDIR/AppRun"
 

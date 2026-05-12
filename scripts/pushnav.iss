@@ -28,7 +28,7 @@
 #endif
 #define MyAppVersion APP_VERSION
 #define MyAppPublisher "PushNav"
-#define MyAppExeName "evf.exe"
+#define MyAppExeName "PushNav.exe"
 
 [Setup]
 AppId={{B8F3A2D1-7E4C-4A9B-8D5F-1C2E3F4A5B6D}

@@ -97,7 +97,12 @@ uv run python -m nuitka \
     --mode=app \
     --static-libpython=no \
     --output-dir="$BUILD_DIR" \
-    --output-filename=evf \
+    `# Binary filename must match the .app bundle name. macOS TCC` \
+    `# attributes camera/network/etc. permission prompts to the binary` \
+    `# at Contents/MacOS/<name> and falls back to that name when` \
+    `# CFBundleExecutable doesn't line up with CFBundleName — so using` \
+    `# 'evf' here makes the camera prompt say 'evf' instead of 'PushNav'.` \
+    --output-filename=PushNav \
     --macos-app-name="$APP_NAME" \
     --macos-app-version="$APP_VERSION" \
     --macos-app-icon="$ICON_PATH" \

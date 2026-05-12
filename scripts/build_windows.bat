@@ -97,7 +97,7 @@ uv run python -m nuitka ^
     --windows-product-version=%APP_VERSION%.0 ^
     --windows-file-version=%APP_VERSION%.0 ^
     --output-dir="%BUILD_DIR%" ^
-    --output-filename=evf.exe ^
+    --output-filename=PushNav.exe ^
     --include-package=numpy ^
     --include-package=scipy ^
     --include-package=PIL ^
