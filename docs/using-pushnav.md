@@ -55,6 +55,21 @@ You don't need to keep looking at your laptop while pushing. Open PushNav's **Se
 !!! tip "Prefer SkySafari or Stellarium Mobile?"
     PushNav also speaks the LX200 telescope protocol, so you can pick targets and see your scope's crosshair directly in **SkySafari**, **Stellarium Mobile PLUS**, **INDI** (KStars/Ekos), or **ASCOM** clients. See [SkySafari & Other Apps](skysafari-setup.md) for the one-time setup.
 
+## Picking targets inside PushNav
+
+You don't have to switch back to Stellarium or SkySafari every time you want a new target — PushNav has its own **"What to See"** tab right in the app. Use the segmented control at the top of the window to switch between Navigation and What to See. There are three ways to find a target:
+
+**Buddy.** A curated list of 161 hand-picked deep-sky objects. Filter by equipment (binoculars / small scope / large scope), light-pollution tolerance, and visual reward. Each entry carries a short observing note. Best for new observers — pick something tagged "beginner" and "high reward" on a moonless night and you can't really go wrong.
+
+**Advanced.** A fuzzy search across **12,522 NGC objects** (OpenNGC) and **8,825 bright stars** (HYG). Type any name or designation — `M31`, `Andromeda`, `NGC 224`, `Sirius`, `Vega`, `α Lyr` — and you'll see scored matches sorted by brightness. Use this when you know what you want, or when you're hunting fainter objects than the curated Buddy list covers.
+
+**Manual coordinates.** Inside the Advanced sub-tab there's a small panel for entering RA and Dec directly. Six fields (hours / minutes / seconds for RA, degrees / arcminutes / arcseconds for Dec, plus a `+` / `−` toggle on the Dec sign) — useful for transient events (comets, asteroids, satellites) where coordinates come from an ephemeris or a paper note, not a catalog.
+
+For every match, the right side of the tab shows a detail card with the object's current altitude / azimuth, rise / transit / set times, and a **Set as target** button. Click it and PushNav jumps back to the Navigation tab with the chosen target loaded. The button is disabled when an object is below the horizon — no point pushing through the ground.
+
+!!! tip "Set your location first"
+    Visibility math needs to know where you're observing from. Open the **Location** panel in the right column and enter your latitude and longitude (or let Stellarium provide it automatically when connected). Without a location, the catalog still works as a directory, but the alt/az and rise/set columns stay blank and the below-horizon guard can't run.
+
 ## Why the arrows might feel rotated
 
 The first time you use PushNav, you might notice that "LEFT" on the screen doesn't exactly match what feels like "left" on your telescope. This is normal and expected.

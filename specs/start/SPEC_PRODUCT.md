@@ -200,14 +200,36 @@ The header carries a two-tab segmented control:
   calibrate / track wizard, camera-control sliders, Connectivity (server
   addresses + activity dots), and Settings (toggles + advanced solver +
   Reset to defaults).
-- **What to See** — observer-relative deep-sky catalog. The left island
-  holds equipment / light-pollution / visual-reward filters, an
-  observation-time slider (Now → +6h), and a sortable table of all 161
-  vendored objects above 20° altitude at the chosen time. The right island
-  is the Location panel (manual lat/lon, source = stellarium / manual /
-  none) plus a CatalogDetail card for the selected object; the detail card
-  has a "Set as target" button that POSTs to `/api/goto/set` and switches
-  the tab back to Navigation.
+- **What to See** — observer-relative target picker. The left island
+  carries a Buddy/Advanced sub-tab switcher.
+  - **Buddy** sub-tab: 161 vendored deep-sky objects with equipment /
+    light-pollution / visual-reward filters, an observation-time slider
+    (Now → +6h), and a sortable table of objects above 20° altitude at
+    the chosen time.
+  - **Advanced** sub-tab: a fuzzy-search input over two open catalogs
+    trimmed to JSON under `web/src/data/`:
+    - `openngc.json` — 12,522 NGC objects (OpenNGC v20260501, CC-BY-SA 4.0)
+    - `hyg-bright.json` — 8,825 stars (HYG v3 trimmed to bright stars,
+      CC-BY-SA 4.0)
+    Matching is scored (exact / prefix / substring) over the entry's id
+    and aliases; results are sorted by score → magnitude (brighter first)
+    → alphabetical, capped at 200 rows. A persistent search query keeps
+    its value when the user switches sub-tabs and comes back. Manual
+    entries (see below) are filtered out of search results.
+  - **Manual coordinates** panel (inside Advanced, between search and
+    results): six numeric fields (RA H/M/S, Dec D/M/S) plus a +/− sign
+    toggle for the Dec sign. Validating input produces an `AdvancedEntry`
+    with `source: "manual"` that flows through the same CatalogDetail
+    card as any catalog match. Used for targets not in either catalog
+    (transients, ephemeris-driven objects).
+
+  The right island carries the Location panel (manual lat/lon, source =
+  stellarium / manual / none) and a CatalogDetail card for whichever
+  row is highlighted. The detail card has a **Set as target** button
+  that POSTs to `/api/goto/set` and switches the tab back to Navigation.
+  The button is disabled when `altDeg < 0` with a "Below horizon" hint;
+  when location is unknown (altDeg = null) it stays enabled because
+  visibility can't be evaluated either way.
 
 The Connectivity panel exposes all three server addresses:
 
@@ -376,6 +398,12 @@ Verbose mode logs:
   indicator that lights while a client is talking to the server
 - Audio enable/disable toggle
 - "Use Previous Calibration" button (when saved calibration exists)
+- "What to See" target picker with Buddy / Advanced sub-tabs and a Manual
+  coordinates panel; selecting any row promotes it to the active GOTO
+  target. Below-horizon objects show "Below horizon" and the **Set as
+  target** button is disabled (only when a location is known).
+- Advanced search query persists across Buddy ↔ Advanced sub-tab switches
+  within a session.
 - Debug section (dev mode only) for frame capture and sample injection
 - Consecutive failure counter and last solve age display
 

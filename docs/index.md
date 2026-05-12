@@ -49,6 +49,7 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 - One time, simple calibration. No named stars, just point at any bright star and sync
 - GOTO navigation guidance from your planetarium app (Stellarium, SkySafari, Stellarium Mobile, etc.)
 - Works with **SkySafari**, **Stellarium Mobile**, **INDI**, and **ASCOM** clients over Wi-Fi via the LX200 protocol. See [SkySafari & Other Apps](skysafari-setup.md)
+- Built-in **"What to See"** target picker — pick a target without leaving PushNav. Three modes: a curated **Buddy** catalog (161 hand-picked deep-sky objects with filters), an **Advanced** fuzzy search across 12,522 NGC objects and 8,825 bright stars, and **Manual coordinates** for anything else. See [Using PushNav](using-pushnav.md#picking-targets-inside-pushnav).
 - Audio feedback for lock/lost/GOTO events
 - Mobile web interface: scan a QR code on the PushNav screen with your phone for at-the-eyepiece push direction, no app install needed
 - Saves calibration for quick re-sync
