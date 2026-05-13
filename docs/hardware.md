@@ -25,7 +25,7 @@ Currently support is provided only for this combination of camera and lens:
 
 >Currently only this specific camera and lens combination is supported. Support for additional cameras and lenses may be added in the future based on demand and usability. I decided to keep it this way for now to ensure a consistent and reliable user experience. Also this combination is very affordable and widely available, so it should be accessible for most users.
 
-## Sample Frame
+## Sample Frame @ Bortle 8.5
 
 ![Sample Frame](assets/single_frame_bortle8.png)
 
