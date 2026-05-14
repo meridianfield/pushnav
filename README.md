@@ -1,7 +1,5 @@
 # PushNav
 
-![Status](https://img.shields.io/badge/status-🚧%20Work%20in%20Progress-yellow)
-
 **A cross-platform plate-solving push-to system for manual telescopes.** Add push-to navigation to a manual scope for about **$50** in hardware you can order today.
 
 **Three things, that's all:**
@@ -329,8 +327,8 @@ Pre-built STLs are in [`hardware/3d_models/stls/`](hardware/3d_models/stls/). Se
 
 ## License
 
-Copyright (c) 2026 Arun Venkataswamy
-This project is licensed under the [GNU General Public License v3.0](LICENSE).
+Copyright © 2026 Arun Venkataswamy
+This project is licensed under the [GNU General Public License v3.0](LICENSE) or later.
 
 ## Third-party data
 
