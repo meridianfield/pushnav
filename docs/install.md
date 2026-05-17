@@ -121,7 +121,7 @@ device" warnings but the rest of the app still works.
 If PushNav can't find your camera, you may need to add yourself to the `video` group (this is a one-time step):
 
 ```bash
-sudo usermod -a -G video $USER
+sudo usermod -aG video "$USER"
 ```
 
 Log out and back in for the change to take effect.

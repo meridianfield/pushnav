@@ -17,8 +17,8 @@ x86_64 AppImage) are unchanged.
 ## Prerequisites
 
 - Raspberry Pi 4 (4 GB or more) running Raspberry Pi OS / Debian 13.
-- An openaicam USB camera (VID `0x32E6` / PID `0x9251`) — the Linux
-  camera server targets this device specifically.
+- An [openaicam USB camera](hardware.md) (VID `0x32E6` / PID `0x9251`) —
+  the Linux camera server targets this device specifically.
 - A phone on the same Wi-Fi as the Pi for the UI.
 
 System packages and `uv`:
@@ -63,6 +63,26 @@ Expected first-startup log lines (in any order):
 Press Ctrl-C to stop. The engine cleans up all subsystems before
 exiting.
 
+!!! tip "Keep it running after SSH disconnect"
+    If you started the engine over SSH and want it to survive when
+    you log out, run it under `tmux` (or `nohup`):
+
+    ```bash
+    tmux new -s pushnav
+    # inside tmux:
+    uv run python -m evf.main --no-window
+    # Ctrl-b d to detach; the engine keeps running.
+    # tmux attach -t pushnav  to reattach later.
+    ```
+
+    Or, without tmux:
+
+    ```bash
+    nohup uv run python -m evf.main --no-window > pushnav.log 2>&1 &
+    disown
+    # tail -f pushnav.log  to watch startup.
+    ```
+
 ## Connect from a phone
 
 1. Find the Pi's LAN IP: `ip -4 -o addr show scope global`.
@@ -82,7 +102,8 @@ video "$USER"` and log out / back in.
 
 **`Port 8765 is in use`** — Another PushNav (or something else) is
 already on that port. Find it with `lsof -i :8765` and stop it, or
-change `webserver.port` in your config file.
+change `webserver.port` in your config file
+(`~/.config/electronic-viewfinder/config.json` on Linux).
 
 **Phone can't reach the URL** — Confirm phone and Pi are on the same
 Wi-Fi SSID (not Pi on Ethernet + phone on Wi-Fi unless your router
@@ -108,5 +129,10 @@ a laptop.
 - No mDNS / `pushnav.local`. Type the IP into the phone.
 - No Wi-Fi onboarding. Configure the Pi's Wi-Fi the usual way
   (Raspberry Pi Imager, `raspi-config`, or `nmcli`).
+- No in-app settings UI. The desktop app exposes settings through a
+  Settings panel; on headless there is no window, so tweaks
+  (`webserver.port`, audio, etc.) go through
+  `~/.config/electronic-viewfinder/config.json` directly. Restart the
+  engine after editing.
 
 Each of these is on the roadmap as a later appliance slice.
