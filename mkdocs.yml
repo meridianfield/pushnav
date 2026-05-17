@@ -43,6 +43,7 @@ nav:
   - DIY Notes: diy-notes.md
   - 3D Models: 3d-models.md
   - Install PushNav: install.md
+  - Raspberry Pi 4 (headless): rpi-headless.md
   - Stellarium Setup: stellarium-setup.md
   - SkySafari & Other Apps: skysafari-setup.md
   - Using PushNav: using-pushnav.md

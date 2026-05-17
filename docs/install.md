@@ -128,6 +128,18 @@ Log out and back in for the change to take effect.
 
 ---
 
+## Raspberry Pi 4 (headless)
+
+Running on a Raspberry Pi 4 is a different shape from the laptop
+installs above: there's no AppImage, no window, and the UI lives
+entirely on a phone over Wi-Fi. The Pi 4 is also where PushNav heads
+toward becoming a true appliance.
+
+See **[Running PushNav headless on a Raspberry Pi 4](rpi-headless.md)**
+for the install-and-run runbook.
+
+---
+
 ## Before you launch
 
 You can launch PushNav with or without a camera plugged in. If you start it without one, the live-view area shows a **"Camera not connected"** placeholder with a **Retry** button — plug the camera in, click Retry, and PushNav picks up where it would have started. The rest of the app (Settings, Connectivity, the "What to See" catalog) is fully usable in the meantime, so you can plan a session indoors before stepping out to the scope.
