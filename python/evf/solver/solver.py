@@ -53,7 +53,13 @@ _CENTROID_PARAMS = dict(
 # letting failed solves stall the solver thread for too long; the latest-
 # frame buffer means subsequent frames are silently dropped so we don't
 # queue up while a long solve is in progress.
-_IS_ARM = platform.machine() in ("aarch64", "arm64")
+#
+# `platform.machine()` (CPU arch) rather than `platform.system()` (OS family,
+# used elsewhere in this codebase) — aarch64 vs x86_64 is what matters here,
+# and the same OS family can run either. `armv7l` covers 32-bit ARM (Pi 3 and
+# 32-bit Pi OS on a Pi 4); it's at least as slow as aarch64 Pi 4, so the same
+# bumped timeout applies.
+_IS_ARM = platform.machine() in ("aarch64", "arm64", "armv7l")
 _SOLVE_TIMEOUT_MS = 8000 if _IS_ARM else 1000
 
 # Solve parameters proven in prototyping (impl0.md §6.2, solve_hip8.py).
