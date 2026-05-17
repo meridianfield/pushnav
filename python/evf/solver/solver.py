@@ -22,6 +22,7 @@ Per SPEC_ARCHITECTURE.md §8 and impl0.md §Phase 6.
 
 import io
 import logging
+import platform
 import time
 from pathlib import Path
 
@@ -43,6 +44,18 @@ _CENTROID_PARAMS = dict(
     max_area=2000,  # Allow bright extended stars (M45, Capella); was 500
 )
 
+# Plate-solve timeout (ms). On x86 every solve completes well under 100 ms
+# so the cap is invisible; it only kicks in on unsolvable frames. On
+# aarch64 (Raspberry Pi 4 / Cortex-A72) tetra3's pattern-matching matmul
+# is several times slower — the slowest of the test samples (d.png) needs
+# ~6.1 s to solve correctly on a Pi 4, so the laptop-tuned 1000 ms cap
+# truncates valid solves before they finish. 8000 ms gives margin without
+# letting failed solves stall the solver thread for too long; the latest-
+# frame buffer means subsequent frames are silently dropped so we don't
+# queue up while a long solve is in progress.
+_IS_ARM = platform.machine() in ("aarch64", "arm64")
+_SOLVE_TIMEOUT_MS = 8000 if _IS_ARM else 1000
+
 # Solve parameters proven in prototyping (impl0.md §6.2, solve_hip8.py).
 _SOLVE_PARAMS = dict(
     fov_estimate=8.86,  # Horizontal FOV in degrees (NOT diagonal)
@@ -50,7 +63,7 @@ _SOLVE_PARAMS = dict(
     match_radius=0.01,
     pattern_checking_stars=30,
     match_threshold=0.1,
-    solve_timeout=1000,  # ms — cap failed solves to ~1s instead of 6-10s
+    solve_timeout=_SOLVE_TIMEOUT_MS,
 )
 
 
