@@ -258,12 +258,13 @@ dependencies = [
     { name = "pywebview", extra = ["qt"], marker = "sys_platform == 'linux'" },
     { name = "qrcode", extra = ["pil"] },
     { name = "scipy" },
-    { name = "tetra3" },
+    { name = "tetra3rs" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "dmgbuild", marker = "sys_platform == 'darwin'" },
+    { name = "gaia-catalog" },
     { name = "nuitka" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -283,12 +284,13 @@ requires-dist = [
     { name = "pywebview", extras = ["qt"], marker = "sys_platform == 'linux'", specifier = ">=5.0" },
     { name = "qrcode", extras = ["pil"] },
     { name = "scipy" },
-    { name = "tetra3", editable = "python/vendor/tetra3" },
+    { name = "tetra3rs", specifier = "==0.7.1" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "dmgbuild", marker = "sys_platform == 'darwin'", specifier = ">=1.6.5" },
+    { name = "gaia-catalog" },
     { name = "nuitka", specifier = ">=4.0.2" },
     { name = "pytest" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
@@ -350,6 +352,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/59/5e/c69f733a86a94ab10f68e496dc6b7e8bc078ebb415281d5698313e3af3a1/frozenlist-1.8.0-cp313-cp313t-win_amd64.whl", hash = "sha256:5d63a068f978fc69421fb0e6eb91a9603187527c86b7cd3f534a5b77a592b888", size = 48034, upload-time = "2025-10-06T05:37:06.343Z" },
     { url = "https://files.pythonhosted.org/packages/16/6c/be9d79775d8abe79b05fa6d23da99ad6e7763a1d080fbae7290b286093fd/frozenlist-1.8.0-cp313-cp313t-win_arm64.whl", hash = "sha256:bf0a7e10b077bf5fb9380ad3ae8ce20ef919a6ad93b4552896419ac7e1d8e042", size = 41749, upload-time = "2025-10-06T05:37:07.431Z" },
     { url = "https://files.pythonhosted.org/packages/9a/9a/e35b4a917281c0b8419d4207f4334c8e8c5dbf4f3f5f9ada73958d937dcc/frozenlist-1.8.0-py3-none-any.whl", hash = "sha256:0c18a16eab41e82c295618a77502e17b195883241c563b00f0aa5106fc4eaa0d", size = 13409, upload-time = "2025-10-06T05:38:16.721Z" },
+]
+
+[[package]]
+name = "gaia-catalog"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/46/4484177cc9781eff8c719b629f7f839f774c10d6b79c2cfc4c6935792a8b/gaia_catalog-0.1.2.tar.gz", hash = "sha256:ef13382c378c3c239197aba3555f0b3fc164fdfae036f3448dd90ead54ac5673", size = 15673983, upload-time = "2026-03-13T14:09:51.207Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/0a/6bfe09a1bf95a09fd2ffdae4462f1ba5c17e8bac83f2c240a71fbe3e2f49/gaia_catalog-0.1.2-py3-none-any.whl", hash = "sha256:89986c057a0d66d7d976811c51bdab6e0db316c9a97da4fcb4a68d42aac91abd", size = 15672930, upload-time = "2026-03-13T14:09:46.628Z" },
 ]
 
 [[package]]
@@ -1222,20 +1233,23 @@ wheels = [
 ]
 
 [[package]]
-name = "tetra3"
-version = "0.1.0"
-source = { editable = "python/vendor/tetra3" }
+name = "tetra3rs"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "gaia-catalog" },
     { name = "numpy" },
-    { name = "pillow" },
-    { name = "scipy" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "numpy", specifier = ">=1.21.1" },
-    { name = "pillow", specifier = ">=8.3.1" },
-    { name = "scipy", specifier = ">=1.7.1" },
+sdist = { url = "https://files.pythonhosted.org/packages/bd/dd/d74122f420726161b2cf2dafbf31b210620acfa9a92c44119469d2a5ca46/tetra3rs-0.7.1.tar.gz", hash = "sha256:842534ec8e6c42c9bb31532f15f1f5fd56f6eff1780b73f1aa1881f14e0e750e", size = 142345, upload-time = "2026-04-26T23:53:25.136Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e4/f6/cc357e4aaa05a02adf77f6f99096cadaf9d21e519a55d6305206f2193854/tetra3rs-0.7.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:f844bdab5ee71e0d2b4665a7b69e91400e93b8f8ae4388ff350090e3f26e08d7", size = 537886, upload-time = "2026-04-26T23:53:06.628Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/ed/4858945315e043223b13dcdf524fcff5bf5e345fae33f3fe7ca761ce9e41/tetra3rs-0.7.1-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:d86c2551825f2ef3ab5ce7d66991b896f4b1ece493cb3b3d5c0849cb4cd10e3c", size = 581664, upload-time = "2026-04-26T23:53:07.998Z" },
+    { url = "https://files.pythonhosted.org/packages/68/6d/26a6506ec98586303041e6f20baa0069aee39388cdb0d4e1e0712a346a49/tetra3rs-0.7.1-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:5067f120ff1c33641dfae11625bad3e93f85b256fe659763ef1b4200bee5fecb", size = 599214, upload-time = "2026-04-26T23:53:09.337Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/28/42fcb8bc48b33c1fb13ea696e71e266341f45a751e5ef944816b3d9c07cf/tetra3rs-0.7.1-cp312-cp312-win_amd64.whl", hash = "sha256:ad721caa3595b8a21c5ff155d5a59a4f2777b938b147c07a222a20cfea8cb122", size = 464548, upload-time = "2026-04-26T23:53:11.048Z" },
+    { url = "https://files.pythonhosted.org/packages/56/7a/87667ee053a81c554543293ee2960c6943e56bf1adcdbb7344a07d7bc57a/tetra3rs-0.7.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:d4c6a858fb126572c542a43a5f7e244100556c2502435e98803cf80e6ab3c686", size = 537597, upload-time = "2026-04-26T23:53:12.322Z" },
+    { url = "https://files.pythonhosted.org/packages/27/a1/0bbe9bfb80c902771c4d35c0e59385413dfbc061041062f18b3dc40d66c8/tetra3rs-0.7.1-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:352820fa1dd3982b9a3ce6a397d6f8c94472b47d84f0865f5b4ee7c21636784c", size = 581332, upload-time = "2026-04-26T23:53:14.086Z" },
+    { url = "https://files.pythonhosted.org/packages/21/f4/8afb172fd4d057a0b5c8d0ae815cbe0dcbeddbb52ca429b3800c60f245da/tetra3rs-0.7.1-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:a81f44ed5db634e47a519eceed6b03bc8a352e1686e15cbc2936122eeb194767", size = 598941, upload-time = "2026-04-26T23:53:15.508Z" },
+    { url = "https://files.pythonhosted.org/packages/69/89/4d5470d0fae7f2b98913782cf1c7d3ea2ed2891a6e49b26f84cc98fbe01e/tetra3rs-0.7.1-cp313-cp313-win_amd64.whl", hash = "sha256:eff8000f37845559949c0896f597ca0ca6f0f5a19c72aa4fdf9f3e860c502b61", size = 464195, upload-time = "2026-04-26T23:53:16.853Z" },
 ]
 
 [[package]]
