@@ -6,6 +6,10 @@ dependencies = [
     "Pillow",
     "numpy",
     "scipy",
+    # tetra3rs transitively pulls gaia-catalog (~17 MB bundled Gaia DR3 +
+    # Hipparcos blob). gaia-catalog is needed by scripts/build_tetra3rs_catalog.py
+    # to regenerate data/tetra3rs_gaia.bin; the runtime path
+    # (SolverDatabase.load_from_file) doesn't import gaia_catalog.
     "tetra3rs==0.7.1",
     "playsound3",
     "aiohttp",
@@ -25,7 +29,6 @@ dev = [
     "nuitka>=4.0.2",
     "pytest",
     "pytest-asyncio>=0.23",
-    "gaia-catalog",
     # macOS DMG layout (writes .DS_Store directly via ds-store + mac-alias —
     # avoids the Sequoia AppleScript / Finder Automation regression that
     # breaks create-dmg's icon positioning). macOS-only at runtime.

@@ -94,7 +94,7 @@ DR3 + Hipparcos (vs Hipparcos-only in hip8), so the on-disk database
 won't be byte-equivalent — but the resulting solves agree to within
 ~20″ on every sample.
 
-The resulting `.bin` is **~5 MB at our FOV** (62k stars, 1.9M
+The resulting `.bin` is **~53 MB at our FOV** (62k stars, 1.9M
 patterns), vs ~85 MB for `hip8_database.npz`. The port should ship the
 prebuilt `.bin` in `data/` rather than depending on `gaia-catalog` at
 runtime.
@@ -149,6 +149,30 @@ Outline only — full plan lives on the successor branch:
    solves run in single-digit ms everywhere).
 7. Bench on Pi 4 to confirm the projected 1–10 ms internal solve.
 8. Soak-test, then drop `python/vendor/tetra3/` after one release.
+
+## Rollback
+
+If the tetra3rs path regresses in production and we need to revert to
+the legacy pure-Python tetra3 quickly:
+
+1. Re-add the tetra3 source dep to `pyproject.toml`:
+   ```toml
+   [tool.uv.sources]
+   tetra3 = { path = "python/vendor/tetra3", editable = true }
+   ```
+   and swap `tetra3rs==0.7.1` for `tetra3` in `[project] dependencies`.
+
+2. Restore the old solver: `git show 823adf3:python/evf/solver/solver.py
+   > python/evf/solver/solver.py`. The legacy hip8 database is still on
+   disk at `data/hip8_database.npz` and the vendored sources are at
+   `python/vendor/tetra3/`.
+
+3. Run `uv sync` and `uv run pytest tests/` — all tests should pass on
+   the legacy solver too.
+
+These artifacts stay in tree for one release cycle as the safety net;
+they should be deleted in a follow-up cleanup after a stable release on
+the new solver.
 
 ## How to re-run the bench
 

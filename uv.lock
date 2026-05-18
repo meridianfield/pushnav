@@ -264,7 +264,6 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "dmgbuild", marker = "sys_platform == 'darwin'" },
-    { name = "gaia-catalog" },
     { name = "nuitka" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -290,7 +289,6 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "dmgbuild", marker = "sys_platform == 'darwin'", specifier = ">=1.6.5" },
-    { name = "gaia-catalog" },
     { name = "nuitka", specifier = ">=4.0.2" },
     { name = "pytest" },
     { name = "pytest-asyncio", specifier = ">=0.23" },

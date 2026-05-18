@@ -364,11 +364,11 @@ class Engine:
         self._log_version()
 
     def startup_solver(self) -> None:
-        """Load tetra3 database (~2-5s)."""
+        """Load tetra3rs database (~1s)."""
         try:
             self._solver = PlateSolver()
         except Exception as exc:
-            logger.error("Failed to load tetra3 database: %s", exc)
+            logger.error("Failed to load tetra3rs database: %s", exc)
 
     def startup_stellarium(self) -> None:
         """Start Stellarium TCP server."""
