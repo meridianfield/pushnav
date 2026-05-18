@@ -1,5 +1,5 @@
 {
   "app_version": "0.2.0",
   "protocol_version": 1,
-  "hip_db_version": "hip8_mag8_21200stars"
+  "solver_db_version": "tetra3rs_gaia_0fbb55d9d9e4_mag8"
 }
