@@ -119,7 +119,9 @@ class PlateSolver:
             "image_size": (h, w),
         }
 
-        if result is None or str(result.status) != "match_found":
+        # result.status is a plain str from the pyo3 binding (not a Python
+        # Enum); tetra3rs exposes no SolveStatus type at module level.
+        if result is None or result.status != "match_found":
             return out
 
         # Roll convention: tetra3rs roll_deg is ~180° flipped from the
@@ -168,13 +170,13 @@ class PlateSolver:
         """Build the legacy [[ra_deg, dec_deg, mag], ...] list from
         tetra3rs Gaia source IDs via db.get_star_by_id().
 
-        Note: CatalogStar exposes .magnitude (not .mag). We normalise
-        to 'mag' in the returned tuple to match the legacy contract."""
+        Note: CatalogStar exposes .magnitude (not .mag); we normalise to
+        'mag' in the returned tuple to match the legacy contract.
+        """
         out = []
         for sid in ids:
             star = self._db.get_star_by_id(sid)
-            if star is not None:
-                out.append([float(star.ra_deg), float(star.dec_deg), float(star.magnitude)])
+            out.append([float(star.ra_deg), float(star.dec_deg), float(star.magnitude)])
         return out
 
     @staticmethod
