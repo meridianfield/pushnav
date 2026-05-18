@@ -112,7 +112,7 @@ uv run python -m nuitka \
     --include-package=scipy \
     --include-package=PIL \
     --include-package=playsound3 \
-    --include-package=tetra3 \
+    --include-package=tetra3rs \
     --include-package=erfa \
     --nofollow-import-to=pytest \
     --nofollow-import-to=setuptools \
@@ -149,7 +149,7 @@ echo "==> Adding camera + data resources to $APP_NAME.app"
 cp "$CAMERA_BIN" "$MACOS/camera_server"
 chmod +x "$MACOS/camera_server"
 
-cp "$REPO_ROOT/data/hip8_database.npz" "$RESOURCES/"
+cp "$REPO_ROOT/data/tetra3rs_gaia.bin" "$RESOURCES/"
 cp "$REPO_ROOT/data/VERSION.json" "$RESOURCES/"
 cp -a "$REPO_ROOT/data/sounds"      "$RESOURCES/sounds"
 cp -a "$REPO_ROOT/web/dist"         "$RESOURCES/web_dist"

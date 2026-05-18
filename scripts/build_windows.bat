@@ -102,7 +102,7 @@ uv run python -m nuitka ^
     --include-package=scipy ^
     --include-package=PIL ^
     --include-package=playsound3 ^
-    --include-package=tetra3 ^
+    --include-package=tetra3rs ^
     --include-package=erfa ^
     --disable-plugin=pywebview ^
     --include-module=webview.platforms.winforms ^
@@ -135,7 +135,7 @@ REM Copy camera server binary
 copy /y "%CAMERA_BIN%" "%APP_DIR%\camera_server.exe"
 
 REM Copy data resources
-copy /y "%REPO_ROOT%\data\hip8_database.npz" "%APP_DIR%\data\"
+copy /y "%REPO_ROOT%\data\tetra3rs_gaia.bin" "%APP_DIR%\data\"
 copy /y "%REPO_ROOT%\data\VERSION.json" "%APP_DIR%\data\"
 xcopy /s /e /q /y "%REPO_ROOT%\data\sounds" "%APP_DIR%\data\sounds\"
 

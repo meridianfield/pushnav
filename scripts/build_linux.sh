@@ -87,7 +87,7 @@ uv run python -m nuitka \
     --include-package=scipy \
     --include-package=PIL \
     --include-package=playsound3 \
-    --include-package=tetra3 \
+    --include-package=tetra3rs \
     --include-package=erfa \
     --include-package=qtpy \
     --include-data-dir="$REPO_ROOT/web/dist=data/web_dist" \
@@ -119,7 +119,7 @@ cp "$CAMERA_BIN" "$APP_DIR/camera_server"
 chmod +x "$APP_DIR/camera_server"
 
 # Copy data resources
-cp "$REPO_ROOT/data/hip8_database.npz" "$APP_DIR/data/"
+cp "$REPO_ROOT/data/tetra3rs_gaia.bin" "$APP_DIR/data/"
 cp "$REPO_ROOT/data/VERSION.json" "$APP_DIR/data/"
 cp -a "$REPO_ROOT/data/sounds" "$APP_DIR/data/sounds"
 
