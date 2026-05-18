@@ -15,85 +15,167 @@
 # You should have received a copy of the GNU General Public License
 # along with PushNav. If not, see <https://www.gnu.org/licenses/>.
 
-"""Plate solver — tetra3 wrapper for single-frame plate solving.
+"""Plate solver — tetra3rs wrapper for single-frame plate solving.
 
-Per SPEC_ARCHITECTURE.md §8 and impl0.md §Phase 6.
+Internals use the Rust-backed tetra3rs (MIT, GPL-3 compatible). The
+external API and result-dict shape match the legacy tetra3 wrapper so
+the rest of the engine is unchanged. See
+docs/superpowers/specs/2026-05-18-tetra3rs-bench-findings.md for the
+parameter rationale and tetra3rs API quirks.
 """
+
+from __future__ import annotations
 
 import io
 import logging
 import time
 from pathlib import Path
 
+import numpy as np
+import tetra3rs
 from PIL import Image
-from tetra3 import get_centroids_from_image
 
-from evf.paths import database_path
+from evf.paths import tetra3rs_database_path
 
 logger = logging.getLogger(__name__)
 
-# MUST use Path object — string triggers tetra3's internal path resolution
-# which won't find our database (see CLAUDE.md).
-_DATABASE_PATH = database_path()
+_DATABASE_PATH = tetra3rs_database_path()
 
-# Centroid extraction parameters (passed to get_centroids_from_image).
+# Centroid extraction parameters — see the bench-findings doc for why
+# matched_filter_sigma=2.0 is load-bearing (without it, M42 nebulosity
+# crowds out real stars in the brightest-N list and orion.png fails).
 _CENTROID_PARAMS = dict(
-    sigma=2,
-    filtsize=15,
-    max_area=2000,  # Allow bright extended stars (M45, Capella); was 500
+    sigma_threshold=5.0,
+    max_pixels=2000,
+    max_centroids=30,
+    matched_filter_sigma=2.0,
 )
 
-# Solve parameters proven in prototyping (impl0.md §6.2, solve_hip8.py).
-_SOLVE_PARAMS = dict(
-    fov_estimate=8.86,  # Horizontal FOV in degrees (NOT diagonal)
-    fov_max_error=1.5,
-    match_radius=0.01,
-    pattern_checking_stars=30,
-    match_threshold=0.1,
-    solve_timeout=1000,  # ms — cap failed solves to ~1s instead of 6-10s
-)
+_FOV_DEG = 8.86
+_FOV_MAX_ERROR_DEG = 1.5
 
 
 class PlateSolver:
-    """Load tetra3 database once and solve frames on demand."""
+    """Load tetra3rs database once and solve frames on demand."""
 
     def __init__(self, database_path: Path | None = None) -> None:
-        import tetra3
-
         db_path = database_path or _DATABASE_PATH
         t0 = time.monotonic()
-        self._t3 = tetra3.Tetra3(load_database=db_path)
+        self._db = tetra3rs.SolverDatabase.load_from_file(str(db_path))
         elapsed = time.monotonic() - t0
-        logger.info("tetra3 database loaded in %.2fs: %s", elapsed, db_path)
+        logger.info(
+            "tetra3rs database loaded in %.2fs: %s (%d stars, %d patterns)",
+            elapsed, db_path, self._db.num_stars, self._db.num_patterns,
+        )
 
     def solve_frame(self, image_bytes: bytes) -> dict:
-        """Solve a single image frame. Returns tetra3 result dict.
+        """Solve a single image frame. Returns a tetra3-compatible result dict.
 
-        Splits into centroid extraction + solve so we can return both
-        all detected centroids and matched centroids for star overlay.
+        Keys returned (preserving the legacy contract):
+          RA, Dec, Roll          — degrees, J2000
+          Matches                — number of matched stars (int)
+          Prob                   — false-positive probability (float)
+          T_extract              — centroid extraction time, ms
+          T_solve                — solver internal time, ms
+          all_centroids          — list[[y, x], ...] top-left-origin pixels
+          matched_centroids      — list[[y, x], ...] top-left-origin pixels
+          matched_stars          — list[[ra_deg, dec_deg, mag], ...]
+          image_size             — (height, width)
+
+        On unsolvable frames, RA/Dec/Roll are None, Matches=0, Prob=None,
+        and the matched_* lists are empty. all_centroids is populated
+        when extraction succeeded regardless of whether the solve did.
         """
         img = Image.open(io.BytesIO(image_bytes)).convert("L")
+        arr = np.asarray(img, dtype=np.float64)
+        h, w = arr.shape
 
         t0 = time.monotonic()
-        centroids = get_centroids_from_image(img, **_CENTROID_PARAMS)
-        t_extract = (time.monotonic() - t0) * 1000
+        extraction = tetra3rs.extract_centroids(arr, **_CENTROID_PARAMS)
+        t_extract_ms = (time.monotonic() - t0) * 1000
 
-        result = self._t3.solve_from_centroids(
-            centroids,
-            (img.height, img.width),
-            return_matches=True,
-            **_SOLVE_PARAMS,
+        all_centroids = self._centroids_list_to_yx(extraction.centroids, h, w)
+
+        t0 = time.monotonic()
+        result = self._db.solve_from_centroids(
+            extraction.centroids,
+            fov_estimate_deg=_FOV_DEG,
+            fov_max_error_deg=_FOV_MAX_ERROR_DEG,
+            image_shape=(h, w),
         )
-        # Negate Roll: tetra3's image-vector convention (i=boresight, j=right, k=up)
-        # produces Roll with opposite sign to our body-frame formulas.
-        # Empirically verified across 7 targets: std drops from 1.04° to 0.14°.
-        if result.get("Roll") is not None:
-            result["Roll"] = (360.0 - result["Roll"]) % 360.0
+        t_solve_ms = (time.monotonic() - t0) * 1000
 
-        result["T_extract"] = t_extract
-        result["all_centroids"] = centroids.tolist()  # Nx2 (y, x)
-        result["image_size"] = (img.height, img.width)
-        return result
+        out: dict = {
+            "RA": None,
+            "Dec": None,
+            "Roll": None,
+            "Matches": 0,
+            "Prob": None,
+            "T_extract": t_extract_ms,
+            "T_solve": t_solve_ms,
+            "all_centroids": all_centroids,
+            "matched_centroids": [],
+            "matched_stars": [],
+            "image_size": (h, w),
+        }
+
+        if result is None or str(result.status) != "match_found":
+            return out
+
+        # Roll convention: tetra3rs roll_deg is ~180° flipped from the
+        # legacy evf result (which negated tetra3's Roll as `360 - r`).
+        # Empirically verified across the five test samples.
+        roll = (result.roll_deg + 180.0) % 360.0
+
+        # result.matched_centroids is a numpy array of indices into
+        # extraction.centroids (not Centroid objects).
+        matched_centroids = self._indices_to_yx(
+            result.matched_centroids, extraction.centroids, h, w
+        )
+        matched_stars = self._catalog_ids_to_radec_mag(result.matched_catalog_ids)
+
+        out.update({
+            "RA": result.ra_deg,
+            "Dec": result.dec_deg,
+            "Roll": roll,
+            "Matches": result.num_matches or 0,
+            "Prob": result.probability,
+            "matched_centroids": matched_centroids,
+            "matched_stars": matched_stars,
+        })
+        return out
+
+    def _centroids_list_to_yx(self, centroids, h: int, w: int) -> list:
+        """Convert a list of tetra3rs Centroid objects (image-center origin,
+        +X right, +Y down) to legacy [y, x] top-left-origin pixel coords."""
+        cx, cy = w / 2.0, h / 2.0
+        return [
+            [float(c.y + cy), float(c.x + cx)]
+            for c in centroids
+        ]
+
+    def _indices_to_yx(self, indices, centroids, h: int, w: int) -> list:
+        """Look up matched centroid indices in the extraction list and
+        return legacy [y, x] top-left-origin pixel coords."""
+        cx, cy = w / 2.0, h / 2.0
+        out = []
+        for idx in indices:
+            c = centroids[int(idx)]
+            out.append([float(c.y + cy), float(c.x + cx)])
+        return out
+
+    def _catalog_ids_to_radec_mag(self, ids) -> list:
+        """Build the legacy [[ra_deg, dec_deg, mag], ...] list from
+        tetra3rs Gaia source IDs via db.get_star_by_id().
+
+        Note: CatalogStar exposes .magnitude (not .mag). We normalise
+        to 'mag' in the returned tuple to match the legacy contract."""
+        out = []
+        for sid in ids:
+            star = self._db.get_star_by_id(sid)
+            if star is not None:
+                out.append([float(star.ra_deg), float(star.dec_deg), float(star.magnitude)])
+        return out
 
     @staticmethod
     def is_valid(
