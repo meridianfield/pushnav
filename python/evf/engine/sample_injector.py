@@ -93,11 +93,19 @@ class SampleInjector:
 
 
 def load_sample_jpeg(samples_dir: Path, name: str) -> bytes:
-    """Load a PNG from samples_dir, encode as JPEG, return bytes."""
+    """Load a PNG from samples_dir, encode as JPEG, return bytes.
+
+    quality=95 (not the JPEG default 85): the tetra3rs centroid
+    extractor (matched_filter_sigma=2.0) sits just over the edge for
+    the marginal b.png frame at q=85 — every other sample solves, only
+    b fails. q>=90 restores the headroom; we pick 95 for margin and to
+    keep solve quality robust across the full sample set. Tested by
+    TestSampleInjectionSolves in tests/test_solver_offline.py.
+    """
     from PIL import Image
 
     path = samples_dir / f"{name}.png"
     img = Image.open(path).convert("RGB")
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=85)
+    img.save(buf, format="JPEG", quality=95)
     return buf.getvalue()

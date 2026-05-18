@@ -105,6 +105,41 @@ class TestRollRegression:
 
 
 # ---------------------------------------------------------------------------
+# Live-engine sample-injection path (load_sample_jpeg → solve_frame)
+# ---------------------------------------------------------------------------
+
+
+class TestSampleInjectionSolves:
+    """Verify each sample still solves after PNG→JPEG re-encode.
+
+    The debug-panel sample-injection path encodes the PNG as JPEG (the
+    frame buffer holds JPEG bytes because the real camera produces
+    MJPEG). At quality=85 (PIL's default), b.png fell below the
+    tetra3rs extractor's centroid threshold while a/c/d/orion still
+    solved — only b had no headroom. quality=95 restores the margin.
+    This test exercises the actual `load_sample_jpeg` helper so the
+    quality value stays gated by the test, not by inspection.
+    """
+
+    @pytest.mark.parametrize("name", ["a", "b", "c", "d", "orion"])
+    def test_jpeg_encoded_sample_solves(self, solver, name):
+        from evf.engine.sample_injector import load_sample_jpeg
+
+        jpeg = load_sample_jpeg(_SAMPLES_DIR, name)
+        result = solver.solve_frame(jpeg)
+        assert result["RA"] is not None, (
+            f"{name}: solve_frame returned no RA after PNG→JPEG re-encode. "
+            f"The sample injector quality may have regressed below the "
+            f"tetra3rs extractor threshold — see load_sample_jpeg in "
+            f"python/evf/engine/sample_injector.py."
+        )
+        assert result["Matches"] >= 8, (
+            f"{name}: only {result['Matches']} matches — insufficient margin "
+            f"after PNG→JPEG re-encode."
+        )
+
+
+# ---------------------------------------------------------------------------
 # Result validation (§6.3)
 # ---------------------------------------------------------------------------
 
