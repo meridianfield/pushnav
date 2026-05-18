@@ -68,6 +68,43 @@ class TestOfflineSolve:
 
 
 # ---------------------------------------------------------------------------
+# Roll-convention regression (tetra3rs ↔ sync.py body-frame formulas)
+# ---------------------------------------------------------------------------
+
+
+class TestRollRegression:
+    """Lock in the Roll convention. tetra3rs roll_deg is 180° flipped
+    from tetra3's negated convention; the wrapper corrects to match
+    the body-frame formulas in solver/sync.py. A sign error here is
+    silent until sync calibration fails on real hardware.
+    """
+
+    # Values captured from the tetra3rs wrapper at port time.
+    # Tolerance is loose (5°) because RA/Dec refinement also nudges
+    # Roll; what we're really testing is the convention sign, not
+    # exact arithmetic.
+    @pytest.mark.parametrize(
+        "image_name,expected_roll",
+        [
+            ("a.png", 202.045),
+            ("b.png", 268.818),
+            ("c.png", 155.866),
+            ("d.png", 127.891),
+        ],
+    )
+    def test_roll_sign(self, solver, image_name, expected_roll):
+        image_bytes = (_SAMPLES_DIR / image_name).read_bytes()
+        result = solver.solve_frame(image_bytes)
+        assert result["Roll"] is not None
+        diff = abs(((result["Roll"] - expected_roll) + 180) % 360 - 180)
+        assert diff < 5.0, (
+            f"{image_name}: Roll={result['Roll']:.2f}, "
+            f"expected {expected_roll:.2f}, |diff|={diff:.2f}° "
+            f"— check the (+180) % 360 convention in solver.py"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Result validation (§6.3)
 # ---------------------------------------------------------------------------
 
