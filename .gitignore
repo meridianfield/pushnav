@@ -28,3 +28,6 @@ nuitka-crash-report.xml
 node_modules/
 web/dist/
 web/.vite/
+
+# Bench / sanity-check scratch (tetra3rs catalog .bin, etc.)
+.cache/
