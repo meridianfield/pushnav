@@ -33,7 +33,22 @@ from evf.stellarium.protocol import _GOTO_LEN, decode_goto, encode_position
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_HOST = "127.0.0.1"
+
+def _default_host() -> str:
+    """Bind 0.0.0.0 on a Raspberry Pi (headless appliance — Stellarium runs on
+    another machine over the LAN), 127.0.0.1 everywhere else (Stellarium runs
+    on the same Mac/Windows/Linux dev box). Detected via the device-tree
+    model node, which is present on all Pi boards and absent on x86."""
+    try:
+        with open("/proc/device-tree/model", "rb") as f:
+            if b"Raspberry Pi" in f.read():
+                return "0.0.0.0"
+    except OSError:
+        pass
+    return "127.0.0.1"
+
+
+_DEFAULT_HOST = _default_host()
 _SOUNDS_DIR = sounds_dir()
 _ACK_SOUND = _SOUNDS_DIR / "goto_ack.wav"
 
@@ -117,6 +132,13 @@ class StellariumServer:
         if self._server_sock is not None:
             return self._server_sock.getsockname()[1]
         return self._port
+
+    @property
+    def host(self) -> str:
+        """Return the host the server is bound to (e.g. "127.0.0.1" or
+        "0.0.0.0"). The engine uses this to decide whether to advertise
+        "localhost" or the LAN IP in the UI."""
+        return self._host
 
     @property
     def stellarium_status(self) -> dict | None:

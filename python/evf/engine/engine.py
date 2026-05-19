@@ -298,12 +298,20 @@ class Engine:
     def stellarium_address(self) -> str | None:
         """Address to paste into desktop Stellarium's Telescope Control plugin.
 
-        Stellarium server binds 127.0.0.1, so the address is always localhost
-        regardless of LAN IP — remote machines cannot reach the binary protocol.
+        On a Raspberry Pi appliance the server binds 0.0.0.0, so advertise the
+        LAN IP for desktop Stellarium running on another machine. On Mac /
+        Windows / x86 Linux dev boxes the server binds 127.0.0.1 (same-machine
+        use), so advertise "localhost". Falls back to "localhost" if the
+        server is bound to 0.0.0.0 but no LAN IP is available.
         """
         if self._stellarium is None:
             return None
-        return f"localhost:{self._stellarium.port}"
+        port = self._stellarium.port
+        if self._stellarium.host == "0.0.0.0":
+            ip = local_ip()
+            if ip is not None:
+                return f"{ip}:{port}"
+        return f"localhost:{port}"
 
     @property
     def lx200_address(self) -> str | None:
