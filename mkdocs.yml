@@ -73,6 +73,9 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/meridianfield/pushnav
+    - icon: fontawesome/solid/binoculars
+      link: https://stargazingbuddy.com/
+      name: Stargazing Buddy
   generator: false
 
 copyright: >
