@@ -28,3 +28,6 @@ nuitka-crash-report.xml
 node_modules/
 web/dist/
 web/.vite/
+
+# Runtime caches (e.g. tetra3rs Gaia DB)
+.cache/
