@@ -45,25 +45,15 @@ The base has two screw hole variants controlled by `SELF_TAP_SCREWS`:
 
 To export a single part: set its flag to `true`, all others to `false`, then Render (F6) and export as STL.
 
-### Laser Pointer Holder (`laser_pointer.scad`)
+### Laser Pointer Holder (`laser_pointer_v2.scad`)
 
-Dovetail saddle with snap-in clips for mounting a laser pointer on a standard telescope finder shoe. The saddle design is derived from [rziomber's Vixen-style dovetail](https://www.thingiverse.com/thing:4853379), adapted to the finder shoe profile used by the camera housing.
+V-groove cradle for a 23mm-diameter laser pointer, mounted directly under a dovetail saddle that slides onto a standard telescope finder shoe. The saddle design is derived from [rziomber's Vixen-style dovetail](https://www.thingiverse.com/thing:4853379), adapted to the finder shoe profile used by the camera housing.
 
-Two clip sizes for different laser pointers:
+The cradle sits beneath the saddle with two 5 mm bridging side walls that leave the front and back of the cavity open — the laser pointer slides in along the Y axis and is held in place with cable ties through slots cut into the V-block floor and the bottom of the side walls.
 
-| Clip set | Laser diameter | Position |
-|----------|---------------|----------|
-| Large | 23mm (flashlight-style) | Left side of extension plate |
-| Small | 14mm (pen-style) | Right side of extension plate |
+A captive 1/4-20 hex nut pocket in the V-block floor lets the holder mount on a photography-tripod quick-release plate as an alternative to the finder shoe.
 
-Two 1/4-20 UNC tripod mount holes on the underside of the extension plate:
-
-| Hole | Diameter | Usage |
-|------|----------|-------|
-| Tap hole | 5.1mm | Tap with 1/4-20 after printing |
-| Insert hole | 8.9mm | Press in a 1/4-20 brass heat-set insert (OD ~9.5mm, 6.4mm length) |
-
-**Print orientation:** XZ plane as base (on its side) for strong snap clips. Supports required for the overhanging clip.
+**Print orientation:** Lay the part on its side (XZ plane on the bed, Y axis vertical). This makes the captive-nut insertion slot a small bridge and the hex pocket vertices land at top/bottom, avoiding flat unsupported overhangs.
 
 ### M12 Lens Adapter (`lens_adapter.stl`)
 
@@ -86,6 +76,7 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 | `housing_base_bolt.stl` | v1 Base (3.5mm bolt-through holes) |
 | `housing_hood.stl` | v1 Hood + Baffle |
 | `housing_cap.stl` | v1 Dust Cap |
+| `laser_pointer_v2.stl` | Laser Pointer Holder (23 mm V-groove cradle + dovetail saddle) |
 | `lens_adapter.stl` | M12 Lens Adapter |
 | `lock_ring.stl` | M12 Lock Ring |
 
