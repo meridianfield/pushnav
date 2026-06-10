@@ -58,37 +58,40 @@ channel_bottom_width = 33 + 2 * channel_clearance;
 channel_top_width    = 20 + 2 * channel_clearance;
 channel_depth        = 11 + channel_clearance;
 
-/* V-groove laser pointer cradle — same V dimensions as v1.
-   The V only cradles ~14mm of the cylinder; an 18mm laser pointer rests
-   on the V walls but its top protrudes above the V opening (see
-   laser_top_z below). The side walls + gap account for this. */
-groove_depth        = 13;        // depth of V cut from block top (mm)
-groove_width        = groove_depth * 2 * tan(45);    // 90° V: 26mm
-groove_wall         = (saddle_size[0] - groove_width) / 2;  // 12mm each side
+/* V-groove laser pointer cradle — sized for a 23mm laser pointer.
+   90° V with depth 15mm gives a 30mm opening, leaving ~3.5mm of slack
+   on each side of a 23mm cylinder. The V only cradles part of the
+   cylinder; the rest protrudes above the V opening (see laser_top_z
+   below) and the side walls + gap account for this. */
+groove_depth        = 15;        // depth of V cut from block top (mm) — bumped
+                                 // from v1's 13mm to give a 23mm laser pointer
+                                 // ~3.5mm of slack per side at the opening
+groove_width        = groove_depth * 2 * tan(45);    // 90° V: 30mm
+groove_wall         = (saddle_size[0] - groove_width) / 2;  // 10mm each side
 block_width         = saddle_size[0];                       // 50mm — matches saddle footprint
 floor_thickness     = 10;        // solid material below V tip — bumped from v1's 8mm
                                  // to host the captive 1/4-20 nut pocket without
                                  // breaking through into the V cavity
-block_height        = groove_depth + floor_thickness;  // 23mm
+block_height        = groove_depth + floor_thickness;  // 25mm
 block_length        = saddle_size[1];                  // 46mm — matches saddle
 
 /* Laser cylinder placement — derived from V geometry.
    In a 90° V, an r-radius cylinder rests with its center at r*sqrt(2)
    above the V tip and its top at r*(1+sqrt(2)) above the V tip. */
-laser_diameter = 18;
+laser_diameter = 23;
 laser_radius   = laser_diameter / 2;
-laser_center_z = floor_thickness + laser_radius * sqrt(2);       // 20.73
-laser_top_z    = floor_thickness + laser_radius * (1 + sqrt(2)); // 29.73
+laser_center_z = floor_thickness + laser_radius * sqrt(2);       // 26.26
+laser_top_z    = floor_thickness + laser_radius * (1 + sqrt(2)); // 37.77
 
 /* Stack — V-block on bottom, then side walls spanning (cylinder protrusion
    above V opening) + 5mm clearance, then the saddle. The two side walls
    bridge the gap on the +X and -X sides; the front and back of the gap
    stay open so the cylinder slides in from either Y end. */
 gap_above_laser  = 5;                                // clear space above the cylinder top
-saddle_z         = laser_top_z + gap_above_laser;    // 34.73
+saddle_z         = laser_top_z + gap_above_laser;    // 42.77
 wall_thickness   = 5;                                // X width of each bridging side wall
-side_wall_height = saddle_z - block_height;          // 13.73 (= laser protrusion + 5mm gap)
-total_height     = saddle_z + saddle_size[2];        // 52.73
+side_wall_height = saddle_z - block_height;          // 17.77 (= laser protrusion + 5mm gap)
+total_height     = saddle_z + saddle_size[2];        // 60.77
 
 // Cable tie slots — open slots cut into the front and back faces of the block.
 // Push the cable tie (or rubber band) straight in from the outside; no threading.
