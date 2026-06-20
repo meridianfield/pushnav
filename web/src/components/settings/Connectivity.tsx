@@ -52,7 +52,7 @@ export function Connectivity({ state }: Props) {
         <Row
           label={
             <span>
-              Stellarium <ActivityDot active={state.stellarium.active} />
+              Stellarium (desktop) <ActivityDot active={state.stellarium.active} />
             </span>
           }
         >
@@ -61,7 +61,7 @@ export function Connectivity({ state }: Props) {
         <Row
           label={
             <span>
-              LX200 (SkySafari) <ActivityDot active={state.lx200.active} />
+              LX200 (SkySafari / Stellarium Mobile) <ActivityDot active={state.lx200.active} />
             </span>
           }
         >
