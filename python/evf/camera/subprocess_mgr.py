@@ -21,6 +21,7 @@ Per specs/start/impl0.md §Phase 5.
 """
 
 import logging
+import os
 import subprocess
 import sys
 import threading
@@ -142,6 +143,31 @@ class SubprocessManager:
         # Brief pause to let the OS release the port
         time.sleep(0.5)
 
+    def _build_env(self) -> dict | None:
+        """Environment for the camera server.
+
+        Injects PUSHNAV_CAMERA_IDS (the user-configured camera allowlist
+        extras) so the native server recognizes cameras beyond its built-in
+        list. Returns None to inherit the parent environment unchanged when
+        there is nothing to add.
+        """
+        extras = self._config.extra_camera_ids
+        if not extras:
+            return None
+        env = os.environ.copy()
+        parts = []
+        existing = env.get("PUSHNAV_CAMERA_IDS", "").strip()
+        if existing:
+            parts.append(existing)
+        parts.extend(s for s in (str(x).strip() for x in extras) if s)
+        if parts:
+            env["PUSHNAV_CAMERA_IDS"] = ",".join(parts)
+            logger.info(
+                "Passing PUSHNAV_CAMERA_IDS=%s to camera server",
+                env["PUSHNAV_CAMERA_IDS"],
+            )
+        return env
+
     def _spawn_process(self) -> None:
         self._kill_stale_server()
         path = str(self._binary_path)
@@ -153,6 +179,7 @@ class SubprocessManager:
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env=self._build_env(),
             **kwargs,
         )
         logger.info(

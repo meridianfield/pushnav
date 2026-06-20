@@ -20,8 +20,9 @@
 /*
  * camera_server.c — Windows DirectShow camera server
  *
- * Self-contained C implementation that captures MJPEG frames from the target
- * USB camera (VID 0x32E6, PID 0x9251) via DirectShow and serves them over
+ * Self-contained C implementation that captures MJPEG frames from a
+ * supported USB camera (see the allowlist below; extendable at runtime via
+ * the PUSHNAV_CAMERA_IDS env var) over DirectShow and serves them over
  * TCP using the same binary protocol as the macOS Swift and Linux V4L2
  * camera servers (see specs/start/SPEC_PROTOCOL_CAMERA.md).
  *
@@ -110,8 +111,6 @@ DECLARE_INTERFACE_(ISampleGrabber, IUnknown) {
 /* Configuration                                                       */
 /* ------------------------------------------------------------------ */
 
-#define TARGET_VID   0x32E6
-#define TARGET_PID   0x9251
 #define CAPTURE_W    1280
 #define CAPTURE_H    720
 #define SERVER_PORT  8764
@@ -178,15 +177,118 @@ static const WCHAR *wcsistr(const WCHAR *haystack, const WCHAR *needle)
 }
 
 /* ------------------------------------------------------------------ */
+/* Camera allowlist                                                    */
+/*                                                                     */
+/* Known OV9281-based USB modules, matched by USB VID/PID.  Keep this  */
+/* list in sync with the Linux (camera/linux/camera_server.c) and      */
+/* macOS (camera/mac/.../UVCController.swift) servers.                  */
+/*                                                                     */
+/* Users can register additional cameras at runtime WITHOUT            */
+/* recompiling, via the PUSHNAV_CAMERA_IDS env var: a comma-separated  */
+/* list of vid:pid hex pairs, e.g. PUSHNAV_CAMERA_IDS=1bcf:2cd1,abc:12 */
+/* ------------------------------------------------------------------ */
+
+typedef struct {
+    unsigned int vid;
+    unsigned int pid;
+    const char  *label;
+} cam_id_t;
+
+static const cam_id_t BUILTIN_CAMERAS[] = {
+    {0x32E6, 0x9251, "Waveshare OV9281"},
+    {0x0C45, 0x6366, "Arducam OV9281"},
+    {0x1BCF, 0x2CD1, "DECXIN OV9281"},
+};
+#define NUM_BUILTIN_CAMERAS (sizeof(BUILTIN_CAMERAS) / sizeof(BUILTIN_CAMERAS[0]))
+#define MAX_EXTRA_CAMERAS   32
+
+static cam_id_t g_allowlist[NUM_BUILTIN_CAMERAS + MAX_EXTRA_CAMERAS];
+static int      g_allowlist_count = 0;
+
+static void allowlist_add(unsigned int vid, unsigned int pid, const char *label)
+{
+    if (g_allowlist_count >= (int)(sizeof(g_allowlist) / sizeof(g_allowlist[0])))
+        return;
+    for (int i = 0; i < g_allowlist_count; i++)
+        if (g_allowlist[i].vid == vid && g_allowlist[i].pid == pid)
+            return;  /* skip duplicates */
+    g_allowlist[g_allowlist_count].vid = vid;
+    g_allowlist[g_allowlist_count].pid = pid;
+    g_allowlist[g_allowlist_count].label = label;
+    g_allowlist_count++;
+}
+
+/* Seed built-ins, then append any PUSHNAV_CAMERA_IDS entries. */
+static void init_allowlist(void)
+{
+    for (size_t i = 0; i < NUM_BUILTIN_CAMERAS; i++)
+        allowlist_add(BUILTIN_CAMERAS[i].vid, BUILTIN_CAMERAS[i].pid,
+                      BUILTIN_CAMERAS[i].label);
+
+    const char *env = getenv("PUSHNAV_CAMERA_IDS");
+    if (env && *env) {
+        const char *p = env;
+        while (*p) {
+            while (*p == ',' || *p == ' ' || *p == ';')
+                p++;
+            if (!*p)
+                break;
+            unsigned int vid = 0, pid = 0;
+            int n = 0;
+            if (sscanf(p, "%x:%x%n", &vid, &pid, &n) == 2 && vid && pid) {
+                allowlist_add(vid, pid, "user-configured (PUSHNAV_CAMERA_IDS)");
+                p += n;
+            } else {
+                fprintf(stderr,
+                        "Ignoring malformed PUSHNAV_CAMERA_IDS entry near '%s'\n", p);
+                while (*p && *p != ',' && *p != ' ' && *p != ';')
+                    p++;
+            }
+        }
+    }
+
+    fprintf(stderr, "Camera allowlist (%d entries):\n", g_allowlist_count);
+    for (int i = 0; i < g_allowlist_count; i++)
+        fprintf(stderr, "  %04X:%04X  %s\n",
+                g_allowlist[i].vid, g_allowlist[i].pid, g_allowlist[i].label);
+}
+
+static int camera_id_match(unsigned int vid, unsigned int pid)
+{
+    for (int i = 0; i < g_allowlist_count; i++)
+        if (g_allowlist[i].vid == vid && g_allowlist[i].pid == pid)
+            return 1;
+    return 0;
+}
+
+/* ------------------------------------------------------------------ */
 /* Device discovery via DirectShow enumeration                         */
 /* ------------------------------------------------------------------ */
 
-static HRESULT find_device(IBaseFilter **ppFilter)
+/* Parse the vid_XXXX / pid_XXXX hex fields out of a DevicePath. */
+static int parse_devpath_ids(const WCHAR *path, unsigned int *vid,
+                             unsigned int *pid)
+{
+    const WCHAR *v = wcsistr(path, L"vid_");
+    const WCHAR *p = wcsistr(path, L"pid_");
+    if (!v || !p)
+        return 0;
+    if (swscanf(v + 4, L"%4x", vid) != 1)
+        return 0;
+    if (swscanf(p + 4, L"%4x", pid) != 1)
+        return 0;
+    return 1;
+}
+
+static HRESULT find_device(IBaseFilter **ppFilter, char *seen, size_t seen_len)
 {
     ICreateDevEnum *pSysDevEnum = NULL;
     IEnumMoniker *pEnumMoniker = NULL;
     IMoniker *pMoniker = NULL;
     HRESULT hr;
+
+    if (seen && seen_len)
+        seen[0] = '\0';
 
     hr = CoCreateInstance(&CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER,
                           &IID_ICreateDevEnum, (void **)&pSysDevEnum);
@@ -207,18 +309,13 @@ static HRESULT find_device(IBaseFilter **ppFilter)
             VARIANT varPath;
             VariantInit(&varPath);
 
-            /* Read DevicePath to match VID/PID */
+            /* DevicePath looks like: \\?\usb#vid_32e6&pid_9251#... */
             hr = IPropertyBag_Read(pPropBag, L"DevicePath", &varPath, NULL);
             if (SUCCEEDED(hr) && varPath.vt == VT_BSTR) {
-                /* DevicePath contains something like:
-                 * \\?\usb#vid_32e6&pid_9251#...
-                 */
-                WCHAR vid_str[16], pid_str[16];
-                swprintf(vid_str, 16, L"vid_%04x", TARGET_VID);
-                swprintf(pid_str, 16, L"pid_%04x", TARGET_PID);
+                unsigned int vid = 0, pid = 0;
+                int have_ids = parse_devpath_ids(varPath.bstrVal, &vid, &pid);
 
-                if (wcsistr(varPath.bstrVal, vid_str) &&
-                    wcsistr(varPath.bstrVal, pid_str)) {
+                if (have_ids && camera_id_match(vid, pid)) {
                     /* Match found — get friendly name */
                     VARIANT varName;
                     VariantInit(&varName);
@@ -241,10 +338,32 @@ static HRESULT find_device(IBaseFilter **ppFilter)
                     ICreateDevEnum_Release(pSysDevEnum);
 
                     if (SUCCEEDED(hr)) {
-                        fprintf(stderr, "Found camera '%s'\n", camera_model);
+                        fprintf(stderr, "Found camera '%s' (%04X:%04X)\n",
+                                camera_model, vid, pid);
                         return S_OK;
                     }
                     return hr;
+                }
+
+                /* Not allowlisted — record for the not-found diagnostic. */
+                if (seen && seen_len && have_ids) {
+                    char token[16];
+                    snprintf(token, sizeof(token), "%04x:%04x", vid, pid);
+                    if (!strstr(seen, token) &&
+                        strlen(seen) + 256 < seen_len) {
+                        char name[160] = "";
+                        VARIANT varName;
+                        VariantInit(&varName);
+                        if (SUCCEEDED(IPropertyBag_Read(pPropBag,
+                                L"FriendlyName", &varName, NULL)) &&
+                            varName.vt == VT_BSTR) {
+                            wide_to_utf8(varName.bstrVal, name, sizeof(name));
+                        }
+                        VariantClear(&varName);
+                        char line[256];
+                        snprintf(line, sizeof(line), "  %s  %s\n", token, name);
+                        strncat(seen, line, seen_len - strlen(seen) - 1);
+                    }
                 }
             }
             VariantClear(&varPath);
@@ -267,12 +386,13 @@ static HRESULT find_device(IBaseFilter **ppFilter)
 #define DEVICE_RETRY_TOTAL_MS   8000
 #define DEVICE_RETRY_SLEEP_MS   500
 
-static HRESULT find_device_with_retry(IBaseFilter **ppFilter)
+static HRESULT find_device_with_retry(IBaseFilter **ppFilter,
+                                      char *seen, size_t seen_len)
 {
     DWORD elapsed = 0;
     HRESULT hr;
 
-    hr = find_device(ppFilter);
+    hr = find_device(ppFilter, seen, seen_len);
     if (SUCCEEDED(hr))
         return hr;
 
@@ -284,7 +404,7 @@ static HRESULT find_device_with_retry(IBaseFilter **ppFilter)
         Sleep(DEVICE_RETRY_SLEEP_MS);
         elapsed += DEVICE_RETRY_SLEEP_MS;
 
-        hr = find_device(ppFilter);
+        hr = find_device(ppFilter, seen, seen_len);
         if (SUCCEEDED(hr))
             return hr;
 
@@ -1168,13 +1288,20 @@ int main(void)
         return 1;
     }
 
+    /* Build the camera allowlist (built-ins + PUSHNAV_CAMERA_IDS) */
+    init_allowlist();
+
     /* Find camera device (retries for up to 8s if not found immediately) */
-    hr = find_device_with_retry(&pCamFilter);
+    char seen[2048];
+    seen[0] = '\0';
+    hr = find_device_with_retry(&pCamFilter, seen, sizeof(seen));
     if (FAILED(hr) || pCamFilter == NULL) {
         fprintf(stderr,
-                "No video device found with VID=0x%04X PID=0x%04X.\n"
-                "Check USB connection and that the camera is recognized by Windows.\n",
-                TARGET_VID, TARGET_PID);
+                "No allowlisted camera found. Check the USB connection and that "
+                "the camera is recognized by Windows. If this is a new camera "
+                "model, add its vid:pid to PUSHNAV_CAMERA_IDS.\n");
+        if (seen[0])
+            fprintf(stderr, "USB video devices seen:\n%s", seen);
         CoUninitialize();
         WSACleanup();
         return 1;

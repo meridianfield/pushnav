@@ -44,9 +44,11 @@ class CaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     /// Start the capture session. Returns true on success.
-    func start() -> Bool {
-        guard let camera = findCamera() else {
-            fputs("ERROR: openaicam not found in AVFoundation\n", stderr)
+    func start(allowlist: [CameraID]) -> Bool {
+        guard let camera = findCamera(allowlist: allowlist) else {
+            fputs("ERROR: No allowlisted camera found in AVFoundation. If this is "
+                  + "a new camera model, add its vid:pid to PUSHNAV_CAMERA_IDS.\n",
+                  stderr)
             return false
         }
         print("Found camera: \(camera.localizedName) [\(camera.modelID)]")
@@ -146,7 +148,7 @@ class CaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     // MARK: - Private
 
-    private func findCamera() -> AVCaptureDevice? {
+    private func findCamera(allowlist: [CameraID]) -> AVCaptureDevice? {
         var deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
         if #available(macOS 14.0, *) {
             deviceTypes.append(.external)
@@ -154,9 +156,32 @@ class CaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let discovery = AVCaptureDevice.DiscoverySession(
             deviceTypes: deviceTypes, mediaType: .video, position: .unspecified)
 
-        // Try by name first, then by modelID
+        // Match by USB VID/PID. AVCaptureDevice.modelID embeds them as a
+        // substring, but the encoding varies across macOS versions, so
+        // modelID(_:matches:) checks both decimal and hex forms.
+        for device in discovery.devices {
+            for cam in allowlist where modelID(device.modelID, matches: cam) {
+                return device
+            }
+        }
+
+        // Fallback: the original Waveshare unit reports as "openaicam".
         return discovery.devices.first(where: { $0.localizedName.contains("openaicam") })
-            ?? discovery.devices.first(where: { $0.modelID.contains("0x9251") })
+    }
+
+    /// True if an AVCaptureDevice.modelID corresponds to the given camera.
+    /// macOS UVC devices typically encode VID/PID in decimal
+    /// ("VendorID_13030 ProductID_37457"); some report hex ("0x32e6"). Match
+    /// either so a new camera model is recognized regardless of encoding.
+    private func modelID(_ modelID: String, matches cam: CameraID) -> Bool {
+        let lower = modelID.lowercased()
+        if lower.contains("vendorid_\(cam.vid)")
+            && lower.contains("productid_\(cam.pid)") {
+            return true
+        }
+        let vidHex = String(format: "0x%04x", cam.vid)
+        let pidHex = String(format: "0x%04x", cam.pid)
+        return lower.contains(vidHex) && lower.contains(pidHex)
     }
 
     private func configureFormat(device: AVCaptureDevice) {

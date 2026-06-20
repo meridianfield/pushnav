@@ -21,9 +21,10 @@
  * camera_server.c — Linux V4L2 camera server
  *
  * Self-contained C replacement for camera_server.py.  Captures MJPEG frames
- * from the target USB camera (VID 0x32E6, PID 0x9251) via V4L2 mmap and
- * serves them over TCP using the same binary protocol as the macOS Swift
- * camera server (see specs/start/SPEC_PROTOCOL_CAMERA.md).
+ * from a supported USB camera (see the allowlist below; extendable at runtime
+ * via the PUSHNAV_CAMERA_IDS env var) via V4L2 mmap and serves them over TCP
+ * using the same binary protocol as the macOS Swift camera server
+ * (see specs/start/SPEC_PROTOCOL_CAMERA.md).
  *
  * Build: gcc -Wall -Wextra -O2 -o camera_server camera_server.c -ljpeg
  */
@@ -62,12 +63,95 @@
 /* Configuration                                                       */
 /* ------------------------------------------------------------------ */
 
-#define TARGET_VID   0x32E6
-#define TARGET_PID   0x9251
 #define CAPTURE_W    1280
 #define CAPTURE_H    720
 #define NUM_BUFFERS  4
 #define SERVER_PORT  8764
+
+/* ------------------------------------------------------------------ */
+/* Camera allowlist                                                    */
+/*                                                                     */
+/* Known OV9281-based USB modules, matched by USB VID/PID.  Keep this  */
+/* list in sync with the Windows (camera/windows/camera_server.c) and  */
+/* macOS (camera/mac/.../UVCController.swift) servers.                  */
+/*                                                                     */
+/* Users can register additional cameras at runtime WITHOUT            */
+/* recompiling, via the PUSHNAV_CAMERA_IDS env var: a comma-separated  */
+/* list of vid:pid hex pairs, e.g. PUSHNAV_CAMERA_IDS=1bcf:2cd1,abc:12 */
+/* ------------------------------------------------------------------ */
+
+typedef struct {
+    unsigned int vid;
+    unsigned int pid;
+    const char  *label;
+} cam_id_t;
+
+static const cam_id_t BUILTIN_CAMERAS[] = {
+    {0x32E6, 0x9251, "Waveshare OV9281"},
+    {0x0C45, 0x6366, "Arducam OV9281"},
+    {0x1BCF, 0x2CD1, "DECXIN OV9281"},
+};
+#define NUM_BUILTIN_CAMERAS (sizeof(BUILTIN_CAMERAS) / sizeof(BUILTIN_CAMERAS[0]))
+#define MAX_EXTRA_CAMERAS   32
+
+static cam_id_t g_allowlist[NUM_BUILTIN_CAMERAS + MAX_EXTRA_CAMERAS];
+static int      g_allowlist_count = 0;
+
+static void allowlist_add(unsigned int vid, unsigned int pid, const char *label)
+{
+    if (g_allowlist_count >= (int)(sizeof(g_allowlist) / sizeof(g_allowlist[0])))
+        return;
+    for (int i = 0; i < g_allowlist_count; i++)
+        if (g_allowlist[i].vid == vid && g_allowlist[i].pid == pid)
+            return;  /* skip duplicates */
+    g_allowlist[g_allowlist_count].vid = vid;
+    g_allowlist[g_allowlist_count].pid = pid;
+    g_allowlist[g_allowlist_count].label = label;
+    g_allowlist_count++;
+}
+
+/* Seed built-ins, then append any PUSHNAV_CAMERA_IDS entries. */
+static void init_allowlist(void)
+{
+    for (size_t i = 0; i < NUM_BUILTIN_CAMERAS; i++)
+        allowlist_add(BUILTIN_CAMERAS[i].vid, BUILTIN_CAMERAS[i].pid,
+                      BUILTIN_CAMERAS[i].label);
+
+    const char *env = getenv("PUSHNAV_CAMERA_IDS");
+    if (env && *env) {
+        const char *p = env;
+        while (*p) {
+            while (*p == ',' || *p == ' ' || *p == ';')
+                p++;
+            if (!*p)
+                break;
+            unsigned int vid = 0, pid = 0;
+            int n = 0;
+            if (sscanf(p, "%x:%x%n", &vid, &pid, &n) == 2 && vid && pid) {
+                allowlist_add(vid, pid, "user-configured (PUSHNAV_CAMERA_IDS)");
+                p += n;
+            } else {
+                fprintf(stderr,
+                        "Ignoring malformed PUSHNAV_CAMERA_IDS entry near '%s'\n", p);
+                while (*p && *p != ',' && *p != ' ' && *p != ';')
+                    p++;
+            }
+        }
+    }
+
+    fprintf(stderr, "Camera allowlist (%d entries):\n", g_allowlist_count);
+    for (int i = 0; i < g_allowlist_count; i++)
+        fprintf(stderr, "  %04X:%04X  %s\n",
+                g_allowlist[i].vid, g_allowlist[i].pid, g_allowlist[i].label);
+}
+
+static int camera_id_match(unsigned int vid, unsigned int pid)
+{
+    for (int i = 0; i < g_allowlist_count; i++)
+        if (g_allowlist[i].vid == vid && g_allowlist[i].pid == pid)
+            return 1;
+    return 0;
+}
 
 /* ------------------------------------------------------------------ */
 /* V4L2 state                                                          */
@@ -141,6 +225,9 @@ static int find_device(char *dev_path, size_t dev_path_len)
     if (!d)
         return -1;
 
+    char seen[1024];   /* diagnostic: USB video devices we saw but skipped */
+    seen[0] = '\0';
+
     struct dirent *ent;
     while ((ent = readdir(d)) != NULL) {
         if (strncmp(ent->d_name, "video", 5) != 0)
@@ -170,7 +257,31 @@ static int find_device(char *dev_path, size_t dev_path_len)
         sscanf(vendor, "%x", &vid);
         sscanf(product, "%x", &pid);
 
-        if (vid == TARGET_VID && pid == TARGET_PID) {
+        if (!camera_id_match(vid, pid)) {
+            /* Record for the not-found diagnostic, de-duplicated by vid:pid. */
+            char token[16];
+            snprintf(token, sizeof(token), "%04x:%04x", vid, pid);
+            if (!strstr(seen, token) && strlen(seen) + 200 < sizeof(seen)) {
+                char name[128] = "";
+                snprintf(path, sizeof(path),
+                         "/sys/class/video4linux/%s/name", ent->d_name);
+                FILE *nf = fopen(path, "r");
+                if (nf) {
+                    if (fgets(name, sizeof(name), nf)) {
+                        size_t l = strlen(name);
+                        if (l > 0 && name[l - 1] == '\n')
+                            name[l - 1] = '\0';
+                    }
+                    fclose(nf);
+                }
+                char line[200];
+                snprintf(line, sizeof(line), "  %s  %s\n", token, name);
+                strncat(seen, line, sizeof(seen) - strlen(seen) - 1);
+            }
+            continue;
+        }
+
+        {
             char candidate[288];
             snprintf(candidate, sizeof(candidate), "/dev/%s", ent->d_name);
 
@@ -210,6 +321,11 @@ static int find_device(char *dev_path, size_t dev_path_len)
     }
 
     closedir(d);
+    if (seen[0])
+        fprintf(stderr,
+                "No allowlisted camera found. USB video devices seen:\n%s", seen);
+    else
+        fprintf(stderr, "No USB video devices found at all.\n");
     return -1;
 }
 
@@ -917,12 +1033,16 @@ int main(void)
     /* Ignore SIGPIPE (handle send errors via return codes) */
     signal(SIGPIPE, SIG_IGN);
 
+    /* Build the camera allowlist (built-ins + PUSHNAV_CAMERA_IDS) */
+    init_allowlist();
+
     /* Find camera device */
     char dev_path[288];
     if (find_device(dev_path, sizeof(dev_path)) < 0) {
-        fprintf(stderr, "No V4L2 device found with VID=0x%04X PID=0x%04X. "
-                "Check USB connection and that user is in 'video' group.\n",
-                TARGET_VID, TARGET_PID);
+        fprintf(stderr,
+                "No allowlisted V4L2 camera found. Check the USB connection, that "
+                "the user is in the 'video' group, and — if this is a new camera "
+                "model — add its vid:pid to PUSHNAV_CAMERA_IDS.\n");
         return 1;
     }
 
