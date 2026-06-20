@@ -120,7 +120,15 @@ human-readable time (ms/s) for display. The slider keeps operating on raw `min/m
       lowest fps). NOTE: deviated from plan's "lowest maxFrameRate" heuristic to
       "lowest minFrameRate" — this hits the device's *absolute* lowest fps
       (decision [1]) and avoids missing a lower rate in an overlapping range.
-      Arun to verify natively.
+      VERIFIED natively 2026-06-20 (Apple Swift 6.1.2, arm64): builds clean;
+      openaicam (ranges [120-120],[60-60]) → picks 60, logs "Configured
+      1280x720 @ 60fps (lowest available)"; capture starts, streams; no
+      regression. CAVEAT: both cameras on hand (openaicam, Kreo Owl) report
+      discrete single-value ranges, where minFrameDuration==maxFrameDuration, so
+      old vs new code pin the *same* fps — the inversion divergence (old pins
+      high end on a *spanning* range like [5-120], new pins low) can't be
+      reproduced here. Confirms build/run/lowest-selection/log; the decisive
+      divergence + "Arducam shows stars" still need the reporter's hardware.
 - [x] Linux/Windows/macOS: add `unit` to exposure CONTROL_INFO
       — already present on `main` for all 3 servers ("100us" exp / "raw" gain;
       macOS "100us"). No change needed.
