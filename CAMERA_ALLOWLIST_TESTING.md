@@ -14,8 +14,10 @@ being detected — GitHub issues **#30** and **#26**.
 It was fully verified on **Linux** with a real camera, including the decisive
 "supply the camera only via env, with its built-in entry removed" path. **macOS is now
 also fully verified** (2026-06-20, Apple Swift 6.1.2 / arm64 — see the ✅ block in the
-macOS section). **Windows was written carefully but not yet compiled or run** — that's
-what remains.
+macOS section). **Windows is now also fully verified** (2026-06-20, MSVC 14.50 / VS 18
+Community / x64 — see the ✅ block in the Windows section), including real MJPEG
+streaming from a Waveshare OV9281 and the decisive non-built-in-by-VID/PID path.
+All three platforms are now verified.
 
 ## Get the code
 
@@ -46,6 +48,39 @@ cd camera\windows
 build.bat
 ```
 **Run:** `camera_server.exe`  (listens on `127.0.0.1:8764`; Ctrl+C to stop)
+
+### ✅ VERIFIED on Windows (2026-06-20, MSVC 14.50.35717 / VS 18 Community, x64)
+
+Compiled clean with `cl /W4 /O2` — **zero warnings** (first compile of this file),
+no code changes needed. Tested against a real **Waveshare OV9281** (`openaicam`,
+`32E6:9251`) plus the laptop's non-allowlisted **Integrated Camera** (`30C9:0030`).
+All checks pass:
+
+- **Built-in match (real hardware)** — with no env override, the built-in `32E6:9251`
+  matched the Waveshare: `Found camera 'openaicam' (32E6:9251)`. This is the core fix.
+- **Real MJPEG streaming** — unlike macOS/AVFoundation (where this same camera offered
+  only YUV), DirectShow exposes MJPEG: `Using MJPEG capture 1280x720`. A TCP client
+  pulled **30 valid JPEG frames** (~25 KB each, SOI `FFD8` / EOI `FFD9`, no trailing pad)
+  via the direct passthrough path — no libjpeg needed.
+- **Handshake + controls** — HELLO/CONTROL_INFO exchanged; `probe_controls()` reported
+  exposure `[-13..-1]` and gain `[0..63]`. `SET_CONTROL` applied exactly: exposure
+  -5→-13, gain 0→63 (server echoed the new `cur` in CONTROL_INFO).
+- **Env override** — `aaaa:bbbb` → 4th `user-configured` entry; `0c45:6366` deduped
+  against the built-in; malformed `zzz` skipped with the warning. All correct.
+- **Not-found diagnostic** — with only the Integrated Camera connected, exits via
+  `return 1` with `No allowlisted camera found` +
+  `USB video devices seen:  30c9:0030  Integrated Camera`.
+- **Decisive non-built-in test** — the Integrated Camera (`30C9:0030`, whose name is
+  NOT `openaicam` / any OV9281) is NOT found by default, then found **purely by VID/PID**
+  with `PUSHNAV_CAMERA_IDS=30c9:0030` (`Found camera 'Integrated Camera' (30C9:0030)` →
+  capture graph running → listening). This is the path that "could not be tested without
+  the hardware" — it passes. `parse_devpath_ids()` returned the correct IDs for both
+  cameras.
+
+**Build note (this dev box):** the VS dev shell already had `INCLUDE`/`LIB` set with
+`cl.exe` on PATH, but `NoDefaultCurrentDirectoryInExePath=1` is in effect, so a bare
+`build.bat` is "not recognized" — run it as `.\build.bat`, or invoke `cl.exe` directly
+(`cl /W4 /O2 /Fe:camera_server.exe camera_server.c ws2_32.lib ole32.lib oleaut32.lib strmiids.lib uuid.lib`).
 
 **Expect on startup:**
 - `Camera allowlist (3 entries):` listing the 3 built-ins
@@ -164,6 +199,22 @@ Add to the app `config.json` under `"camera"`:
 - macOS: `~/Library/Application Support/ElectronicViewfinder/config.json`
 
 Launch the app; the engine log should show `Passing PUSHNAV_CAMERA_IDS=... to camera server`.
+
+**✅ VERIFIED (2026-06-20, Windows):** the config→env→native chain was confirmed by driving
+the real `ConfigManager` + `SubprocessManager._build_env()` and launching the actual
+`camera_server.exe` with the env it produced. A config of `"extra_camera_ids": ["30c9:0030"]`
+loaded, forwarded as `PUSHNAV_CAMERA_IDS=30c9:0030`, and the native server matched it:
+`Found camera 'Integrated Camera' (30C9:0030)`. Also confirmed: the default-merge preserves
+the user's list (other camera keys fall back to defaults); multiple entries and stray
+whitespace normalize to a comma-separated `vid:pid` string; an empty list makes `_build_env`
+return `None` (inherit parent env); a config entry composes with any pre-existing
+`PUSHNAV_CAMERA_IDS`; malformed entries are forwarded and skipped by the native parser. This
+is shared Python (manager.py + subprocess_mgr.py), so it applies to all three OSes.
+
+> ⚠️ **The config file must keep `"version": 1`.** `ConfigManager` discards the whole file and
+> reverts to defaults on any version mismatch (manager.py:75), silently dropping
+> `extra_camera_ids`. Editing the app-generated `config.json` (which already carries the
+> version) is fine; hand-creating a versionless file is not.
 
 ---
 
