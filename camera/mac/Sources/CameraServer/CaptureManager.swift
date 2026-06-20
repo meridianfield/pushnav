@@ -254,14 +254,22 @@ class CaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             try device.lockForConfiguration()
             device.activeFormat = format
 
-            // Pick the lowest supported frame rate (saves CPU/bandwidth for astronomy)
-            // Fall back to whatever the format supports if our preferred rate isn't available
+            // Pin the LOWEST supported frame rate (issue #26).  Max exposure on
+            // a UVC camera is bounded by the frame interval (~1/fps), so faint
+            // stars (tens–hundreds of ms integration) need a low fps; a laggy
+            // preview is an accepted trade-off for a push-to tool.
+            //
+            // The slowest rate is the LONGEST frame DURATION.  Note the earlier
+            // code's bug: it assigned `minFrameDuration` (the SHORTEST duration
+            // = HIGHEST fps), pinning the fastest rate.  Pick the range with the
+            // smallest minFrameRate and pin both min/max duration to its
+            // `maxFrameDuration` so the device runs at exactly that low rate.
             let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
             if let bestRange = format.videoSupportedFrameRateRanges
-                .sorted(by: { $0.minFrameRate < $1.minFrameRate }).first {
-                device.activeVideoMinFrameDuration = bestRange.minFrameDuration
-                device.activeVideoMaxFrameDuration = bestRange.minFrameDuration
-                print("Configured \(dims.width)x\(dims.height) @ \(Int(bestRange.minFrameRate))fps")
+                .min(by: { $0.minFrameRate < $1.minFrameRate }) {
+                device.activeVideoMinFrameDuration = bestRange.maxFrameDuration
+                device.activeVideoMaxFrameDuration = bestRange.maxFrameDuration
+                print("Configured \(dims.width)x\(dims.height) @ \(Int(bestRange.minFrameRate))fps (lowest available)")
             }
 
             device.unlockForConfiguration()

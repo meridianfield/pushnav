@@ -105,11 +105,36 @@ human-readable time (ms/s) for display. The slider keeps operating on raw `min/m
 
 ## Status checklist (update as you go)
 
-- [ ] Linux: S_PARM lowest-fps + log + re-query exposure
-- [ ] Windows: AvgTimePerFrame lowest-fps + log
-- [ ] macOS: fix frame-duration inversion + log
-- [ ] Linux/Windows/macOS: add `unit` to exposure CONTROL_INFO
-- [ ] Confirm `unit` survives protocol.py + webserver → UI
-- [ ] UI: CameraControls.tsx shows converted exposure time
-- [ ] Linux real-camera verify (fps drops, exposure ceiling rises, still solves) + pytest green
+- [x] Linux: S_PARM lowest-fps + log + re-query exposure
+      — `set_lowest_fps()` in camera_server.c; enumerates intervals, picks max
+      (lowest fps), S_PARM + read-back log. probe_controls() already runs after
+      (in handle_client), so exposure is queried post-S_PARM. Verified on
+      Waveshare: "Frame rate pinned: 1/60 s/frame = 60.00 fps" (picks 60 of 60/120).
+- [x] Windows: AvgTimePerFrame lowest-fps + log
+      — try_format reads MaxFrameInterval from the matched cap's pSCC
+      (VIDEO_STREAM_CONFIG_CAPS) and sets pVIH->AvgTimePerFrame before SetFormat.
+      Builds only on Windows — Arun to verify natively.
+- [x] macOS: fix frame-duration inversion + log
+      — configureFormat now picks the range with the smallest minFrameRate via
+      `.min(by:)` and pins min/max to its **maxFrameDuration** (longest dur =
+      lowest fps). NOTE: deviated from plan's "lowest maxFrameRate" heuristic to
+      "lowest minFrameRate" — this hits the device's *absolute* lowest fps
+      (decision [1]) and avoids missing a lower rate in an overlapping range.
+      Arun to verify natively.
+- [x] Linux/Windows/macOS: add `unit` to exposure CONTROL_INFO
+      — already present on `main` for all 3 servers ("100us" exp / "raw" gain;
+      macOS "100us"). No change needed.
+- [x] Confirm `unit` survives protocol.py + webserver → UI
+      — client._update_controls stores raw `data.get("controls", [])` dicts
+      unmodified; webserver forwards them; types.ts ControlDescriptor has `unit?`.
+- [x] UI: CameraControls.tsx shows converted exposure time
+      — formatControlValue(): 100us→cur*0.1 ms, log2s→2^cur*1000 ms (s when
+      ≥1000 ms); slider stays on raw min/max/step. tsc + vite build green.
+- [x] Linux real-camera verify + pytest green
+      — engine spawns the rebuilt binary, camera connects, /frame.mjpg streams
+      761 KB multipart over the webserver (frames flow end-to-end). pytest 260
+      passed. NOTE: this driver reports exposure max=5000 *fixed* regardless of
+      fps (so "ceiling rises" isn't observable here); the real win is the
+      effective integration window doubling (8.3→16.6 ms at 60 vs 120 fps).
+      Definitive "Arducam shows stars" still needs the reporter's hardware.
 - [ ] Delete this file before merge
