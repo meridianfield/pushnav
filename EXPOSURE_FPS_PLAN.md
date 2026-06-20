@@ -113,7 +113,15 @@ human-readable time (ms/s) for display. The slider keeps operating on raw `min/m
 - [x] Windows: AvgTimePerFrame lowest-fps + log
       — try_format reads MaxFrameInterval from the matched cap's pSCC
       (VIDEO_STREAM_CONFIG_CAPS) and sets pVIH->AvgTimePerFrame before SetFormat.
-      Builds only on Windows — Arun to verify natively.
+      VERIFIED natively 2026-06-20 (MSVC 14.50, x64): builds clean; ffmpeg shows
+      openaicam 1280x720 MJPEG = 60-120 fps and it pins the lowest —
+      "Frame rate pinned: AvgTimePerFrame=166666 (100ns) = 60.00 fps". Streams
+      valid JPEG; measured ~32 fps, exposure-limited at cur=-5 (31.25 ms) — i.e.
+      the low-fps pin grants exposure headroom past the 8.3 ms that 120 fps would
+      impose. No regression. CAVEAT: pins the *matched cap's* MaxFrameInterval
+      rather than scanning all caps for the global lowest (macOS scans) — correct
+      for this spanning-range camera, but could miss the lowest on a camera that
+      exposes discrete per-fps caps high-first. Matches the plan; low priority.
 - [x] macOS: fix frame-duration inversion + log
       — configureFormat now picks the range with the smallest minFrameRate via
       `.min(by:)` and pins min/max to its **maxFrameDuration** (longest dur =
@@ -130,8 +138,12 @@ human-readable time (ms/s) for display. The slider keeps operating on raw `min/m
       reproduced here. Confirms build/run/lowest-selection/log; the decisive
       divergence + "Arducam shows stars" still need the reporter's hardware.
 - [x] Linux/Windows/macOS: add `unit` to exposure CONTROL_INFO
-      — already present on `main` for all 3 servers ("100us" exp / "raw" gain;
-      macOS "100us"). No change needed.
+      — Linux/macOS correctly send "100us" (gain "raw"). Windows was WRONG: it
+      tagged exposure "100us", but DirectShow CameraControl_Exposure is
+      log2(seconds), so the UI rendered cur=-5 as -0.5 ms. FIXED 2026-06-20:
+      Windows now sends "unit":"log2s" (build_control_info_json), and
+      CameraControls.tsx shows 2^value*1000 ms (~0.12-500 ms). Verified natively:
+      CONTROL_INFO reports log2s; the dev app shows real ms.
 - [x] Confirm `unit` survives protocol.py + webserver → UI
       — client._update_controls stores raw `data.get("controls", [])` dicts
       unmodified; webserver forwards them; types.ts ControlDescriptor has `unit?`.
