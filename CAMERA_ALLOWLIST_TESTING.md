@@ -84,19 +84,40 @@ Verify the printed `(XXXX:XXXX)` matches the device's real IDs
 - `Found camera: <name> [<modelID>]` — **copy this `modelID` string verbatim**
 - capture starts; exposure/gain adjustable
 
-### ⚠️ Key unverified part (macOS)
+### ⚠️ Key unverified part (macOS): the `modelID` encoding
 
 `CaptureManager.findCamera()` matches the capture device by `AVCaptureDevice.modelID`.
-We don't know whether macOS reports VID/PID in that string as **decimal**
-(`VendorID_13030 ProductID_37457`) or **hex** (`0x32e6`); the code tries **both**, with
-the legacy name match (`openaicam`) as a fallback.
 
-- **Report the exact `modelID` string** from the `Found camera:` line.
-- **Decisive macOS test:** use a non-built-in camera (Arducam/DECXIN) whose
-  `localizedName` does NOT contain `openaicam` — it can only be found via modelID
-  matching. If found → VID/PID matching works. If NOT found → the modelID encoding
-  assumption is wrong, and `findCamera()` / `modelID(_:matches:)` needs fixing to the
-  real format.
+**Why this is suspect.** The *original* code matched `modelID.contains("0x9251")` — i.e.
+it assumed the PID appears as the **hex** string `0x9251`. But macOS reports VID/PID in
+`modelID` in **decimal**, e.g.:
+
+```
+UVC Camera VendorID_13030 ProductID_37457
+```
+
+…which is just the hex IDs converted:
+
+| Hex | Decimal in modelID |
+|-----|--------------------|
+| `0x32E6` (VID) | `13030` |
+| `0x9251` (PID) | `37457` |
+
+So `"0x9251"` never appears, and that hex branch was effectively **dead code** — the
+original app only ever found the camera via the *name* match (`localizedName` contains
+`openaicam`), which hid the broken hex check. New cameras (Arducam/DECXIN) are NOT named
+`openaicam`, so they can only be matched by VID/PID — which is why this must work.
+
+The rewrite (`modelID(_:matches:)`) now tries **both** encodings (decimal
+`VendorID_… ProductID_…` and hex `0x…`), keeping the `openaicam` name as a last fallback.
+This is the one assumption that could not be tested without a Mac.
+
+**What to verify:**
+- **Report the exact `modelID` string** from the `Found camera:` line (confirms decimal vs hex).
+- **Decisive test:** use a non-built-in camera (Arducam/DECXIN) whose `localizedName` does
+  NOT contain `openaicam` — it can only be found via modelID matching. If found → VID/PID
+  matching works. If NOT found → the encoding assumption is wrong and
+  `findCamera()` / `modelID(_:matches:)` needs fixing to the real format you reported.
 - Confirm `UVCController.find(in:)` succeeded (the `UVC control interface` line) and that
   exposure/gain actually change — that IOKit path needs the exact VID/PID match.
 
