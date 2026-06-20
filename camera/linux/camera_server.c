@@ -330,6 +330,87 @@ static int find_device(char *dev_path, size_t dev_path_len)
 }
 
 /* ------------------------------------------------------------------ */
+/* Frame-rate pinning                                                  */
+/* ------------------------------------------------------------------ */
+
+/* Pin the camera to its LOWEST supported frame rate for the negotiated
+ * pixelformat/size.  Max exposure time on a UVC camera is bounded by the
+ * frame interval (~1/fps), so faint stars (tens–hundreds of ms integration)
+ * need a low fps.  High-fps modules (e.g. the 120 fps Arducam OV9281) would
+ * otherwise cap exposure to a few ms and show no stars.  See issue #26.
+ *
+ * Best-effort: any failure leaves the driver default and we keep streaming.
+ * Must run AFTER VIDIOC_S_FMT (interval enumeration is per-format) and BEFORE
+ * querying the exposure range (the reported max can depend on the frame rate).
+ */
+static void set_lowest_fps(uint32_t pixfmt, uint32_t width, uint32_t height)
+{
+    /* Find the longest frame interval (= lowest fps) the device offers.
+     * 0/0 means enumeration produced nothing usable. */
+    struct v4l2_fract best = {0, 0};
+
+    struct v4l2_frmivalenum fie;
+    memset(&fie, 0, sizeof(fie));
+    fie.pixel_format = pixfmt;
+    fie.width = width;
+    fie.height = height;
+
+    if (xioctl(cam_fd, VIDIOC_ENUM_FRAMEINTERVALS, &fie) == 0) {
+        if (fie.type == V4L2_FRMIVAL_TYPE_DISCRETE) {
+            do {
+                /* interval a/b > c/d  <=>  a*d > c*b  (all values positive) */
+                if (best.denominator == 0 ||
+                    (uint64_t)fie.discrete.numerator * best.denominator >
+                    (uint64_t)best.numerator * fie.discrete.denominator) {
+                    best = fie.discrete;
+                }
+                fie.index++;
+            } while (xioctl(cam_fd, VIDIOC_ENUM_FRAMEINTERVALS, &fie) == 0);
+        } else {
+            /* CONTINUOUS / STEPWISE: .max is the longest interval. */
+            best = fie.stepwise.max;
+        }
+    }
+
+    /* Check the device supports programmable frame timing. */
+    struct v4l2_streamparm parm;
+    memset(&parm, 0, sizeof(parm));
+    parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    if (xioctl(cam_fd, VIDIOC_G_PARM, &parm) < 0) {
+        fprintf(stderr, "VIDIOC_G_PARM unsupported; leaving fps at driver default\n");
+        return;
+    }
+    if (!(parm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME)) {
+        fprintf(stderr, "Device cannot set frame rate; leaving fps at driver default\n");
+        return;
+    }
+
+    /* Fallback if enumeration found nothing: request 5 fps and let the driver
+     * clamp to its nearest supported interval. */
+    if (best.numerator == 0 || best.denominator == 0) {
+        best.numerator = 1;
+        best.denominator = 5;
+    }
+
+    parm.parm.capture.timeperframe = best;
+    if (xioctl(cam_fd, VIDIOC_S_PARM, &parm) < 0) {
+        perror("VIDIOC_S_PARM");
+        fprintf(stderr, "Could not set frame rate; leaving fps at driver default\n");
+        return;
+    }
+
+    /* Read back the interval the driver actually applied and log it. */
+    memset(&parm, 0, sizeof(parm));
+    parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    if (xioctl(cam_fd, VIDIOC_G_PARM, &parm) == 0) {
+        struct v4l2_fract tpf = parm.parm.capture.timeperframe;
+        double fps = tpf.numerator ? (double)tpf.denominator / tpf.numerator : 0.0;
+        fprintf(stderr, "Frame rate pinned: %u/%u s/frame = %.2f fps\n",
+                tpf.numerator, tpf.denominator, fps);
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /* V4L2 capture setup                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -374,6 +455,10 @@ static int open_camera(const char *dev_path)
         fprintf(stderr, "MJPEG not available, using YUYV capture %ux%u\n",
                 fmt.fmt.pix.width, fmt.fmt.pix.height);
     }
+
+    /* Pin the lowest fps for max exposure headroom (issue #26).  Must run
+     * after S_FMT (per-format enumeration) and before exposure is queried. */
+    set_lowest_fps(fmt.fmt.pix.pixelformat, fmt.fmt.pix.width, fmt.fmt.pix.height);
 
     /* Request mmap buffers */
     struct v4l2_requestbuffers req;

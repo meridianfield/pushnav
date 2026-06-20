@@ -508,6 +508,23 @@ static int try_format(IAMStreamConfig *pConfig, const GUID *pSubtype,
             if (pVIH->bmiHeader.biWidth == width &&
                 abs(pVIH->bmiHeader.biHeight) == height) {
 
+                /* Pin the LOWEST fps (= longest frame interval) for max
+                 * exposure headroom (issue #26).  Max exposure on a UVC camera
+                 * is bounded by the frame interval, so faint stars need a low
+                 * fps.  The caps for this index were populated into pSCC by the
+                 * GetStreamCaps call above; MaxFrameInterval is in 100-ns units
+                 * (longest interval = lowest fps).  Best-effort: if caps look
+                 * unusable, leave AvgTimePerFrame as-is. */
+                VIDEO_STREAM_CONFIG_CAPS *pCaps = (VIDEO_STREAM_CONFIG_CAPS *)pSCC;
+                if (size >= (int)sizeof(VIDEO_STREAM_CONFIG_CAPS) &&
+                    pCaps->MaxFrameInterval > 0) {
+                    pVIH->AvgTimePerFrame = pCaps->MaxFrameInterval;
+                    double fps = 1e7 / (double)pCaps->MaxFrameInterval;
+                    fprintf(stderr,
+                            "Frame rate pinned: AvgTimePerFrame=%.0f (100ns) = %.2f fps\n",
+                            (double)pCaps->MaxFrameInterval, fps);
+                }
+
                 hr = IAMStreamConfig_SetFormat(pConfig, pmt);
                 free_media_type(pmt);
                 CoTaskMemFree(pmt);
@@ -1059,12 +1076,16 @@ static void build_control_info_json(char *buf, size_t buflen)
     int first = 1;
 
     if (exposure_range.valid) {
+        /* DirectShow CameraControl_Exposure is in log2(seconds) — unlike the
+         * Linux/macOS UVC servers, which use 100us units. The "unit" tag tells
+         * the UI which conversion to apply (web/.../CameraControls.tsx): for
+         * "log2s" it shows 2^value * 1000 ms (e.g. -5 -> 31.25 ms). */
         pos += snprintf(controls + pos, sizeof(controls) - (size_t)pos,
             "{\"id\":\"exposure\","
             "\"label\":\"Exposure\","
             "\"type\":\"int\","
             "\"min\":%ld,\"max\":%ld,\"step\":%ld,\"cur\":%ld,"
-            "\"unit\":\"100us\"}",
+            "\"unit\":\"log2s\"}",
             exposure_range.min, exposure_range.max,
             exposure_range.step, exp_cur);
         first = 0;
