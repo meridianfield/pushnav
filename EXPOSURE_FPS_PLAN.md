@@ -1,0 +1,115 @@
+# Exposure/FPS fix (#26) — implementation plan & context
+
+> **Scratch/working note, scoped to the `camera-exposure-fps` branch. DELETE before merging to `main`.**
+> This file exists so the work survives a context `/clear`. A fresh session should read this
+> top-to-bottom, then implement. Branch: **`camera-exposure-fps`** (off `main`, after PR #32 merged).
+
+## Goal
+
+Fix GitHub issue **#26**: camera exposure too low → few/no stars on the **Arducam OV9281**
+(and any high-default-fps UVC camera). The detection half of #26 (and #30) was already solved
+by the camera-allowlist PR #32 (now on `main`). This branch is the **exposure/fps half only**.
+
+## Root cause (confirmed by code reading 2026-06-20)
+
+Max exposure time on a UVC camera is bounded by the frame interval (≈ 1/fps). Faint stars need
+long integration (tens–hundreds of ms), which requires a **low fps**. None of the three servers
+pins low fps correctly:
+
+| Platform | Where | Current behavior | Bug |
+|---|---|---|---|
+| **Linux** | `camera/linux/camera_server.c` → `open_camera` (~L336) | `VIDIOC_S_FMT` sets 1280×720 MJPEG; **no `VIDIOC_S_PARM`** | fps left at driver default; exposure (`V4L2_CID_EXPOSURE_ABSOLUTE`) clamped to frame period |
+| **Windows** | `camera/windows/camera_server.c` → `try_format` (~L488) / `open_camera` (~L526) | `SetFormat` uses media type as-is; **`AvgTimePerFrame` never set** | fps left at default; `CameraControl_Exposure` clamped to frame period |
+| **macOS** | `camera/mac/Sources/CameraServer/CaptureManager.swift` → `configureFormat` (L257-264) | sets `activeVideoMin/MaxFrameDuration = bestRange.minFrameDuration` | **`minFrameDuration` = MAX fps** — pins the *highest* rate (backwards); also sorts by `minFrameRate` not `maxFrameRate` |
+
+Waveshare's default fps was low enough that exposure worked → bug was hidden. Arducam is a 120-fps
+global-shutter module → high default caps exposure to a few ms → no stars. Matches Arun's hypothesis
+in the #26 thread ("default FPS issue not exposed by Waveshare… select the lowest FPS in 1280×720").
+
+**Important ordering detail:** on V4L2 the exposure control's reported **max often depends on fps**,
+so set low fps **before** querying the exposure range, or the UI slider ceiling stays artificially low.
+
+## Decisions (from Arun, 2026-06-20)
+
+1. **[1] Hard-pin the camera's absolute LOWEST fps** at startup (option A). Simplest, max exposure
+   headroom. Accept a laggy preview / slower re-solve cadence — fine for a push-to tool.
+2. **[4] Show correct exposure units per-OS in the UI** — IN SCOPE for this branch.
+3. **[5] Do NOT expose fps in UI/HELLO.** But **log the chosen fps/interval to stderr** for debug.
+
+## Implementation
+
+### A. FPS pinning (decision [1], [5])
+
+- **Linux** (`open_camera`, after the `VIDIOC_S_FMT` that succeeds): call `VIDIOC_S_PARM`
+  (`V4L2_BUF_TYPE_VIDEO_CAPTURE`) with `parm.parm.capture.timeperframe` = longest interval (lowest
+  fps). Best: enumerate `VIDIOC_ENUM_FRAMEINTERVALS` for the chosen pixfmt/W/H and pick the **max**
+  interval; fallback: request `{numerator=1, denominator=5}` and accept the driver's clamp. Guard:
+  only if `parm.parm.capture.capability & V4L2_CAP_TIMEPERFRAME`. Read back and **log** the actual
+  interval ("Frame rate: N/D = X fps"). If it fails, continue (don't fatal). THEN query exposure
+  range (move/keep `query_control(V4L2_CID_EXPOSURE_ABSOLUTE,...)` after S_PARM).
+- **Windows** (`try_format`, before `SetFormat`): from the `VIDEO_STREAM_CONFIG_CAPS` for the matched
+  cap (the `pSCC` buffer already populated by `GetStreamCaps`), read `MaxFrameInterval` and set
+  `pVIH->AvgTimePerFrame = MaxFrameInterval` (lowest fps) on the media type before `SetFormat`.
+  **Log** the chosen AvgTimePerFrame (100-ns units → fps = 1e7 / AvgTimePerFrame). Fallback: if caps
+  unavailable, leave as-is. Query exposure after.
+- **macOS** (`configureFormat`, L257-264): fix the inversion — pick the range that minimizes fps and
+  set `activeVideoMinFrameDuration = activeVideoMaxFrameDuration = bestRange.maxFrameDuration`
+  (longest duration = lowest fps). Pick `bestRange` by **lowest `maxFrameRate`**. Update the existing
+  `print("Configured … @ Nfps")` to log the real (low) fps.
+
+### B. Per-OS exposure units (decision [4])
+
+Exposure control units differ; the UI currently shows raw values:
+- **Linux** `V4L2_CID_EXPOSURE_ABSOLUTE`: units of **100 µs** → ms = value × 0.1.
+- **macOS** UVC `CT_EXPOSURE_TIME_ABS`: units of **100 µs** (UVC standard) → ms = value × 0.1.
+- **Windows** DirectShow `CameraControl_Exposure`: **log₂(seconds)** → ms = 2^value × 1000
+  (e.g. -1 → 500 ms, -13 → ~0.12 ms).
+
+Plan: each server adds a `unit` field to the **exposure** control in its CONTROL_INFO JSON, e.g.
+`"unit":"100us"` (linux/mac) or `"unit":"log2s"` (windows). The UI converts raw `cur` → a
+human-readable time (ms/s) for display. The slider keeps operating on raw `min/max/step` so
+`SET_CONTROL` semantics are unchanged — only the **displayed label** is converted. Gain stays as-is.
+
+- `ControlDescriptor` (web/src/lib/types.ts:39) **already has `unit?: string`** — no type change needed.
+- CONTROL_INFO JSON to extend:
+  - Linux: `camera/linux/camera_server.c` ~L801-809 (add `"unit":"100us"` for exposure only).
+  - Windows: `camera/windows/camera_server.c` ~L1061-1069 (add `"unit":"log2s"` for exposure only).
+  - macOS: control info is built in `camera/mac/Sources/CameraServer/ControlManager.swift` (find the
+    exposure entry; add `unit`). VERIFY the JSON builder there.
+- Verify the dict passes through unmodified: `python/evf/camera/protocol.py` (CONTROL_INFO parse) and
+  `python/evf/webserver/server.py` (~L546/L585 builds the `controls` list sent to the UI). Likely
+  forwards arbitrary keys, but confirm `unit` isn't dropped.
+- UI render: `web/src/components/controls/CameraControls.tsx` — for the exposure control, compute and
+  show the converted time from `cur` + `unit` (100us → `cur*0.1` ms; log2s → `2**cur*1000` ms, show
+  s when ≥ 1000 ms). Keep the slider bound to raw values.
+
+## Verification
+
+- Hardware available here: **Waveshare OV9281 on the Linux box** (`/dev/video0`, `32E6:9251`). No
+  Arducam. So we can prove: (a) fps actually drops (log + frame cadence), (b) the exposure ceiling
+  rises after pinning low fps, (c) the working camera still streams + plate-solves. The definitive
+  "Arducam shows stars" needs Egress-Source's hardware → ships as "should fix, pending reporter
+  confirmation," like the allowlist.
+- Linux quick checks: `make -C camera/linux`, run the binary, confirm the new fps log line and a
+  larger exposure `max`. `v4l2-ctl -d /dev/video0 --list-formats-ext` lists intervals (note: device
+  was momentarily un-openable from the sandbox shell on 2026-06-20 — retry).
+- `uv run pytest tests/` must stay green (260 passing baseline). Build web: `(cd web && npm run build)`.
+- Windows + macOS: native builds verified separately by Arun (same per-OS flow as the allowlist;
+  see git history of the deleted CAMERA_ALLOWLIST_TESTING.md for the build/run commands).
+
+## Out of scope / follow-ups
+
+- Coupling fps to exposure dynamically (option C) — deferred; revisit only if low-fps cadence annoys.
+- Normalizing exposure to a single unit end-to-end — not doing; per-OS `unit` + UI conversion instead.
+- Issue **#29** (Stellarium Mobile Plus won't connect) — unrelated, untouched.
+
+## Status checklist (update as you go)
+
+- [ ] Linux: S_PARM lowest-fps + log + re-query exposure
+- [ ] Windows: AvgTimePerFrame lowest-fps + log
+- [ ] macOS: fix frame-duration inversion + log
+- [ ] Linux/Windows/macOS: add `unit` to exposure CONTROL_INFO
+- [ ] Confirm `unit` survives protocol.py + webserver → UI
+- [ ] UI: CameraControls.tsx shows converted exposure time
+- [ ] Linux real-camera verify (fps drops, exposure ceiling rises, still solves) + pytest green
+- [ ] Delete this file before merge
