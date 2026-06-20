@@ -12,8 +12,10 @@ key, which the engine forwards as that env var). This fixes non-Waveshare camera
 being detected — GitHub issues **#30** and **#26**.
 
 It was fully verified on **Linux** with a real camera, including the decisive
-"supply the camera only via env, with its built-in entry removed" path. **Windows and
-macOS were written carefully but not yet compiled or run** — that's what this note covers.
+"supply the camera only via env, with its built-in entry removed" path. **macOS is now
+also fully verified** (2026-06-20, Apple Swift 6.1.2 / arm64 — see the ✅ block in the
+macOS section). **Windows was written carefully but not yet compiled or run** — that's
+what remains.
 
 ## Get the code
 
@@ -78,13 +80,38 @@ Verify the printed `(XXXX:XXXX)` matches the device's real IDs
 - Grant the terminal **Camera permission** if macOS prompts.
 - Make sure the **PushNav app is NOT running** (only one process can hold the camera).
 
+### ✅ VERIFIED on macOS (2026-06-20, Apple Swift 6.1.2, arm64)
+
+Built clean — but first `rm -rf .build` to clear a stale module cache that still
+pointed at the repo's old path (`stargazingbuddy-evf` → `pushnav`); without that,
+`swift build` fails with "PCH was compiled with module cache path …" / "missing
+required module 'SwiftShims'". All checks pass:
+
+- **Decimal `modelID` confirmed** — the openaicam reports
+  `UVC Camera VendorID_13030 ProductID_37457` (= 0x32E6/0x9251). The new decimal
+  branch matched it; the `openaicam` name fallback was never reached.
+- **UVC control works** — exposure (1…5000) and gain (0…63) probed; auto-exposure
+  forced OFF confirmed; capture session started; TCP listening on :8764.
+- **Env override** — add (`aaaa:bbbb` → 4th `user-configured` entry), dedup
+  (`0c45:6366` not re-added), malformed (`zzz` skipped, valid kept): all correct.
+- **Decisive non-built-in test** — openaicam unplugged, only a **Kreo Owl Camera**
+  (`VendorID_3141 ProductID_25453` = 0x0C45/0x636D, name is NOT `openaicam`)
+  connected. Default allowlist → NOT found (`FATAL: No allowlisted camera found`).
+  With `PUSHNAV_CAMERA_IDS=0c45:636d` → found purely by VID/PID, via BOTH the
+  AVFoundation discovery (`Found camera: Kreo Owl Camera`) and the IOKit UVC path
+  (`UVC control interface: user-configured … (VID=0x0C45, PID=0x636D)`), exposure/
+  gain probed. This is the path that "could not be tested without a Mac" — it passes.
+
+(Aside, pre-existing / out of scope: both cameras on hand advertise only YUV
+`420v`/`yuvs`, no MJPEG, so they use the CIContext JPEG fallback.)
+
 **Expect:**
 - `Camera allowlist (N entries):` block
 - `UVC control interface: <label> (VID=0x..., PID=0x...)`
 - `Found camera: <name> [<modelID>]` — **copy this `modelID` string verbatim**
 - capture starts; exposure/gain adjustable
 
-### ⚠️ Key unverified part (macOS): the `modelID` encoding
+### ✅ CONFIRMED (was the key unverified part of macOS): the `modelID` encoding
 
 `CaptureManager.findCamera()` matches the capture device by `AVCaptureDevice.modelID`.
 
@@ -110,7 +137,11 @@ original app only ever found the camera via the *name* match (`localizedName` co
 
 The rewrite (`modelID(_:matches:)`) now tries **both** encodings (decimal
 `VendorID_… ProductID_…` and hex `0x…`), keeping the `openaicam` name as a last fallback.
-This is the one assumption that could not be tested without a Mac.
+This was the one assumption that could not be tested without a Mac.
+
+**Confirmed 2026-06-20:** macOS reports **decimal** (`VendorID_13030 ProductID_37457`),
+the decimal branch matched the openaicam, and a non-`openaicam` Kreo Owl camera was
+found purely by VID/PID — so the matcher is right. See the ✅ VERIFIED block above.
 
 **What to verify:**
 - **Report the exact `modelID` string** from the `Found camera:` line (confirms decimal vs hex).
