@@ -180,12 +180,17 @@ def main() -> None:
     )
     title = f"PushNav {engine.app_version}"
 
+    # background_color paints the native window dark *before* the page renders,
+    # so the WebView2 / WKWebView frame doesn't flash white on startup while the
+    # JS bundle parses. The React UI is always dark (see web/index.html); this
+    # matches the .dark --background (oklch(0.10 0.06 22)).
     webview.create_window(
         title,
         target_url,
         width=_VP_WIDTH,
         height=_VP_HEIGHT,
         resizable=False,
+        background_color="#0D0A0B",
     )
     # On Linux, force pywebview's Qt backend (QtPy + PyQt6 + PyQt6-WebEngine,
     # pulled in by the pywebview[qt] extra in pyproject.toml). Without this,
