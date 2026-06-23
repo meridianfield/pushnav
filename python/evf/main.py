@@ -143,11 +143,26 @@ def main() -> None:
     engine.startup_stellarium()
     engine.startup_lx200()
     engine.startup_webserver()
-    engine.startup_camera()
-    if engine.camera_connected:
-        engine.startup_solver_thread()
+
+    def _start_camera() -> None:
+        """Spawn + connect the camera, then start the solver thread if it came up.
+
+        This is the slow part of startup: the native camera server retries for
+        ~8 s when no camera is attached, and DirectShow/AVFoundation init takes a
+        few seconds even when one is. In windowed mode this runs in a background
+        thread AFTER the window is shown — the React UI already renders a
+        'connecting' state for camera_connected=False — so the window appears
+        immediately instead of blocking on the camera.
+        """
+        try:
+            engine.startup_camera()
+            if engine.camera_connected:
+                engine.startup_solver_thread()
+        except Exception:
+            logger.exception("Camera startup failed")
 
     if no_window:
+        _start_camera()  # headless: no window to unblock, so start it inline
         logger.info("Running headless (--no-window). Press Ctrl-C to exit.")
         stop = threading.Event()
         signal.signal(signal.SIGINT, lambda *_: stop.set())
@@ -192,6 +207,12 @@ def main() -> None:
         resizable=False,
         background_color="#0D0A0B",
     )
+    # Connect the camera in the background so the window appears immediately
+    # instead of blocking on the ~8 s camera-server retry (worst when no camera
+    # is attached). daemon=True so it never holds up shutdown on window close.
+    threading.Thread(
+        target=_start_camera, name="camera-startup", daemon=True
+    ).start()
     # On Linux, force pywebview's Qt backend (QtPy + PyQt6 + PyQt6-WebEngine,
     # pulled in by the pywebview[qt] extra in pyproject.toml). Without this,
     # pywebview probes GTK first and only falls through to Qt on ImportError —
