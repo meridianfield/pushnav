@@ -199,7 +199,7 @@ def main() -> None:
     # so the WebView2 / WKWebView frame doesn't flash white on startup while the
     # JS bundle parses. The React UI is always dark (see web/index.html); this
     # matches the .dark --background (oklch(0.10 0.06 22)).
-    webview.create_window(
+    window = webview.create_window(
         title,
         target_url,
         width=_VP_WIDTH,
@@ -207,6 +207,25 @@ def main() -> None:
         resizable=False,
         background_color="#0D0A0B",
     )
+    # Linux/QtWebEngine flashes white on startup despite background_color above:
+    # QtWebEngine renders the page on its own compositor surface whose default
+    # background is white, and pywebview only paints that surface dark for
+    # *transparent* windows (platforms/qt.py WebPage). background_color only
+    # reaches the QMainWindow palette, which the page surface covers — so the
+    # page stays white until our HTML background paints. WebView2 (Windows) and
+    # WKWebView (macOS) don't expose this surface, which is why they don't flash.
+    # Set the QWebEnginePage background explicitly, before the window is shown.
+    if sys.platform.startswith("linux"):
+
+        def _paint_qt_page_dark() -> None:
+            try:
+                from qtpy.QtGui import QColor
+
+                window.native.webview.page().setBackgroundColor(QColor("#0D0A0B"))
+            except Exception as exc:  # backend internals are best-effort
+                logger.debug("Could not set QtWebEngine page background: %s", exc)
+
+        window.events.before_show += _paint_qt_page_dark
     # Connect the camera in the background so the window appears immediately
     # instead of blocking on the ~8 s camera-server retry (worst when no camera
     # is attached). daemon=True so it never holds up shutdown on window close.
