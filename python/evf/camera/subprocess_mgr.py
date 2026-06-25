@@ -129,9 +129,13 @@ class SubprocessManager:
         name = Path(self._binary_path).name
         try:
             if sys.platform == "win32":
+                # CREATE_NO_WINDOW: the released app is console-less
+                # (--windows-console-mode=disable), so spawning the console app
+                # taskkill.exe without it pops a brief black window on startup.
                 subprocess.run(
                     ["taskkill", "/F", "/IM", name],
                     capture_output=True, timeout=5,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
                 )
             else:
                 subprocess.run(

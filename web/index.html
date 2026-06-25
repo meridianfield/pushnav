@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <!-- The UI is always dark. Apply .dark and paint the dark background on the
+         very first frame — before the CSS bundle loads and before main.tsx adds
+         .dark at runtime — so the webview doesn't flash white on startup.
+         Color = the .dark --background in src/index.css. -->
+    <style>
+      html { background: oklch(0.1 0.06 22); }
+    </style>
     <title>web</title>
   </head>
   <body>
