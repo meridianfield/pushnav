@@ -29,10 +29,15 @@ Cost:         $41 USD (camera + lens)
 
 ## Supported Hardware
 
-Currently support is provided only for this specific combination of camera and lens:
+These OV9281-based USB cameras are recognized automatically (matched by USB VID/PID):
 
-- **Camera**: [Waveshare OV9281 1MP Mono USB Camera](https://www.waveshare.com/ov9281-1mp-usb-camera-a.htm) [$26]
-- **Lens**: [M12 Mount 25mm F2.4 Lens](https://www.seeedstudio.com/5MP-25mm-lens-p-5579.html) [$15]
+| Camera | Status |
+|---|---|
+| [Waveshare OV9281 1MP Mono USB Camera](https://www.waveshare.com/ov9281-1mp-usb-camera-a.htm) [$26] | Supported (reference) |
+| Arducam OV9281 | Beta — awaiting results |
+| DECXIN OV9281 | Beta — awaiting results |
+
+**Lens**: [M12 Mount 25mm F2.4 Lens](https://www.seeedstudio.com/5MP-25mm-lens-p-5579.html) [$15]
 
 These are reference suppliers. The **OV9281** module itself is widely sold by Arducam, Innomaker, AliExpress and others, and any M12 25mm F/2.4 lens with the correct mount works. If a link above goes dead, search the sensor name (`OV9281`) and lens specs and pick any reputable seller — the parts themselves are commodity.
 
@@ -50,7 +55,7 @@ These are reference suppliers. The **OV9281** module itself is widely sold by Ar
     - Radius: 5.081°
     - Pixel scale: 24.9 arcsec/pixel
 
->Currently only this specific camera and lens combination is supported. Support for additional cameras and lenses may be added in the future based on demand and usability. I decided to keep it this way for now to ensure a consistent and reliable user experience. Also this combination is very affordable and widely available, so it should be accessible for most users.
+>The Waveshare OV9281 combination is the fully verified setup; the other OV9281 modules listed above are in beta, awaiting field results. Support for additional cameras and lenses may be added in the future based on demand and usability. I decided to keep it this way for now to ensure a consistent and reliable user experience. Also this combination is very affordable and widely available, so it should be accessible for most users.
 
 ## Adding Support for More Cameras
 
