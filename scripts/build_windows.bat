@@ -37,6 +37,12 @@ REM Read version from VERSION.json (single source of truth)
 for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "(Get-Content '%REPO_ROOT%\data\VERSION.json' | ConvertFrom-Json).app_version"`) do set "APP_VERSION=%%V"
 echo ==^> Version: %APP_VERSION%
 
+REM Windows PE resource versions (FILEVERSION/PRODUCTVERSION) must be a numeric
+REM 4-part tuple, so strip any SemVer pre-release suffix and pad to 4 integers
+REM (e.g. "0.2.1-beta" -> "0.2.1.0"). User-facing version strings keep the suffix.
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "$n=('%APP_VERSION%' -split '-')[0]; $p=@($n -split '\.'); while($p.Count -lt 4){$p+='0'}; ($p[0..3] -join '.')"`) do set "WIN_VERSION=%%V"
+echo ==^> Windows resource version: %WIN_VERSION%
+
 echo ==^> Cleaning previous build
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 mkdir "%BUILD_DIR%"
@@ -94,8 +100,8 @@ uv run python -m nuitka ^
     --windows-product-name=PushNav ^
     --windows-company-name="Arun Venkataswamy" ^
     --windows-file-description="PushNav - plate-solving push-to" ^
-    --windows-product-version=%APP_VERSION%.0 ^
-    --windows-file-version=%APP_VERSION%.0 ^
+    --windows-product-version=%WIN_VERSION% ^
+    --windows-file-version=%WIN_VERSION% ^
     --output-dir="%BUILD_DIR%" ^
     --output-filename=PushNav.exe ^
     --include-package=numpy ^

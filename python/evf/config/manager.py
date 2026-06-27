@@ -30,7 +30,7 @@ CONFIG_VERSION = 1
 DEFAULT_CONFIG = {
     "version": CONFIG_VERSION,
     "solver": {"min_matches": 8, "max_prob": 0.2},
-    "camera": {"exposure": None, "gain": None},
+    "camera": {"exposure": None, "gain": None, "extra_camera_ids": []},
     "calibration": {"finder_rotation": 0.0, "sync_d_body": None},
     "logging": {"verbose": False},
     "audio": {"enabled": True},
@@ -149,6 +149,20 @@ class ConfigManager:
     @gain.setter
     def gain(self, value: int) -> None:
         self.set("camera", "gain", value)
+
+    @property
+    def extra_camera_ids(self) -> list[str]:
+        """Additional USB camera allowlist entries as 'vid:pid' hex strings.
+
+        Appended to the camera servers' built-in allowlist via the
+        PUSHNAV_CAMERA_IDS env var, so a new camera model can be registered
+        without recompiling the native camera server.
+        """
+        return self.get("camera", "extra_camera_ids") or []
+
+    @extra_camera_ids.setter
+    def extra_camera_ids(self, value: list[str]) -> None:
+        self.set("camera", "extra_camera_ids", value)
 
     @property
     def finder_rotation(self) -> float:

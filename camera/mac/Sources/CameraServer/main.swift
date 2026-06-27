@@ -30,8 +30,11 @@ print("EVF Camera Server v\(serverVersion)")
 
 // MARK: - 1. Initialize UVC Controller
 
-guard let uvc = UVCController(vendorID: OPENAICAM_VID, productID: OPENAICAM_PID) else {
-    fputs("FATAL: Camera not found. Ensure openaicam is connected.\n", stderr)
+let cameraIDs = cameraAllowlist()
+
+guard let uvc = UVCController.find(in: cameraIDs) else {
+    fputs("FATAL: No allowlisted camera found for UVC control. Ensure a supported "
+          + "camera is connected, or add its vid:pid to PUSHNAV_CAMERA_IDS.\n", stderr)
     exit(1)
 }
 
@@ -42,7 +45,7 @@ uvc.forceAutoExposureOff()
 // MARK: - 3. Start capture
 
 let capture = CaptureManager()
-guard capture.start() else {
+guard capture.start(allowlist: cameraIDs) else {
     fputs("FATAL: Failed to start capture session.\n", stderr)
     exit(1)
 }

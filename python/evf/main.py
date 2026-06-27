@@ -143,11 +143,26 @@ def main() -> None:
     engine.startup_stellarium()
     engine.startup_lx200()
     engine.startup_webserver()
-    engine.startup_camera()
-    if engine.camera_connected:
-        engine.startup_solver_thread()
+
+    def _start_camera() -> None:
+        """Spawn + connect the camera, then start the solver thread if it came up.
+
+        This is the slow part of startup: the native camera server retries for
+        ~8 s when no camera is attached, and DirectShow/AVFoundation init takes a
+        few seconds even when one is. In windowed mode this runs in a background
+        thread AFTER the window is shown — the React UI already renders a
+        'connecting' state for camera_connected=False — so the window appears
+        immediately instead of blocking on the camera.
+        """
+        try:
+            engine.startup_camera()
+            if engine.camera_connected:
+                engine.startup_solver_thread()
+        except Exception:
+            logger.exception("Camera startup failed")
 
     if no_window:
+        _start_camera()  # headless: no window to unblock, so start it inline
         logger.info("Running headless (--no-window). Press Ctrl-C to exit.")
         stop = threading.Event()
         signal.signal(signal.SIGINT, lambda *_: stop.set())
@@ -180,13 +195,43 @@ def main() -> None:
     )
     title = f"PushNav {engine.app_version}"
 
-    webview.create_window(
+    # background_color paints the native window dark *before* the page renders,
+    # so the WebView2 / WKWebView frame doesn't flash white on startup while the
+    # JS bundle parses. The React UI is always dark (see web/index.html); this
+    # matches the .dark --background (oklch(0.10 0.06 22)).
+    window = webview.create_window(
         title,
         target_url,
         width=_VP_WIDTH,
         height=_VP_HEIGHT,
         resizable=False,
+        background_color="#0D0A0B",
     )
+    # Linux/QtWebEngine flashes white on startup despite background_color above:
+    # QtWebEngine renders the page on its own compositor surface whose default
+    # background is white, and pywebview only paints that surface dark for
+    # *transparent* windows (platforms/qt.py WebPage). background_color only
+    # reaches the QMainWindow palette, which the page surface covers — so the
+    # page stays white until our HTML background paints. WebView2 (Windows) and
+    # WKWebView (macOS) don't expose this surface, which is why they don't flash.
+    # Set the QWebEnginePage background explicitly, before the window is shown.
+    if sys.platform.startswith("linux"):
+
+        def _paint_qt_page_dark() -> None:
+            try:
+                from qtpy.QtGui import QColor
+
+                window.native.webview.page().setBackgroundColor(QColor("#0D0A0B"))
+            except Exception as exc:  # backend internals are best-effort
+                logger.debug("Could not set QtWebEngine page background: %s", exc)
+
+        window.events.before_show += _paint_qt_page_dark
+    # Connect the camera in the background so the window appears immediately
+    # instead of blocking on the ~8 s camera-server retry (worst when no camera
+    # is attached). daemon=True so it never holds up shutdown on window close.
+    threading.Thread(
+        target=_start_camera, name="camera-startup", daemon=True
+    ).start()
     # On Linux, force pywebview's Qt backend (QtPy + PyQt6 + PyQt6-WebEngine,
     # pulled in by the pywebview[qt] extra in pyproject.toml). Without this,
     # pywebview probes GTK first and only falls through to Qt on ImportError —

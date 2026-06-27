@@ -75,9 +75,7 @@ private let PU_GAIN: UInt8 = 0x04
 private let AE_MODE_MANUAL: UInt8 = 0x01
 private let AE_MODE_AUTO: UInt8 = 0x02
 
-// openaicam VID/PID
-let OPENAICAM_VID: Int = 0x32E6
-let OPENAICAM_PID: Int = 0x9251
+// Camera VID/PID matching lives in CameraAllowlist.swift.
 
 // MARK: - USB Request Type Builder
 
@@ -124,7 +122,8 @@ class UVCController {
 
         let device = IOServiceGetMatchingService(kIOMainPortDefault, matchingDict)
         guard device != IO_OBJECT_NULL else {
-            fputs("ERROR: openaicam not found (VID=0x\(String(vendorID, radix: 16)), PID=0x\(String(productID, radix: 16)))\n", stderr)
+            // Device not present for this VID/PID — expected while iterating the
+            // allowlist; UVCController.find() reports overall success/failure.
             return nil
         }
         defer { IOObjectRelease(device) }
@@ -201,6 +200,20 @@ class UVCController {
 
         // Probe control ranges
         probeControls()
+    }
+
+    /// Try each allowlisted camera in turn; return a controller for the first
+    /// one actually present on the USB bus (for UVC exposure/gain control).
+    static func find(in allowlist: [CameraID]) -> UVCController? {
+        for cam in allowlist {
+            if let controller = UVCController(vendorID: cam.vid, productID: cam.pid) {
+                logStderr("UVC control interface: \(cam.label) " +
+                          String(format: "(VID=0x%04X, PID=0x%04X)\n",
+                                 cam.vid, cam.pid))
+                return controller
+            }
+        }
+        return nil
     }
 
     deinit {

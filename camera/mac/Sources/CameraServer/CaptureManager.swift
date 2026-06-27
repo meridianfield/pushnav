@@ -44,9 +44,11 @@ class CaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
     }
 
     /// Start the capture session. Returns true on success.
-    func start() -> Bool {
-        guard let camera = findCamera() else {
-            fputs("ERROR: openaicam not found in AVFoundation\n", stderr)
+    func start(allowlist: [CameraID]) -> Bool {
+        guard let camera = findCamera(allowlist: allowlist) else {
+            fputs("ERROR: No allowlisted camera found in AVFoundation. If this is "
+                  + "a new camera model, add its vid:pid to PUSHNAV_CAMERA_IDS.\n",
+                  stderr)
             return false
         }
         print("Found camera: \(camera.localizedName) [\(camera.modelID)]")
@@ -146,7 +148,7 @@ class CaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     // MARK: - Private
 
-    private func findCamera() -> AVCaptureDevice? {
+    private func findCamera(allowlist: [CameraID]) -> AVCaptureDevice? {
         var deviceTypes: [AVCaptureDevice.DeviceType] = [.builtInWideAngleCamera]
         if #available(macOS 14.0, *) {
             deviceTypes.append(.external)
@@ -154,9 +156,32 @@ class CaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
         let discovery = AVCaptureDevice.DiscoverySession(
             deviceTypes: deviceTypes, mediaType: .video, position: .unspecified)
 
-        // Try by name first, then by modelID
+        // Match by USB VID/PID. AVCaptureDevice.modelID embeds them as a
+        // substring, but the encoding varies across macOS versions, so
+        // modelID(_:matches:) checks both decimal and hex forms.
+        for device in discovery.devices {
+            for cam in allowlist where modelID(device.modelID, matches: cam) {
+                return device
+            }
+        }
+
+        // Fallback: the original Waveshare unit reports as "openaicam".
         return discovery.devices.first(where: { $0.localizedName.contains("openaicam") })
-            ?? discovery.devices.first(where: { $0.modelID.contains("0x9251") })
+    }
+
+    /// True if an AVCaptureDevice.modelID corresponds to the given camera.
+    /// macOS UVC devices typically encode VID/PID in decimal
+    /// ("VendorID_13030 ProductID_37457"); some report hex ("0x32e6"). Match
+    /// either so a new camera model is recognized regardless of encoding.
+    private func modelID(_ modelID: String, matches cam: CameraID) -> Bool {
+        let lower = modelID.lowercased()
+        if lower.contains("vendorid_\(cam.vid)")
+            && lower.contains("productid_\(cam.pid)") {
+            return true
+        }
+        let vidHex = String(format: "0x%04x", cam.vid)
+        let pidHex = String(format: "0x%04x", cam.pid)
+        return lower.contains(vidHex) && lower.contains(pidHex)
     }
 
     private func configureFormat(device: AVCaptureDevice) {
@@ -229,14 +254,22 @@ class CaptureManager: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             try device.lockForConfiguration()
             device.activeFormat = format
 
-            // Pick the lowest supported frame rate (saves CPU/bandwidth for astronomy)
-            // Fall back to whatever the format supports if our preferred rate isn't available
+            // Pin the LOWEST supported frame rate (issue #26).  Max exposure on
+            // a UVC camera is bounded by the frame interval (~1/fps), so faint
+            // stars (tens–hundreds of ms integration) need a low fps; a laggy
+            // preview is an accepted trade-off for a push-to tool.
+            //
+            // The slowest rate is the LONGEST frame DURATION.  Note the earlier
+            // code's bug: it assigned `minFrameDuration` (the SHORTEST duration
+            // = HIGHEST fps), pinning the fastest rate.  Pick the range with the
+            // smallest minFrameRate and pin both min/max duration to its
+            // `maxFrameDuration` so the device runs at exactly that low rate.
             let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
             if let bestRange = format.videoSupportedFrameRateRanges
-                .sorted(by: { $0.minFrameRate < $1.minFrameRate }).first {
-                device.activeVideoMinFrameDuration = bestRange.minFrameDuration
-                device.activeVideoMaxFrameDuration = bestRange.minFrameDuration
-                print("Configured \(dims.width)x\(dims.height) @ \(Int(bestRange.minFrameRate))fps")
+                .min(by: { $0.minFrameRate < $1.minFrameRate }) {
+                device.activeVideoMinFrameDuration = bestRange.maxFrameDuration
+                device.activeVideoMaxFrameDuration = bestRange.maxFrameDuration
+                print("Configured \(dims.width)x\(dims.height) @ \(Int(bestRange.minFrameRate))fps (lowest available)")
             }
 
             device.unlockForConfiguration()
