@@ -72,15 +72,6 @@ else:
 # Public API
 # ---------------------------------------------------------------------------
 
-def database_path() -> Path:
-    """Path to tetra3 star database (without .npz extension for tetra3 API)."""
-    if _BUNDLE_MODE:
-        return _RESOURCES / "hip8_database"
-    if _LINUX_RELEASE or _WINDOWS_RELEASE:
-        return _RELEASE_ROOT / "data" / "hip8_database"
-    return _REPO_ROOT / "data" / "hip8_database"
-
-
 def tetra3rs_database_path() -> Path:
     """Path to the prebuilt tetra3rs SolverDatabase .bin.
 
