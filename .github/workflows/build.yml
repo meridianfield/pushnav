@@ -37,7 +37,7 @@ jobs:
       - name: Verify required files
         run: |
           missing=()
-          for f in data/hip8_database.npz data/VERSION.json marketing/logo.png marketing/inapp-title.png; do
+          for f in data/tetra3rs_gaia.bin data/VERSION.json marketing/logo.png marketing/inapp-title.png; do
             [ -f "$f" ] || missing+=("$f")
           done
           if [ ${#missing[@]} -gt 0 ]; then
@@ -127,7 +127,7 @@ jobs:
       - name: Verify required files
         run: |
           missing=()
-          for f in data/hip8_database.npz data/VERSION.json marketing/logo.png marketing/inapp-title.png; do
+          for f in data/tetra3rs_gaia.bin data/VERSION.json marketing/logo.png marketing/inapp-title.png; do
             [ -f "$f" ] || missing+=("$f")
           done
           if [ ${#missing[@]} -gt 0 ]; then
@@ -232,7 +232,7 @@ jobs:
         shell: pwsh
         run: |
           $required = @(
-            "data/hip8_database.npz",
+            "data/tetra3rs_gaia.bin",
             "data/VERSION.json",
             "marketing/logo.ico",
             "marketing/inapp-title.png"
