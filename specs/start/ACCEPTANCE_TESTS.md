@@ -46,7 +46,7 @@ Current coverage:
 - [ ] Step 1 (Camera) is active by default.
 
 ### A2. Database load
-- [ ] hip8_database loads once at startup (no reloads during runtime).
+- [ ] tetra3rs catalog loads once at startup (no reloads during runtime).
 - [ ] Load time is logged (INFO).
 - [ ] UI stays responsive while DB loads (no frozen window > 0.5s).
 
@@ -260,11 +260,11 @@ by a subset of targeted solver tests.
 
 RA/Dec values are in degrees (J2000). A correct solve should match within ~2 degrees of the known values.
 
-All sample images solve successfully with `hip8_database` using the parameters from SPEC_ARCHITECTURE.md section 8.2.
+All sample images solve successfully with the `tetra3rs_gaia.bin` catalog using the parameters from SPEC_ARCHITECTURE.md section 8.2.
 
 ### K2. Offline solver test procedure
 
-1. Load `hip8_database` as normal.
+1. Load the `tetra3rs_gaia.bin` catalog as normal.
 2. For each sample image:
    a. Read raw file bytes (`open(path, "rb").read()`) — the solver is given
       the original JPEG/PNG bytes and handles decoding internally via

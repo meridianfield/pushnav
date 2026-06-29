@@ -121,10 +121,22 @@ device" warnings but the rest of the app still works.
 If PushNav can't find your camera, you may need to add yourself to the `video` group (this is a one-time step):
 
 ```bash
-sudo usermod -a -G video $USER
+sudo usermod -aG video "$USER"
 ```
 
 Log out and back in for the change to take effect.
+
+---
+
+## Raspberry Pi 4 (headless)
+
+Running on a Raspberry Pi 4 is a different shape from the laptop
+installs above: there's no AppImage, no window, and the UI lives
+entirely on a phone over Wi-Fi. The Pi 4 is also where PushNav heads
+toward becoming a true appliance.
+
+See **[Running PushNav headless on a Raspberry Pi 4](rpi-headless.md)**
+for the install-and-run runbook.
 
 ---
 

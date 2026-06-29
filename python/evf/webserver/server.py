@@ -627,11 +627,30 @@ class WebServer:
             _FOV_H, _IMG_W, _IMG_H,
         )
 
+        # Apply sync offset to in-FOV pixel coords so the React side renders the
+        # target marker at its actual position in the camera image. compute_navigation
+        # returns coords assuming "image center == pointing center", but the
+        # eyepiece's projected center is offset by (dx_off, dy_off) from the
+        # camera image center.
+        offset_pixel_x = nav.pixel_x + dx_off if nav.pixel_x is not None else None
+        offset_pixel_y = nav.pixel_y + dy_off if nav.pixel_y is not None else None
+
+        # in_fov must use the offset position — that's where the marker actually
+        # lands on the displayed frame. nav.in_fov is computed pre-offset, so
+        # it disagrees with the rendered position whenever sync has a non-zero
+        # offset (target visually in-frame but flagged as outside, or vice versa).
+        in_fov = (
+            offset_pixel_x is not None
+            and offset_pixel_y is not None
+            and 0 <= offset_pixel_x < _IMG_W
+            and 0 <= offset_pixel_y < _IMG_H
+        )
+
         edge_x = edge_y = edge_angle = None
-        if not nav.in_fov:
-            if nav.pixel_x is not None:
+        if not in_fov:
+            if offset_pixel_x is not None:
                 edge_x, edge_y, edge_angle = edge_arrow_position(
-                    nav.pixel_x + dx_off, nav.pixel_y + dy_off,
+                    offset_pixel_x, offset_pixel_y,
                     _IMG_W, _IMG_H, margin=68,
                     origin_x=origin_x, origin_y=origin_y,
                 )
@@ -646,19 +665,11 @@ class WebServer:
                     origin_x=origin_x, origin_y=origin_y,
                 )
 
-        # Apply sync offset to in-FOV pixel coords so the React side renders the
-        # target marker at its actual position in the camera image. compute_navigation
-        # returns coords assuming "image center == pointing center", but the
-        # eyepiece's projected center is offset by (dx_off, dy_off) from the
-        # camera image center.
-        offset_pixel_x = nav.pixel_x + dx_off if nav.pixel_x is not None else None
-        offset_pixel_y = nav.pixel_y + dy_off if nav.pixel_y is not None else None
-
         return {
             **base,
             "separation_deg": nav.separation_deg,
             "direction_text": nav.direction_text,
-            "in_fov": nav.in_fov,
+            "in_fov": in_fov,
             "pixel_x": offset_pixel_x,
             "pixel_y": offset_pixel_y,
             "camera_angle_deg": nav.camera_angle_deg,

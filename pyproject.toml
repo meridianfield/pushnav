@@ -1,12 +1,16 @@
 [project]
 name = "evf"
-version = "0.2.1"
+version = "0.3.0-beta"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "Pillow",
     "numpy",
     "scipy",
-    "tetra3",
+    # tetra3rs transitively pulls gaia-catalog (~17 MB bundled Gaia DR3 +
+    # Hipparcos blob). gaia-catalog is needed by scripts/build_tetra3rs_catalog.py
+    # to regenerate data/tetra3rs_gaia.bin; the runtime path
+    # (SolverDatabase.load_from_file) doesn't import gaia_catalog.
+    "tetra3rs==0.7.1",
     "playsound3",
     "aiohttp",
     "qrcode[pil]",
@@ -40,9 +44,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["python/evf"]
-
-[tool.uv.sources]
-tetra3 = { path = "python/vendor/tetra3", editable = true }
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
