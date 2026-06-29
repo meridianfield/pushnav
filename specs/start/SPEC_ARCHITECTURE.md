@@ -416,16 +416,17 @@ If exhausted:
 At application startup:
 
 ```python
-from pathlib import Path
-t3 = tetra3.Tetra3(load_database=Path("data/hip8_database"))
+import tetra3rs
+from evf.paths import tetra3rs_database_path
+db = tetra3rs.SolverDatabase.load_from_file(str(tetra3rs_database_path()))
 ```
 
-In application code, use `evf.paths.database_path()` which handles dev vs release path resolution.
+In application code, use `evf.paths.tetra3rs_database_path()` which handles dev vs release path resolution.
 
 Database location:
-Bundled `data/hip8_database.npz` (~85 MB, 21,200 stars to magnitude 8, ~10.5M patterns)
+Bundled `data/tetra3rs_gaia.bin` (~50 MB, Gaia DR3 to magnitude 8, ~62.8k stars, ~1.9M patterns)
 
-Load only once. Expect ~2s load time on first call.
+Load only once. Expect ~0.1s load time — the Rust solver loads the prebuilt catalog far faster than the old Python tetra3.
 
 ### 8.1 Camera Optical Geometry
 
@@ -474,7 +475,7 @@ result = t3.solve_from_centroids(
 Post-processing — Roll negation:
 
 ```python
-# tetra3's image-vector convention produces opposite sign to body-frame formulas.
+# tetra3rs' image-vector convention produces opposite sign to body-frame formulas.
 # Empirically verified across 7 targets: std drops from 1.04° to 0.14°.
 if result.get("Roll") is not None:
     result["Roll"] = (360.0 - result["Roll"]) % 360.0
@@ -690,5 +691,5 @@ UI must not tightly couple to solver internals.
 - No blocking calls in UI thread.
 - No direct solver calls from UI.
 - No global mutable state without locks.
-- No editing site-packages tetra3 in production.
+- No editing site-packages tetra3rs in production.
 - No retry loops without limits.

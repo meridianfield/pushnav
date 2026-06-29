@@ -142,7 +142,7 @@ Low-precision: `sDD*MM#`
 
 SkySafari and most LX200 clients expect **JNow** (equator-of-date, IAU 2006 precession), *not* J2000. This is [fixed by the protocol and not configurable in SkySafari](https://support.simulationcurriculum.com/hc/en-us/community/posts/4901342475287).
 
-`PointingState` stores **J2000** (the tetra3 solver output — our internal canonical form; proper motion has already been propagated to the DB build year by tetra3, so the J2000-frame coordinates already correspond to today's sky). The LX200 server must:
+`PointingState` stores **J2000** (the tetra3rs solver output — our internal canonical form; proper motion has already been propagated to the catalog build epoch when `tetra3rs_gaia.bin` is generated, so the J2000-frame coordinates already correspond to today's sky). The LX200 server must:
 - Precess J2000 → JNow before formatting `:GR#`/`:GD#` responses
 - Precess JNow → J2000 after parsing `:Sr`/`:Sd` target input, before storing into `GotoTarget`
 

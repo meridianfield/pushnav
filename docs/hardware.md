@@ -60,4 +60,4 @@ These are reference suppliers. The **OV9281** module itself is widely sold by Ar
 ## Adding Support for More Cameras
 
 - Adding the camera's VID/PID to the camera server's supported device list and implementing any necessary quirks for frame capture (if required)
-- Generating the tetra3 star database for the new camera/lens's field of view and plate scale.
+- Generating the tetra3rs star catalog for the new camera/lens's field of view and plate scale (via `scripts/build_tetra3rs_catalog.py`).

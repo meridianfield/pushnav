@@ -34,7 +34,6 @@ pushnav/
       lx200/            # LX200 Classic TCP protocol server
       webserver/        # aiohttp mobile web interface
       config/
-    vendor/tetra3/
   pyproject.toml
 
   camera/
@@ -43,7 +42,7 @@ pushnav/
     windows/          # C/DirectShow camera server
 
   data/
-    hip8_database.npz
+    tetra3rs_gaia.bin
     VERSION.json
     sounds/
 
@@ -71,21 +70,22 @@ pushnav/
 
 ## 2. Dependency Strategy
 
-### 2.1 tetra3
+### 2.1 tetra3rs (plate solver)
 
-tetra3 is vendored at `python/vendor/tetra3/` and wired as an editable local dependency
-in `pyproject.toml` via `[tool.uv.sources]`:
+The solver is `tetra3rs` — a Rust/pyo3 port of ESA's tetra3 — installed from a prebuilt
+wheel (no vendoring, no Rust toolchain). It ships `win_amd64` + `manylinux_2_28`
+(x86_64/aarch64) wheels for cp312/cp313, so `uv sync` downloads the wheel; `cargo`/`rustc`
+never run.
 
 ```toml
-[tool.uv.sources]
-tetra3 = { path = "python/vendor/tetra3", editable = true }
+dependencies = ["tetra3rs==0.7.1", ...]
 ```
 
 ### 2.2 Python dependency locking
 
 Uses `pyproject.toml` (hatchling build backend) with `uv` for dependency locking (`uv.lock`).
 
-Dependencies: pywebview, Pillow, numpy, scipy, tetra3, playsound3, aiohttp, qrcode[pil], pyerfa (>=2.0.0, for LX200 J2000↔JNow precession). The React front-end (under `web/`) is built separately with Vite (Node deps from `web/package.json`) and bundled into the Nuitka output as a data dir.
+Dependencies: pywebview, Pillow, numpy, scipy, tetra3rs, playsound3, aiohttp, qrcode[pil], pyerfa (>=2.0.0, for LX200 J2000↔JNow precession). The React front-end (under `web/`) is built separately with Vite (Node deps from `web/package.json`) and bundled into the Nuitka output as a data dir.
 Dev dependencies: nuitka (>=4.0.2), pytest
 
 ---
@@ -123,7 +123,7 @@ Key Nuitka flags:
   network prompt, and on Linux it keeps `ps`/`top` output legible.
 - `--include-package=erfa` (bundles the pyerfa C extension used by the LX200
   J2000↔JNow precession helpers)
-- `--include-package=` for `numpy`, `scipy`, `PIL`, `playsound3`, `tetra3`, `webview`
+- `--include-package=` for `numpy`, `scipy`, `PIL`, `playsound3`, `tetra3rs`, `webview` (packs the compiled `tetra3rs` extension)
 - `--include-data-dir=web/dist=web_dist` (or `data/web_dist` on Linux/Windows) bundles the React build
 - Other data files (database, sounds, fonts, marketing) are copied manually post-build
 
@@ -143,7 +143,7 @@ PushNav.app/
       camera_server      # Swift binary
       ...                # Nuitka support files
     Resources/
-      hip8_database.npz
+      tetra3rs_gaia.bin
       VERSION.json
       sounds/
       web_dist/
@@ -231,7 +231,7 @@ The app creates directories if missing.
 Centralized path resolution handles dev repo, macOS .app bundle, Linux release, and
 Windows release:
 
-- `database_path()` — star database
+- `tetra3rs_database_path()` — tetra3rs star catalog (`tetra3rs_gaia.bin`)
 - `camera_binary_path()` — platform-specific camera server binary
 - `sounds_dir()` — audio files
 - `web_dist_dir()` — built React UI (release-only; in dev served by Vite on :5173)
@@ -283,7 +283,7 @@ Launch with `--dev` flag for debug features.
 {
   "app_version": "<x.y.z>",
   "protocol_version": 1,
-  "hip_db_version": "hip8_mag8_21200stars"
+  "solver_db_version": "tetra3rs_gaia_<hash>_mag8"
 }
 ```
 

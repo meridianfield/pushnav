@@ -114,13 +114,11 @@ client traffic; try a regular home network.
 audio sink. The engine plays lock/lost/goto_ack WAVs through
 `playsound3`; if there's no sink it logs once and continues.
 
-**Slow first plate-solve** — tetra3 loads the ~85 MB star database
-into memory on first call; subsequent solves are fast. The Pi 4 itself
-is several times slower than an x86 laptop at tetra3's matmul, so
-individual frame solves take 1–6 seconds depending on the sky region
-(vs <100 ms on a laptop). The solver timeout is platform-tuned so
-valid solves complete; you may just see longer between locks than on
-a laptop.
+**First-solve startup** — tetra3rs loads the ~50 MB star catalog into
+memory at startup (~0.1 s); subsequent solves run from memory. The
+tetra3rs (Rust) solver is dramatically faster than the old pure-Python
+tetra3 — frame solves that took seconds on a Pi 4 now complete far
+faster, so locks come quickly even on the Pi.
 
 ## Limitations
 

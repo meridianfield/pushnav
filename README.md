@@ -24,7 +24,7 @@ PushNav can also run completely standalone, without a separate planetarium app. 
 
 Above: PushNav in tracking mode. The right-hand **Sky View** dome shows the current pointing (yellow) and the active GOTO target (cream) on a hemispheric grid above the local horizon.
 
-It uses European Space Agency's (ESA) tetra3 fast lost-in-space plate solver for plate-solving. This effecient algorithm produces near real-time solutions on a live video feed.
+It uses **tetra3rs**, a Rust port of the European Space Agency's (ESA) tetra3 fast lost-in-space plate solver. This efficient algorithm produces near real-time solutions on a live video feed.
 
 Power your non-GOTO manual telescope with PushNav and enjoy seamless push-to navigation, even in light-polluted urban skies. All for under **$50** with an off-the-shelf USB UVC camera and lens. The same technology that powers spacecraft navigation and advanced astrophotography apps is now available for your backyard stargazing sessions.
 
@@ -63,7 +63,7 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 ### Internal workflow
 
 1. A USB camera in place of your telescope's finder captures the star field
-2. PushNav plate-solves frames using the [tetra3](https://github.com/esa/tetra3) star pattern recognition library in near real-time
+2. PushNav plate-solves frames using **tetra3rs** (a Rust port of ESA's [tetra3](https://github.com/esa/tetra3)) star pattern recognition in near real-time
 3. The difference in pointing is calculated and translated into directional guidance which is shown in the UI
 4. Solved RA/Dec coordinates are exposed to connected planetarium apps over standard telescope-control protocols, so your telescope's pointing moves on the app's sky chart in real-time as you push.
 
@@ -293,18 +293,17 @@ To use **SkySafari**, **Stellarium Mobile**, **INDI**, or **ASCOM** instead, poi
 python/evf/            Python application
   engine/              Core engine, state machine, plate-solve pointing, epoch helpers
   camera/              TCP client + subprocess lifecycle for the native camera server
-  solver/              tetra3 plate-solve wrapper + body-frame sync
+  solver/              tetra3rs (Rust) plate-solve wrapper + body-frame sync
   stellarium/          Stellarium binary TCP server (port 10001)
   lx200/               LX200 Classic TCP server (port 4030, SkySafari / INDI / ASCOM)
   webserver/           aiohttp HTTP + WebSocket server (serves React, /ws, /frame.mjpg, /api/*)
   config/              JSON config + logging setup
   network.py           Shared LAN-IP probe used by webserver and engine
 web/                   React + Vite + TypeScript + Tailwind + shadcn/ui front-end
-python/vendor/tetra3/  Vendored tetra3 star pattern library
 camera/mac/            Swift camera server (macOS)
 camera/linux/          C/V4L2 camera server (Linux)
 camera/windows/        C/DirectShow camera server (Windows)
-data/                  Star database, sounds, version metadata (web_dist/ added on release builds)
+data/                  tetra3rs star catalog, sounds, version metadata (web_dist/ added on release builds)
 hardware/3d_models/    3D-printable camera housing and accessories (OpenSCAD + STLs)
 scripts/               Build and dev scripts
 tests/                 Test suite

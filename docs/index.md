@@ -23,7 +23,7 @@ PushNav can also run completely standalone, without a separate planetarium app. 
 !!! info "What is plate-solving?"
     Any part of the night sky has a unique arrangement of stars. Plate-solving is a technique that takes a photo, matches that arrangement against a catalog, and reports exactly where the camera is pointing, down to a fraction of a degree. PushNav runs it continuously on the live camera feed, so the app always knows where your telescope is aimed.
 
-PushNav uses the European Space Agency's (ESA) [tetra3](https://github.com/esa/tetra3) fast lost-in-space plate solver, the same algorithm family that powers spacecraft navigation. This efficient solver produces near real-time solutions on a live video feed, enabling seamless push-to navigation even in light-polluted urban skies.
+PushNav uses **tetra3rs**, a Rust port of the European Space Agency's (ESA) [tetra3](https://github.com/esa/tetra3) fast lost-in-space plate solver — the same algorithm family that powers spacecraft navigation. This efficient solver produces near real-time solutions on a live video feed, enabling seamless push-to navigation even in light-polluted urban skies.
 
 ![PushNav in tracking mode](assets/pushnav.0.2.0-tracking.png)
 
@@ -67,7 +67,7 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 ### Internal workflow
 
 1. A USB camera in place of your telescope's finder captures the star field
-2. PushNav plate-solves frames using the [tetra3](https://github.com/esa/tetra3) star pattern recognition library in near real-time
+2. PushNav plate-solves frames using **tetra3rs** (a Rust port of ESA's [tetra3](https://github.com/esa/tetra3)) star pattern recognition in near real-time
 3. The difference in pointing is calculated and translated into directional guidance which is shown in the UI
 4. Solved RA/Dec coordinates are exposed to connected planetarium apps over standard telescope-control protocols, so your telescope's pointing moves on the app's sky chart in real-time as you push.
 
