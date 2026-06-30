@@ -107,6 +107,67 @@ class TestGetters:
         s.close()
 
 
+def _recv_exact(sock: socket.socket, n: int) -> bytes:
+    """Read exactly n bytes (or whatever arrives within the timeout)."""
+    buf = b""
+    start = time.time()
+    while time.time() - start < 2.0 and len(buf) < n:
+        try:
+            chunk = sock.recv(n - len(buf))
+        except socket.timeout:
+            break
+        if not chunk:
+            break
+        buf += chunk
+    return buf
+
+
+class TestAckHandshake:
+    """LX200 ACK (0x06) auto-detection handshake used by Stellarium Mobile PLUS."""
+
+    def test_bare_ack_returns_alignment_char(self, server):
+        srv, _, _ = server
+        s = _connect(srv)
+        s.sendall(b"\x06")
+        assert _recv_exact(s, 1) == b"P"
+        s.close()
+
+    def test_stellarium_probe_hash_then_ack(self, server):
+        # Stellarium's observed LX200 probe: a '#' flush followed by the ACK.
+        # The '#' yields no command; the ACK must still be answered.
+        srv, _, _ = server
+        s = _connect(srv)
+        s.sendall(b"#\x06")
+        assert _recv_exact(s, 1) == b"P"
+        s.close()
+
+    def test_ack_then_command_in_same_recv(self, server):
+        # ACK answered first, then the '#'-framed command still dispatches.
+        srv, _, _ = server
+        s = _connect(srv)
+        s.sendall(b"\x06:GVP#")
+        assert _recv_exact(s, len(b"PLX200 Classic#")) == b"PLX200 Classic#"
+        s.close()
+
+    def test_multiple_acks_each_answered(self, server):
+        srv, _, _ = server
+        s = _connect(srv)
+        s.sendall(b"\x06\x06")
+        assert _recv_exact(s, 2) == b"PP"
+        s.close()
+
+    def test_polling_works_after_ack(self, server):
+        # Regression: detection handshake must not disturb normal polling.
+        srv, ps, _ = server
+        ps.update(ra_j2000=90.0, dec_j2000=45.0, roll=0.0, matches=10, prob=0.01)
+        s = _connect(srv)
+        s.sendall(b"\x06")
+        assert _recv_exact(s, 1) == b"P"
+        s.sendall(b":GVP#")
+        assert _recv_until_hash(s) == b"LX200 Classic#"
+        s.close()
+
+
 class TestMultiClientIsolation:
     def test_precision_per_client(self, server):
         srv, ps, _ = server

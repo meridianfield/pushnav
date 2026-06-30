@@ -44,6 +44,7 @@ LX200 is ASCII. Commands from the client are framed as `:<cmd>#` (leading colon,
 - **Fixed-width ASCII** terminated by `#` for getters (`:GR#`, `:GD#`, `:GVP#`, …)
 - **A single ASCII digit with no terminator** for target-set acknowledgments (`:Sr`, `:Sd`) — `1` = accepted, `0` = parse failed.
 - For `:MS#`, **either** a single `0` (slew started — both pending RA and Dec were set) **or** a `#`-terminated objection string of the form `1<msg>#` (the only objection PushNav currently emits is `1<no target set>#` when one or both pending values are missing).
+- **A single ASCII char with no terminator** for the `ACK` (`0x06`) alignment-mode query — see §3.4. This is *not* `:`-framed; it is a bare byte.
 - **Nothing at all** for fire-and-forget commands (`:Q#`, `:U#`, unknown commands)
 
 There is no length prefix, no checksum, no keep-alive. The socket stays open; the client polls `:GR#`/`:GD#` at 1–5 Hz.
@@ -113,6 +114,30 @@ After SkySafari sends `:MS#` it polls `:D#` ~1 Hz and transitions its button fro
 - everything else not listed in §3.1 or §3.2
 
 Unknown commands log at DEBUG only; no log spam above that level.
+
+### 3.4 `ACK` (`0x06`) — alignment-mode query / protocol auto-detect
+
+| Sent by client | Response |
+|----------------|----------|
+| `0x06` (bare ACK byte, no `:` prefix, no `#` terminator) | single char `P` (no terminator) |
+
+A real Meade mount answers the `ACK` byte with its alignment mode — `A` (AltAz),
+`L` (Land), or `P` (Polar). Clients that **auto-detect** the controller (rather
+than connect via a saved scope-type preset) use this as the LX200 "are you
+there?" probe: they send `0x06` and treat any of `A`/`L`/`P` as confirmation.
+
+PushNav answers **`P`** (Polar) because it reports equatorial RA/Dec; the value
+is cosmetic — any valid char confirms LX200. The byte is **not** `#`-framed, so
+`Lx200Server` answers it directly in its receive loop (one reply per ACK byte),
+not through `dispatch()`. One ACK per `0x06` mirrors a real mount.
+
+**Why this matters.** **Stellarium Mobile PLUS** identifies the controller by
+probing NexStar first (echo command `K<x>`, which we ignore → it times out and
+moves on — we intentionally do *not* emulate NexStar) and then LX200 via this
+`ACK`. Without an answer to the `ACK`, Stellarium reports *"Cannot identify a
+telescope protocol"* and never connects, even though `:GR#`/`:GD#` would work.
+SkySafari connects via an explicit "Meade LX-200" preset and does not rely on
+this probe, which is why it worked before this was implemented.
 
 ---
 
@@ -468,7 +493,10 @@ server level (§6.2.1) precisely because of this.
 ### 8.2 Stellarium Mobile PLUS
 - Menu → Observing Tools → Telescope → Add
 - Connection: **Network (TCP)**; IP = PushNav host; Port = **4030**
-- Protocol: leave on auto-detect; answering `:GVP#` with `LX200 Classic` is enough.
+- Protocol: leave on **auto-detect**. Stellarium probes NexStar first (we ignore
+  it → times out) then LX200 via the `ACK` (`0x06`) handshake (§3.4), which we
+  answer with the alignment-mode char. That `ACK` reply is what makes
+  auto-detect succeed; the `:GVP#` → `LX200 Classic` identity is read afterwards.
 
 ### 8.3 INDI (KStars)
 On the desktop:

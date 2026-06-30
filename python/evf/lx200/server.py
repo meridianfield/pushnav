@@ -32,7 +32,13 @@ import time
 
 from evf.engine.goto_target import GotoTarget
 from evf.engine.pointing import PointingState
-from evf.lx200.protocol import Lx200ClientState, Lx200Context, dispatch
+from evf.lx200.protocol import (
+    ACK_BYTE,
+    ALIGNMENT_MODE_REPLY,
+    Lx200ClientState,
+    Lx200Context,
+    dispatch,
+)
 from evf.paths import sounds_dir
 
 logger = logging.getLogger(__name__)
@@ -193,12 +199,31 @@ class Lx200Server:
             else:
                 state.recv_buffer = state.recv_buffer[last_colon:]
 
+        # Answer ACK (0x06) probes first. These are bare bytes with no '#'
+        # terminator, so the command loop below never sees them — a client doing
+        # protocol auto-detection (e.g. Stellarium Mobile PLUS) sends an ACK and
+        # waits for the alignment-mode char to confirm an LX200 is present. One
+        # reply per ACK byte, mirroring a real mount; ordering vs. command
+        # replies in the same recv() is immaterial (the ACK only appears during
+        # the connect/identify handshake, never interleaved with polling).
+        ack_count = state.recv_buffer.count(ACK_BYTE)
+        if ack_count:
+            state.recv_buffer = state.recv_buffer.replace(ACK_BYTE, b"")
+            self._last_activity_at = time.monotonic()
+            logger.debug("LX200 <- ACK x%d  -> %r", ack_count, ALIGNMENT_MODE_REPLY)
+            try:
+                client.sendall(ALIGNMENT_MODE_REPLY * ack_count)
+            except (ConnectionResetError, BrokenPipeError, OSError):
+                self._remove_client(client)
+                return
+
         # Process every '#'-terminated command in the buffer
         while b"#" in state.recv_buffer:
             cmd, _, rest = state.recv_buffer.partition(b"#")
             state.recv_buffer = rest
-            # Strip stray leading whitespace / control bytes (some clients send
-            # ACK 0x06 probes; Meade Generic sends :<cmd># cleanly)
+            # Strip stray leading whitespace / control bytes (ACK 0x06 is
+            # already handled above; keep it here defensively. Meade Generic
+            # sends :<cmd># cleanly).
             cmd = cmd.lstrip(b"\x00 \r\n\t\x06")
             if not cmd:
                 continue
