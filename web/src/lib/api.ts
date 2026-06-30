@@ -29,6 +29,7 @@ export const api = {
   setSettings: (s: {
     audio_enabled?: boolean;
     location?: { latitude: number; longitude: number } | null;
+    lx200_epoch?: "jnow" | "j2000";
   }) => post("/api/settings", s),
   setAdvanced: (s: { min_matches?: number; max_prob?: number }) =>
     post("/api/settings", s),

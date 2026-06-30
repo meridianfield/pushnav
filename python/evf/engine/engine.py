@@ -189,6 +189,20 @@ class Engine:
     def set_audio_enabled(self, enabled: bool) -> None:
         self.audio_enabled = enabled
 
+    def set_lx200_epoch(self, epoch: str) -> None:
+        """Set the LX200 reported coordinate epoch ('jnow' or 'j2000').
+
+        'jnow' is the LX200 standard (SkySafari / INDI / ASCOM / real Meade);
+        'j2000' is for Stellarium Mobile PLUS, which reads LX200 coords as J2000.
+        Persists to config and applies to the running server immediately.
+        """
+        epoch = epoch.lower()
+        if epoch not in ("jnow", "j2000"):
+            raise ValueError(f"lx200_epoch must be 'jnow' or 'j2000', got {epoch!r}")
+        self._config.lx200_epoch = epoch
+        if self._lx200 is not None:
+            self._lx200.set_report_j2000(epoch == "j2000")
+
     @property
     def location(self) -> dict:
         """Resolve the active observer location.
@@ -393,13 +407,15 @@ class Engine:
         """Start LX200 TCP server.
 
         Binds 0.0.0.0:4030 so mobile apps (SkySafari, Stellarium Mobile) can
-        reach it on the LAN. Always-on; no config toggle in v1.
+        reach it on the LAN. Always-on. The reported coordinate epoch follows
+        the lx200.epoch config (JNow standard; J2000 for Stellarium Mobile PLUS).
         """
         try:
             self._lx200 = Lx200Server(
                 self._pointing_state,
                 goto_target=self._goto_target,
                 app_version=self._app_version,
+                report_j2000=(self._config.lx200_epoch == "j2000"),
             )
             self._lx200.start()
         except Exception as exc:
@@ -438,6 +454,7 @@ class Engine:
                     "lx200": {
                         "active": self.lx200_active,
                         "address": self.lx200_address,
+                        "epoch": self._config.lx200_epoch,
                     },
                     "webserver": {"url": self.web_url},
                     "audio_enabled": self.audio_enabled,

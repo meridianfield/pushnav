@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { QRCodeSVG } from "qrcode.react";
 import { ActivityDot } from "@/components/ActivityDot";
+import { api } from "@/lib/api";
 import type { EnginePayload } from "@/lib/types";
 
 interface Props {
@@ -67,6 +68,29 @@ export function Connectivity({ state }: Props) {
         >
           <code className="text-xs">{state.lx200.address ?? "off"}</code>
         </Row>
+        <div className="flex items-center justify-between pl-2">
+          <span className="text-xs text-muted-foreground">Coordinate epoch</span>
+          <div className="flex gap-1">
+            {(["jnow", "j2000"] as const).map((e) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => api.setSettings({ lx200_epoch: e })}
+                className={
+                  (state.lx200.epoch ?? "jnow") === e
+                    ? "rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground"
+                    : "rounded px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
+                }
+              >
+                {e === "jnow" ? "JNow" : "J2000"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="pl-2 text-[10px] leading-tight text-muted-foreground">
+          JNow for SkySafari (standard). Switch to J2000 if Stellarium Mobile PLUS
+          centers slightly off target.
+        </div>
       </CardContent>
     </Card>
   );

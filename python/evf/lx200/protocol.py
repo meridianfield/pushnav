@@ -146,6 +146,12 @@ class Lx200Context:
     app_version: str
     pending_ra_jnow_hours: float | None = None
     pending_dec_jnow_deg: float | None = None
+    # Epoch reported on :GR#/:GD# and assumed for :Sr#/:Sd# input. Default JNow
+    # (LX200 standard — SkySafari / INDI / ASCOM / real Meade). When True, report
+    # and accept J2000 instead: Stellarium Mobile PLUS reads LX200 coords as J2000
+    # and has no epoch toggle, so without this its marker sits ~20' (one
+    # precession) off target. Settable at runtime via Lx200Server.set_report_j2000.
+    report_j2000: bool = False
 
 
 # -- dispatch ----------------------------------------------------------------
@@ -241,8 +247,11 @@ def _reply_get_ra(state: Lx200ClientState, ctx: Lx200Context) -> bytes:
     snap = ctx.pointing.read()
     if not snap.valid:
         return b"00:00:00#" if state.precision_hi else b"00:00.0#"
-    ra_jnow_deg, _ = j2000_to_jnow(snap.ra_j2000, snap.dec_j2000)
-    ra_hours = ra_jnow_deg / 15.0
+    if ctx.report_j2000:
+        ra_deg = snap.ra_j2000
+    else:
+        ra_deg, _ = j2000_to_jnow(snap.ra_j2000, snap.dec_j2000)
+    ra_hours = ra_deg / 15.0
     return format_ra_hi(ra_hours) if state.precision_hi else format_ra_lo(ra_hours)
 
 
@@ -250,8 +259,11 @@ def _reply_get_dec(state: Lx200ClientState, ctx: Lx200Context) -> bytes:
     snap = ctx.pointing.read()
     if not snap.valid:
         return b"+00*00:00#" if state.precision_hi else b"+00*00#"
-    _, dec_jnow_deg = j2000_to_jnow(snap.ra_j2000, snap.dec_j2000)
-    return format_dec_hi(dec_jnow_deg) if state.precision_hi else format_dec_lo(dec_jnow_deg)
+    if ctx.report_j2000:
+        dec_deg = snap.dec_j2000
+    else:
+        _, dec_deg = j2000_to_jnow(snap.ra_j2000, snap.dec_j2000)
+    return format_dec_hi(dec_deg) if state.precision_hi else format_dec_lo(dec_deg)
 
 
 def _handle_set_ra(arg: str, ctx: Lx200Context) -> bytes:
@@ -277,14 +289,21 @@ def _handle_set_dec(arg: str, ctx: Lx200Context) -> bytes:
 def _handle_move_slew(ctx: Lx200Context) -> bytes:
     if ctx.pending_ra_jnow_hours is None or ctx.pending_dec_jnow_deg is None:
         return b"1<no target set>#"
-    ra_jnow_deg = ctx.pending_ra_jnow_hours * 15.0
-    ra_j2000, dec_j2000 = jnow_to_j2000(ra_jnow_deg, ctx.pending_dec_jnow_deg)
+    ra_deg = ctx.pending_ra_jnow_hours * 15.0
+    dec_deg = ctx.pending_dec_jnow_deg
+    if ctx.report_j2000:
+        # Client speaks J2000 (e.g. Stellarium Mobile PLUS) — the target is
+        # already J2000, so store it verbatim with no precession.
+        ra_j2000, dec_j2000 = ra_deg, dec_deg
+    else:
+        ra_j2000, dec_j2000 = jnow_to_j2000(ra_deg, dec_deg)
     # GotoTarget.set() plays the ack sound internally — we do not call play_ack
     # separately to avoid a double-play. ctx.play_ack exists for future hooks.
     if ctx.goto_target is not None:
         ctx.goto_target.set(ra_j2000, dec_j2000)
     logger.info(
-        "LX200 GOTO: (JNow) RA=%.4fh Dec=%.4f° -> (J2000) RA=%.4f° Dec=%.4f°",
+        "LX200 GOTO: (%s) RA=%.4fh Dec=%.4f° -> (J2000) RA=%.4f° Dec=%.4f°",
+        "J2000" if ctx.report_j2000 else "JNow",
         ctx.pending_ra_jnow_hours,
         ctx.pending_dec_jnow_deg,
         ra_j2000,
