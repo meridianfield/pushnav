@@ -150,6 +150,17 @@ class Lx200Context:
 
 # -- dispatch ----------------------------------------------------------------
 
+# LX200 ACK handshake. A client sends a bare ACK byte (0x06, no '#' terminator)
+# to auto-detect the controller and expects the mount's alignment-mode char
+# back: 'A'=AltAz, 'L'=Land, 'P'=Polar. The value is cosmetic for detection —
+# any valid char confirms "this is an LX200". We answer 'P' (Polar) because
+# PushNav reports equatorial RA/Dec. Stellarium Mobile PLUS's protocol probe
+# relies on this; without it, LX200 auto-detection fails. The ACK is not
+# '#'-framed, so Lx200Server answers it directly (see _handle_client_data),
+# not through dispatch().
+ACK_BYTE = b"\x06"
+ALIGNMENT_MODE_REPLY = b"P"
+
 # SkySafari tolerates variable-length padding here; 29 bytes matches the
 # Meade reference implementation's canonical reply.
 _CM_REPLY = b"Coordinates matched.        #"
