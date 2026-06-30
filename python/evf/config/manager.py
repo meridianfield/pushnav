@@ -34,6 +34,7 @@ DEFAULT_CONFIG = {
     "calibration": {"finder_rotation": 0.0, "sync_d_body": None},
     "logging": {"verbose": False},
     "audio": {"enabled": True},
+    "lx200": {"epoch": "jnow"},
     "webserver": {"port": 8765},
     "location": {"latitude": None, "longitude": None},
 }
@@ -200,6 +201,15 @@ class ConfigManager:
     @verbose.setter
     def verbose(self, value: bool) -> None:
         self.set("logging", "verbose", value)
+
+    @property
+    def lx200_epoch(self) -> str:
+        """Coordinate epoch reported on the LX200 server: 'jnow' or 'j2000'."""
+        return self.get("lx200", "epoch")
+
+    @lx200_epoch.setter
+    def lx200_epoch(self, value: str) -> None:
+        self.set("lx200", "epoch", value)
 
     @property
     def web_port(self) -> int:

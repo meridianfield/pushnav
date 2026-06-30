@@ -487,6 +487,13 @@ class WebServer:
                 )
             if resp.status >= 400:
                 return resp
+        if "lx200_epoch" in body:
+            resp = await self._handle_api(
+                request,
+                lambda: self._actions.set_lx200_epoch(str(body["lx200_epoch"])),
+            )
+            if resp.status >= 400:
+                return resp
         return web.Response(status=204)
 
     async def _api_dev_inject_sample(self, request):

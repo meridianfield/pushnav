@@ -102,6 +102,16 @@ async def test_settings_audio(server_and_actions):
 
 
 @pytest.mark.asyncio
+async def test_settings_lx200_epoch(server_and_actions):
+    ws, actions = server_and_actions
+    async with ClientSession() as s:
+        async with s.post(f"http://127.0.0.1:{ws._port}/api/settings",
+                          json={"lx200_epoch": "j2000"}) as resp:
+            assert resp.status == 204
+    actions.set_lx200_epoch.assert_called_once_with("j2000")
+
+
+@pytest.mark.asyncio
 async def test_actions_none_returns_503(tmp_path, monkeypatch):
     """When no actions are wired, POST /api/* returns 503 instead of 500."""
     monkeypatch.setenv("HOME", str(tmp_path))

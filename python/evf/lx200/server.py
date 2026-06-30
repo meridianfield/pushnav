@@ -88,6 +88,7 @@ class Lx200Server:
         port: int = _DEFAULT_PORT,
         goto_target: GotoTarget | None = None,
         app_version: str = "0.0.0",
+        report_j2000: bool = False,
     ) -> None:
         self._host = host
         self._port = port
@@ -96,6 +97,7 @@ class Lx200Server:
             goto_target=goto_target,
             play_ack=_play_ack,
             app_version=app_version,
+            report_j2000=report_j2000,
         )
         self._clients: dict[socket.socket, Lx200ClientState] = {}
         # Monotonic timestamp of the most recent connect OR received command.
@@ -140,6 +142,15 @@ class Lx200Server:
         the LX200 indicator whenever `time.monotonic() - this < hold_seconds`.
         """
         return self._last_activity_at
+
+    def set_report_j2000(self, value: bool) -> None:
+        """Switch the reported coordinate epoch at runtime (JNow <-> J2000).
+
+        Shared across all current and future client connections. Used by the
+        engine when the user flips the LX200 epoch setting.
+        """
+        self._ctx.report_j2000 = bool(value)
+        logger.info("LX200 epoch set to %s", "J2000" if value else "JNow")
 
     # -- internal -------------------------------------------------------------
 

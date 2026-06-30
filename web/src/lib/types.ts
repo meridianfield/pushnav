@@ -79,6 +79,8 @@ export interface ActivityLine {
   status?: unknown;
   object?: { name?: string; "localized-name"?: string } | null;
   location?: ObserverLocation | null;
+  /** LX200 only: reported coordinate epoch ("jnow" default, "j2000" for Stellarium Mobile PLUS). */
+  epoch?: "jnow" | "j2000";
 }
 
 export interface CameraBlock {

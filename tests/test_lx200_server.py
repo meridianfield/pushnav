@@ -208,6 +208,89 @@ class TestGoto:
         s.close()
 
 
+@pytest.fixture
+def j2000_server():
+    """LX200 server configured to report J2000 (Stellarium Mobile PLUS mode)."""
+    ps = PointingState()
+    gt = GotoTarget()
+    srv = Lx200Server(
+        ps, host="127.0.0.1", port=0, goto_target=gt, app_version="test",
+        report_j2000=True,
+    )
+    srv.start()
+    yield srv, ps, gt
+    srv.stop(timeout=2.0)
+
+
+class TestLx200Epoch:
+    """LX200 reports JNow by default (SkySafari / INDI / ASCOM / real Meade), but
+    Stellarium Mobile PLUS reads :GR/:GD as J2000 and offers no epoch toggle — so
+    its marker lands ~20' off (one precession). A user-selectable J2000 mode serves
+    J2000 to fix PLUS without disturbing the standard clients.
+    """
+
+    # Alnitak (J2000); precession to JNow shifts RA ~20' — far above the
+    # 1-second (15") high-precision rounding, so the two epochs are unambiguous.
+    _RA_J2000, _DEC_J2000 = 85.1897, -1.9426
+
+    def test_default_reports_jnow(self, server):
+        from evf.engine.epoch import j2000_to_jnow
+        from evf.lx200.protocol import format_ra_hi
+
+        srv, ps, _ = server
+        ps.update(ra_j2000=self._RA_J2000, dec_j2000=self._DEC_J2000,
+                  roll=0.0, matches=10, prob=0.01)
+        ra_jnow_deg, _ = j2000_to_jnow(self._RA_J2000, self._DEC_J2000)
+        s = _connect(srv)
+        s.sendall(b":GR#")
+        assert _recv_until_hash(s) == format_ra_hi(ra_jnow_deg / 15.0)
+        s.close()
+
+    def test_j2000_mode_reports_j2000(self, j2000_server):
+        from evf.engine.epoch import j2000_to_jnow
+        from evf.lx200.protocol import format_ra_hi
+
+        srv, ps, _ = j2000_server
+        ps.update(ra_j2000=self._RA_J2000, dec_j2000=self._DEC_J2000,
+                  roll=0.0, matches=10, prob=0.01)
+        ra_jnow_deg, _ = j2000_to_jnow(self._RA_J2000, self._DEC_J2000)
+        expected_j2000 = format_ra_hi(self._RA_J2000 / 15.0)
+        assert expected_j2000 != format_ra_hi(ra_jnow_deg / 15.0)  # precession visible
+        s = _connect(srv)
+        s.sendall(b":GR#")
+        assert _recv_until_hash(s) == expected_j2000
+        s.close()
+
+    def test_runtime_switch_to_j2000(self, server):
+        from evf.lx200.protocol import format_ra_hi
+
+        srv, ps, _ = server
+        ps.update(ra_j2000=self._RA_J2000, dec_j2000=self._DEC_J2000,
+                  roll=0.0, matches=10, prob=0.01)
+        srv.set_report_j2000(True)
+        s = _connect(srv)
+        s.sendall(b":GR#")
+        assert _recv_until_hash(s) == format_ra_hi(self._RA_J2000 / 15.0)
+        s.close()
+
+    def test_j2000_mode_reads_goto_target_as_j2000(self, j2000_server):
+        # In J2000 mode the :Sr/:Sd target is already J2000 — store it directly,
+        # do NOT precess JNow->J2000 (which would shift it ~20').
+        srv, _, gt = j2000_server
+        s = _connect(srv)
+        s.sendall(b":Sr 12:00:00#")
+        assert _recv_until_hash(s) == b"1"
+        s.sendall(b":Sd +00*00:00#")
+        assert _recv_until_hash(s) == b"1"
+        s.sendall(b":MS#")
+        assert _recv_until_hash(s) == b"0"
+        snap = gt.read()
+        assert snap.active is True
+        assert abs(snap.ra_j2000 - 180.0) < 0.001   # stored verbatim, not precessed
+        assert abs(snap.dec_j2000) < 0.001
+        s.close()
+
+
 class TestMalformedRecovery:
     def test_unknown_commands_do_not_break_stream(self, server):
         srv, _, _ = server
