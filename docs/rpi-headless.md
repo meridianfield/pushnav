@@ -4,6 +4,12 @@ title: Raspberry Pi 4 (headless)
 
 # Running PushNav headless on a Raspberry Pi 4
 
+!!! warning "Work in progress"
+    Raspberry Pi headless support is under active development. This page is
+    incomplete and **the steps below are expected to change** — treat it as an
+    early preview rather than a finished guide, and check back for updates
+    before relying on it.
+
 PushNav runs headless on a Raspberry Pi 4 (Debian 13 / aarch64) and is
 controlled entirely from a phone on the same Wi-Fi via the existing
 mobile web UI at `http://<pi-ip>:8765`. This page is the install-and-run
