@@ -150,6 +150,7 @@ cp "$CAMERA_BIN" "$MACOS/camera_server"
 chmod +x "$MACOS/camera_server"
 
 cp "$REPO_ROOT/data/tetra3rs_gaia.bin" "$RESOURCES/"
+cp "$REPO_ROOT/data/tetra3rs_gaia_imx662_25mm.bin" "$RESOURCES/"
 cp "$REPO_ROOT/data/VERSION.json" "$RESOURCES/"
 cp -a "$REPO_ROOT/data/sounds"      "$RESOURCES/sounds"
 cp -a "$REPO_ROOT/web/dist"         "$RESOURCES/web_dist"

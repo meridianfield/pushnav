@@ -50,6 +50,7 @@ _DEFAULT_HELLO = {
     "backend": "mock-python",
     "backend_version": "0.1.0",
     "camera_model": "MOCK_CAMERA",
+    "camera_id": "32e6:9251",
     "stream_format": "MJPEG",
     "default_width": 1280,
     "default_height": 720,

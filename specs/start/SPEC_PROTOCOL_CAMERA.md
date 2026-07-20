@@ -92,7 +92,8 @@ Example payload:
   "protocol_version": 1,
   "backend": "mac-swift",
   "backend_version": "0.1.0",
-  "camera_model": "openaicam",
+  "camera_model": "Waveshare OV9281",
+  "camera_id": "32e6:9251",
   "stream_format": "MJPEG",
   "default_width": 1280,
   "default_height": 720,
@@ -105,7 +106,10 @@ The `camera_model` value is backend-specific:
 - Linux (V4L2) and Windows (DirectShow) send the probed device model string.
 
 Clients should treat `camera_model` as free-form informational and not parse
-it as an enum.
+it as an enum. Current camera servers also send `camera_id` as a lowercase
+`vid:pid` USB identifier. The field is additive and optional for protocol-v1
+compatibility with older servers; clients must preserve their default camera
+profile when it is absent or unknown.
 
 Handshake rules:
 - If `protocol_version` mismatch:

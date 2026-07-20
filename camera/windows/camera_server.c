@@ -132,8 +132,10 @@ static IAMVideoProcAmp       *pProcAmp     = NULL;
 
 static int use_mjpeg = 1;
 
-/* Camera model name */
+/* Camera identity selected during DirectShow discovery */
 static char camera_model[128] = "Unknown";
+static unsigned int camera_vid = 0;
+static unsigned int camera_pid = 0;
 
 /* Control ranges */
 typedef struct {
@@ -339,6 +341,8 @@ static HRESULT find_device(IBaseFilter **ppFilter, char *seen, size_t seen_len)
                     ICreateDevEnum_Release(pSysDevEnum);
 
                     if (SUCCEEDED(hr)) {
+                        camera_vid = vid;
+                        camera_pid = pid;
                         fprintf(stderr, "Found camera '%s' (%04X:%04X)\n",
                                 camera_model, vid, pid);
                         return S_OK;
@@ -1047,11 +1051,12 @@ static void build_hello_json(char *buf, size_t buflen)
         "\"backend\":\"windows-directshow\","
         "\"backend_version\":\"0.1.0\","
         "\"camera_model\":\"%s\","
+        "\"camera_id\":\"%04x:%04x\","
         "\"stream_format\":\"MJPEG\","
         "\"default_width\":%d,"
         "\"default_height\":%d,"
         "\"default_fps\":30}",
-        escaped_model, CAPTURE_W, CAPTURE_H);
+        escaped_model, camera_vid, camera_pid, CAPTURE_W, CAPTURE_H);
 }
 
 static void build_control_info_json(char *buf, size_t buflen)

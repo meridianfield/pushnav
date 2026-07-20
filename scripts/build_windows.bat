@@ -142,6 +142,7 @@ copy /y "%CAMERA_BIN%" "%APP_DIR%\camera_server.exe"
 
 REM Copy data resources
 copy /y "%REPO_ROOT%\data\tetra3rs_gaia.bin" "%APP_DIR%\data\"
+copy /y "%REPO_ROOT%\data\tetra3rs_gaia_imx662_25mm.bin" "%APP_DIR%\data\"
 copy /y "%REPO_ROOT%\data\VERSION.json" "%APP_DIR%\data\"
 xcopy /s /e /q /y "%REPO_ROOT%\data\sounds" "%APP_DIR%\data\sounds\"
 

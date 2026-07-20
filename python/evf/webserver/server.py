@@ -77,7 +77,9 @@ class EngineActions(Protocol):
     ) -> None: ...
 
 
-def _compute_origin(config: ConfigManager) -> tuple[float, float]:
+def _compute_origin(
+    config: ConfigManager, fov_h_deg: float = _FOV_H
+) -> tuple[float, float]:
     """Pixel position of the sync offset (pointing center) in image coords.
 
     Falls back to image center when no sync calibration is available.
@@ -85,7 +87,7 @@ def _compute_origin(config: ConfigManager) -> tuple[float, float]:
     cx, cy = _IMG_W / 2.0, _IMG_H / 2.0
     d_body = config.sync_d_body
     if d_body is not None and d_body[2] > 0.1:
-        scale = _IMG_W / (2.0 * math.tan(math.radians(_FOV_H / 2.0)))
+        scale = _IMG_W / (2.0 * math.tan(math.radians(fov_h_deg / 2.0)))
         cx += (-d_body[0] / d_body[2]) * scale
         cy += (-d_body[1] / d_body[2]) * scale
     return cx, cy
@@ -153,6 +155,7 @@ class WebServer:
         activity: Callable[[], dict] | None = None,
         stellarium_location: Callable[[], dict | None] | None = None,
         location: Callable[[], dict] | None = None,
+        fov_h_deg: Callable[[], float] | None = None,
         dev_mode: bool = False,
         sample_active: Callable[[], str | None] | None = None,
         actions: "EngineActions | None" = None,
@@ -169,6 +172,7 @@ class WebServer:
         self._activity = activity
         self._stellarium_location = stellarium_location
         self._location_fn = location
+        self._fov_h_deg = fov_h_deg
         self._dev_mode = dev_mode
         self._sample_active = sample_active
         self._actions = actions
@@ -531,7 +535,8 @@ class WebServer:
         snap = self._pointing.read()
         target = self._goto_target.read()
         failures = self._solver_failures() if self._solver_failures else 0
-        origin_x, origin_y = _compute_origin(self._config)
+        fov_h_deg = self._fov_h_deg() if self._fov_h_deg else _FOV_H
+        origin_x, origin_y = _compute_origin(self._config, fov_h_deg)
         dx_off = origin_x - _IMG_W / 2.0
         dy_off = origin_y - _IMG_H / 2.0
 
@@ -548,7 +553,9 @@ class WebServer:
             ),
         }
 
-        nav_data = self._build_nav(snap, target, origin_x, origin_y, dx_off, dy_off)
+        nav_data = self._build_nav(
+            snap, target, origin_x, origin_y, dx_off, dy_off, fov_h_deg
+        )
 
         controls = self._camera_controls() if self._camera_controls else []
         sync_blk = self._sync_state() if self._sync_state else {
@@ -586,7 +593,7 @@ class WebServer:
             "image_w": _IMG_W,
             "image_h": _IMG_H,
             "finder_rotation": self._config.finder_rotation,
-            "fov_h_deg": _FOV_H,
+            "fov_h_deg": fov_h_deg,
             "has_calibration": self._config.has_calibration,
             "image_size": list(snap.image_size) if snap.valid and snap.image_size else None,
             "controls": controls or [],
@@ -605,7 +612,9 @@ class WebServer:
             ),
         }
 
-    def _build_nav(self, snap, target, origin_x, origin_y, dx_off, dy_off) -> dict | None:
+    def _build_nav(
+        self, snap, target, origin_x, origin_y, dx_off, dy_off, fov_h_deg
+    ) -> dict | None:
         if not target.active:
             return None
 
@@ -631,7 +640,7 @@ class WebServer:
         nav = compute_navigation(
             snap.ra_j2000, snap.dec_j2000, snap.roll,
             target.ra_j2000, target.dec_j2000,
-            _FOV_H, _IMG_W, _IMG_H,
+            fov_h_deg, _IMG_W, _IMG_H,
         )
 
         # Apply sync offset to in-FOV pixel coords so the React side renders the

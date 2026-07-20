@@ -97,6 +97,7 @@ typealias USBInterfacePtr = UnsafeMutablePointer<UnsafeMutablePointer<IOUSBInter
 class UVCController {
     let interface: USBInterfacePtr
     let interfaceNumber: UInt16
+    let cameraID: CameraID
 
     // Camera Terminal ID and Processing Unit ID (from UVC descriptors)
     let cameraTerminalID: UInt8 = 1
@@ -114,11 +115,13 @@ class UVCController {
     var exposureTimeRange = ControlRange()
     var gainRange = ControlRange()
 
-    init?(vendorID: Int, productID: Int) {
+    init?(cameraID: CameraID) {
+        self.cameraID = cameraID
+
         // Find the USB device by VID/PID
         let matchingDict = IOServiceMatching(kIOUSBDeviceClassName) as NSMutableDictionary
-        matchingDict[kUSBVendorID] = vendorID
-        matchingDict[kUSBProductID] = productID
+        matchingDict[kUSBVendorID] = cameraID.vid
+        matchingDict[kUSBProductID] = cameraID.pid
 
         let device = IOServiceGetMatchingService(kIOMainPortDefault, matchingDict)
         guard device != IO_OBJECT_NULL else {
@@ -206,7 +209,7 @@ class UVCController {
     /// one actually present on the USB bus (for UVC exposure/gain control).
     static func find(in allowlist: [CameraID]) -> UVCController? {
         for cam in allowlist {
-            if let controller = UVCController(vendorID: cam.vid, productID: cam.pid) {
+            if let controller = UVCController(cameraID: cam) {
                 logStderr("UVC control interface: \(cam.label) " +
                           String(format: "(VID=0x%04X, PID=0x%04X)\n",
                                  cam.vid, cam.pid))

@@ -169,8 +169,10 @@ struct mmap_buf {
 static struct mmap_buf buffers[NUM_BUFFERS];
 static unsigned int n_buffers = 0;
 
-/* Camera model name from sysfs */
+/* Camera identity selected during sysfs discovery */
 static char camera_model[128] = "Unknown";
+static unsigned int camera_vid = 0;
+static unsigned int camera_pid = 0;
 
 /* Control ranges */
 typedef struct {
@@ -300,6 +302,8 @@ static int find_device(char *dev_path, size_t dev_path_len)
             close(test_fd);
 
             snprintf(dev_path, dev_path_len, "%s", candidate);
+            camera_vid = vid;
+            camera_pid = pid;
 
             /* Try to read camera model name */
             snprintf(path, sizeof(path),
@@ -862,11 +866,12 @@ static void build_hello_json(char *buf, size_t buflen)
         "\"backend\":\"linux-v4l2\","
         "\"backend_version\":\"0.1.0\","
         "\"camera_model\":\"%s\","
+        "\"camera_id\":\"%04x:%04x\","
         "\"stream_format\":\"MJPEG\","
         "\"default_width\":%d,"
         "\"default_height\":%d,"
         "\"default_fps\":30}",
-        escaped_model, CAPTURE_W, CAPTURE_H);
+        escaped_model, camera_vid, camera_pid, CAPTURE_W, CAPTURE_H);
 }
 
 static void build_control_info_json(char *buf, size_t buflen)
