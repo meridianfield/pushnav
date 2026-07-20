@@ -198,6 +198,7 @@ static const cam_id_t BUILTIN_CAMERAS[] = {
     {0x32E6, 0x9251, "Waveshare OV9281"},
     {0x0C45, 0x6366, "Arducam OV9281"},
     {0x1BCF, 0x2CD1, "DECXIN OV9281"},
+    {0x1BCF, 0x2D4F, "DFRobot IMX662 USB Night Camera"},
 };
 #define NUM_BUILTIN_CAMERAS (sizeof(BUILTIN_CAMERAS) / sizeof(BUILTIN_CAMERAS[0]))
 #define MAX_EXTRA_CAMERAS   32
