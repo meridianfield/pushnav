@@ -139,7 +139,6 @@ def main() -> None:
 
     # Engine + servers come up either way
     engine.startup_logging()
-    engine.startup_solver()
     engine.startup_stellarium()
     engine.startup_lx200()
     engine.startup_webserver()
@@ -157,6 +156,7 @@ def main() -> None:
         try:
             engine.startup_camera()
             if engine.camera_connected:
+                engine.startup_solver()
                 engine.startup_solver_thread()
         except Exception:
             logger.exception("Camera startup failed")

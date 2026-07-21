@@ -98,6 +98,7 @@ class TestCameraClientIntegration:
             hello = client.connect(timeout=5.0)
 
             assert hello["protocol_version"] == 1
+            assert hello["camera_id"] == "32e6:9251"
             assert hello["stream_format"] == "MJPEG"
 
             controls = client.controls

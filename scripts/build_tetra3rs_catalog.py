@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with PushNav. If not, see <https://www.gnu.org/licenses/>.
 
-"""Generate data/tetra3rs_gaia.bin — the prebuilt tetra3rs SolverDatabase.
+"""Generate the prebuilt tetra3rs SolverDatabase files in data/.
 
 One-shot dev tool. Run this when:
   - first creating the .bin
@@ -38,39 +38,44 @@ from pathlib import Path
 import tetra3rs
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-OUT_PATH = REPO_ROOT / "data" / "tetra3rs_gaia.bin"
-
-MIN_FOV_DEG = 7.0
-MAX_FOV_DEG = 10.0
+CATALOGS = (
+    ("tetra3rs_gaia.bin", 7.0, 10.0),
+    ("tetra3rs_gaia_imx662_25mm.bin", 10.0, 15.0),
+)
 STAR_MAX_MAGNITUDE = 8.0
 PATTERN_MAX_ERROR = 0.005
 VERIFICATION_STARS_PER_FOV = 30
 EPOCH_PROPER_MOTION_YEAR = 2026.0
 
 
-def main() -> int:
-    if OUT_PATH.exists():
-        print(f"{OUT_PATH.relative_to(REPO_ROOT)} already exists. "
-              "Delete it first if you want to regenerate.")
-        return 1
-    print(f"Generating tetra3rs db (FOV {MIN_FOV_DEG}°..{MAX_FOV_DEG}°, "
+def _build_catalog(filename: str, min_fov_deg: float, max_fov_deg: float) -> bool:
+    out_path = REPO_ROOT / "data" / filename
+    if out_path.exists():
+        print(f"{out_path.relative_to(REPO_ROOT)} already exists — skipping")
+        return False
+    print(f"Generating tetra3rs db (FOV {min_fov_deg}°..{max_fov_deg}°, "
           f"mag<={STAR_MAX_MAGNITUDE})...")
     t0 = time.perf_counter()
     db = tetra3rs.SolverDatabase.generate_from_gaia(
-        max_fov_deg=MAX_FOV_DEG,
-        min_fov_deg=MIN_FOV_DEG,
+        max_fov_deg=max_fov_deg,
+        min_fov_deg=min_fov_deg,
         star_max_magnitude=STAR_MAX_MAGNITUDE,
         pattern_max_error=PATTERN_MAX_ERROR,
         verification_stars_per_fov=VERIFICATION_STARS_PER_FOV,
         epoch_proper_motion_year=EPOCH_PROPER_MOTION_YEAR,
     )
     elapsed = time.perf_counter() - t0
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    db.save_to_file(str(OUT_PATH))
-    size_mb = OUT_PATH.stat().st_size / 1_000_000
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    db.save_to_file(str(out_path))
+    size_mb = out_path.stat().st_size / 1_000_000
     print(f"Built in {elapsed:.1f}s ({db.num_stars} stars, "
           f"{db.num_patterns} patterns), wrote "
-          f"{OUT_PATH.relative_to(REPO_ROOT)} ({size_mb:.1f} MB)")
+          f"{out_path.relative_to(REPO_ROOT)} ({size_mb:.1f} MB)")
+    return True
+
+def main() -> int:
+    for filename, min_fov_deg, max_fov_deg in CATALOGS:
+        _build_catalog(filename, min_fov_deg, max_fov_deg)
     return 0
 
 

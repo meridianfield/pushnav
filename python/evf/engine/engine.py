@@ -28,6 +28,11 @@ import threading
 import time
 from pathlib import Path
 
+from evf.camera.profile import (
+    DEFAULT_CAMERA_PROFILE,
+    CameraProfile,
+    camera_profile_for_id,
+)
 from evf.camera.subprocess_mgr import SubprocessManager
 from evf.config.logging_setup import setup_logging
 from evf.config.manager import ConfigManager
@@ -47,7 +52,7 @@ from evf.solver.sync import (
     compute_body_frame_sync,
 )
 from evf.network import local_ip
-from evf.paths import version_json
+from evf.paths import tetra3rs_database_path, version_json
 from evf.solver.thread import SolverThread
 from evf.lx200.server import Lx200Server
 from evf.stellarium.server import StellariumServer
@@ -95,6 +100,7 @@ class Engine:
         self._goto_target = GotoTarget()
         self._app_version = _read_app_version()
         self._dev_mode = dev_mode
+        self._camera_profile: CameraProfile = DEFAULT_CAMERA_PROFILE
 
         # Sample injector (continuous JPEG injection for dev/debug)
         self._sample_injector = SampleInjector(self._frame_buffer)
@@ -142,6 +148,10 @@ class Engine:
     @property
     def dev_mode(self) -> bool:
         return self._dev_mode
+
+    @property
+    def camera_fov_h_deg(self) -> float:
+        return self._camera_profile.fov_estimate_deg
 
     @property
     def sample_injector(self) -> SampleInjector:
@@ -386,11 +396,23 @@ class Engine:
         self._log_version()
 
     def startup_solver(self) -> None:
-        """Load tetra3rs database (~1s)."""
+        """Load the tetra3rs database for the connected camera profile."""
+        profile = self._camera_profile
         try:
-            self._solver = PlateSolver()
+            self._solver = PlateSolver(
+                tetra3rs_database_path(profile.database_filename),
+                fov_estimate_deg=profile.fov_estimate_deg,
+                fov_max_error_deg=profile.fov_max_error_deg,
+            )
+            logger.info(
+                "Camera profile: %s (FOV %.2f° ± %.2f°)",
+                profile.label,
+                profile.fov_estimate_deg,
+                profile.fov_max_error_deg,
+            )
         except Exception as exc:
             logger.error("Failed to load tetra3rs database: %s", exc)
+            self._solver = None
 
     def startup_stellarium(self) -> None:
         """Start Stellarium TCP server."""
@@ -464,6 +486,7 @@ class Engine:
                     if self.stellarium_status else None
                 ),
                 location=lambda: self.location,
+                fov_h_deg=lambda: self.camera_fov_h_deg,
                 dev_mode=self._dev_mode,
                 sample_active=lambda: self._sample_injector.active_name,
                 actions=self,
@@ -493,6 +516,7 @@ class Engine:
             )
             hello = self._subprocess_mgr.start()
             logger.info("Camera connected: %s", hello)
+            self._camera_profile = camera_profile_for_id(hello.get("camera_id"))
 
             client = self._subprocess_mgr.client
             if client:
@@ -540,6 +564,7 @@ class Engine:
         self._subprocess_mgr = None
         self.startup_camera()
         if self.camera_connected and self._solver_thread is None:
+            self.startup_solver()
             self.startup_solver_thread()
         return self.camera_connected
 

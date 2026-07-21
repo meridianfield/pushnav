@@ -120,6 +120,7 @@ chmod +x "$APP_DIR/camera_server"
 
 # Copy data resources
 cp "$REPO_ROOT/data/tetra3rs_gaia.bin" "$APP_DIR/data/"
+cp "$REPO_ROOT/data/tetra3rs_gaia_imx662_25mm.bin" "$APP_DIR/data/"
 cp "$REPO_ROOT/data/VERSION.json" "$APP_DIR/data/"
 cp -a "$REPO_ROOT/data/sounds" "$APP_DIR/data/sounds"
 

@@ -33,6 +33,7 @@ let builtinCameras: [CameraID] = [
     CameraID(vid: 0x32E6, pid: 0x9251, label: "Waveshare OV9281"),
     CameraID(vid: 0x0C45, pid: 0x6366, label: "Arducam OV9281"),
     CameraID(vid: 0x1BCF, pid: 0x2CD1, label: "DECXIN OV9281"),
+    CameraID(vid: 0x1BCF, pid: 0x2D4F, label: "DFRobot IMX662 USB Night Camera"),
 ]
 
 /// Built-in cameras plus any `PUSHNAV_CAMERA_IDS` entries — a comma-separated

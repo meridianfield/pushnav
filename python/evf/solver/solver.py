@@ -51,15 +51,23 @@ _CENTROID_PARAMS = dict(
     matched_filter_sigma=2.0,
 )
 
-_FOV_DEG = 8.86
-_FOV_MAX_ERROR_DEG = 1.5
+_DEFAULT_FOV_DEG = 8.86
+_DEFAULT_FOV_MAX_ERROR_DEG = 1.5
 
 
 class PlateSolver:
     """Load tetra3rs database once and solve frames on demand."""
 
-    def __init__(self, database_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        database_path: Path | None = None,
+        *,
+        fov_estimate_deg: float = _DEFAULT_FOV_DEG,
+        fov_max_error_deg: float = _DEFAULT_FOV_MAX_ERROR_DEG,
+    ) -> None:
         db_path = database_path or _DATABASE_PATH
+        self._fov_estimate_deg = float(fov_estimate_deg)
+        self._fov_max_error_deg = float(fov_max_error_deg)
         t0 = time.monotonic()
         self._db = tetra3rs.SolverDatabase.load_from_file(str(db_path))
         elapsed = time.monotonic() - t0
@@ -99,8 +107,8 @@ class PlateSolver:
         t0 = time.monotonic()
         result = self._db.solve_from_centroids(
             extraction.centroids,
-            fov_estimate_deg=_FOV_DEG,
-            fov_max_error_deg=_FOV_MAX_ERROR_DEG,
+            fov_estimate_deg=self._fov_estimate_deg,
+            fov_max_error_deg=self._fov_max_error_deg,
             image_shape=(h, w),
         )
         t_solve_ms = (time.monotonic() - t0) * 1000
