@@ -45,7 +45,18 @@ The base has two screw hole variants controlled by `SELF_TAP_SCREWS`:
 
 To export a single part: set its flag to `true`, all others to `false`, then Render (F6) and export as STL.
 
-### Laser Pointer Holder (`laser_pointer_v2.scad`)
+### Laser Pointer Holder v3 (`laser_pointer_v3.scad`) — heat-set inserts
+
+Same 23 mm V-groove cradle and finder-shoe dovetail saddle as v2, with all captive-nut hardware replaced by brass heat-set inserts:
+
+- **Tripod mount** — a plain 7.8 mm × 8.5 mm bore in the bottom face takes an 8 mm OD × 8 mm insert (e.g. 1/4-20 for a photography QR plate), replacing v2's hex-nut pocket and insertion slot.
+- **Dovetail clamp** — two M4 inserts (5.8 mm OD × 4 mm) sit in the saddle's side wall; M4 matches commercial finder-shoe clamp screws. Both outer flanks are cut parallel to the dovetail channel walls (uniform 6 mm thickness), so the inserts seat flush in the sloped face and the clamp screws press square onto the finder shoe rail. Use 10–12 mm M4 screws, nylon-tipped if available.
+
+Inserts are installed with a soldering iron after printing. Go gently on the two clamp inserts — the bore sits ~1.8 mm from the saddle's top edge.
+
+**Print orientation:** Flat (default, Z=0 face on the bed), no supports. Run a 5.4 mm drill through the two clamp bores before heat-setting — they print near-horizontal and sag slightly at the ceiling.
+
+### Laser Pointer Holder v2 (`laser_pointer_v2.scad`) — legacy (captive nuts)
 
 V-groove cradle for a 23mm-diameter laser pointer, mounted directly under a dovetail saddle that slides onto a standard telescope finder shoe. The saddle design is derived from [rziomber's Vixen-style dovetail](https://www.thingiverse.com/thing:4853379), adapted to the finder shoe profile used by the camera housing.
 
@@ -76,7 +87,8 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 | `housing_base_bolt.stl` | v1 Base (3.5mm bolt-through holes) |
 | `housing_hood.stl` | v1 Hood + Baffle |
 | `housing_cap.stl` | v1 Dust Cap |
-| `laser_pointer_v2.stl` | Laser Pointer Holder (23 mm V-groove cradle + dovetail saddle) |
+| `laser_pointer_v3.stl` | **v3** Laser Pointer Holder (heat-set inserts) |
+| `laser_pointer_v2.stl` | v2 Laser Pointer Holder (captive nuts) |
 | `lens_adapter.stl` | M12 Lens Adapter |
 | `lock_ring.stl` | M12 Lock Ring |
 
