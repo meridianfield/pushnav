@@ -63,6 +63,18 @@ Replacement M12 lens mount for cameras whose stock mount doesn't accept standard
 
 Lock ring that secures the M12 lens at the correct focus position. Features a tapered centering collar and grip notches for finger tightening.
 
+### Camera Base (`camera_base.scad`) — spare part
+
+Replacement for the white plastic base that ships under the 25 mm camera module's PCB, in case it breaks. Same 25 × 25 × 4.5 mm envelope, so the camera sits at the same height in the housing.
+
+- **Four corner legs** support the PCB only on the bare 4.5 mm area around each mounting hole (21.3 mm spacing), keeping clear of the components on the underside.
+- **Hot glue instead of screws** — a 2.2 mm channel runs from each PCB hole down through its leg and the floor into a recess on the underside. The glue sets as a hooked plug, so it holds even though hot glue bonds poorly to printed plastic, and it releases with heat or isopropyl alcohol.
+- **USB-C cutout** — full-height notch centered on one edge for the socket on the PCB underside.
+
+**Assembly:** place the base on baking paper, set the PCB on top with the holes aligned, and inject hot glue into each PCB hole until it leaves a small head on top. Once cool, peel off the paper and trim any glue standing proud of the underside.
+
+**Print orientation:** floor down, no supports. PETG preferred; with PLA, use a low-temperature glue gun so the thin legs don't soften.
+
 ## Pre-built STLs
 
 Ready-to-print STL files are in the [`stls/`](stls/) directory:
@@ -79,6 +91,7 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 | `laser_pointer_v2.stl` | Laser Pointer Holder (23 mm V-groove cradle + dovetail saddle) |
 | `lens_adapter.stl` | M12 Lens Adapter |
 | `lock_ring.stl` | M12 Lock Ring |
+| `camera_base.stl` | Spare camera base (replaces the module's white base) |
 
 ## Print Settings
 
