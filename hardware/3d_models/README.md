@@ -4,6 +4,28 @@
 
 ## Parts
 
+### Camera Housing v3 (`housing_v3.scad`) — rotation adjustment (new)
+
+Same camera pocket and threaded hood as v2, but the housing **turns about the optical axis** on a separate dovetail mount, so the camera's up/down and left/right line up with the telescope's even when the finder shoe sits at an angle. Loosen the knob behind the mount, turn the camera until the app's mount axes look square with the screen, tighten, and recalibrate.
+
+Four parts controlled by `RENDER_*` flags (with one flag on, the part is placed in its print orientation):
+
+| Part | Flag | Description |
+|------|------|-------------|
+| Mount | `RENDER_MOUNT` | Finder-shoe dovetail, low bridge rib, and a Ø30 seat with a socket for the housing's spigot |
+| PCB Base + Lip | `RENDER_BASE` | 50 mm shell, PCB pocket, 44 mm female thread; a Ø20 spigot underneath holds the knob's insert |
+| Hood + Thread + Baffle | `RENDER_HOOD` | 30 mm baffled shroud; the barrel end is a 31.7 mm band that takes a standard 1.25" eyepiece barrel cap |
+| Dust Cap | `RENDER_CAP` | Printed slip-on cap for the band — a fallback if you have no spare eyepiece cap |
+
+**Hardware:** one M4 × 20 star knob (Ø12.5 collar) from behind the mount into one M4 × 6 heat-set insert (5.9 mm knurl) in the spigot. The insert pocket has a 45° lead-in and a narrower relief that catches displaced plastic and stops the insert flush.
+
+**Cap:** use the cap from the bottom of any 1.25" eyepiece (or Barlow / diagonal) barrel — the caps for the eye-lens end vary in size and won't fit.
+
+**Printing — no supports for any part:**
+- Mount: back face on the bed.
+- Base: **upside down**, lip on the bed. The pocket floor and USB tunnel print as bridges, and a 45° cone inside the lip replaces v2's flat ledge.
+- Hood: lip-thread end on the bed. Cap: closed top on the bed.
+
 ### Camera Housing v2 (`housing_v2.scad`) — recommended
 
 Redesigned cylindrical housing with a **threaded connection** between the base and hood — no external screws, bolts, or tools needed. The hood hand-screws directly into the base.
@@ -81,6 +103,10 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 
 | File | Description |
 |------|-------------|
+| `housing_v3_mount.stl` | **v3** Dovetail mount with rotation seat |
+| `housing_v3_base.stl` | **v3** PCB Base + Thread + Spigot (prints upside down) |
+| `housing_v3_hood.stl` | **v3** Hood with 1.25" cap band |
+| `housing_v3_cap.stl`  | **v3** Fallback slip-on cap |
 | `housing_v2_base.stl` | **v2** PCB Base + Thread + Dovetail |
 | `housing_v2_hood.stl` | **v2** Hood + Male Thread + Baffle |
 | `housing_v2_cap.stl`  | **v2** Dust Cap |
@@ -100,9 +126,9 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 | Layer height | 0.2mm | 0.2mm |
 | Perimeters | 3 | 3 |
 | Infill | 20% | 100% |
-| Supports | Base only (see below) | None |
+| Supports | v1/v2 base only (see below); v3 none | None |
 
-**Base supports.** The hood and cap are support-free, but the base needs slicer supports in two places:
+**Base supports (v1/v2).** The hood and cap are support-free, but the v1/v2 base needs slicer supports in two places:
 
 - **USB cutout roof** (v1 and v2) — the top edge of the USB slot is an unsupported span.
 - **Upper edge of the chord-flat** (v2 only) — above `back_flat_y`, the back of the cylinder returns to its full diameter and overhangs the chord-flat below.
@@ -116,6 +142,16 @@ Requires [OpenSCAD](https://openscad.org/) (command line or GUI).
 ### Command Line
 
 ```bash
+# v3 (rotation) — each part alone is placed in its print orientation
+for part in MOUNT BASE HOOD CAP; do
+  args=""
+  for p in MOUNT BASE HOOD CAP; do
+    [ "$p" = "$part" ] && v=true || v=false
+    args="$args -D RENDER_$p=$v"
+  done
+  openscad -o "stls/housing_v3_$(echo $part | tr A-Z a-z).stl" $args housing_v3.scad
+done
+
 # v2 (threaded) — recommended
 openscad -o stls/housing_v2_base.stl \
   -D 'RENDER_BASE=true' -D 'RENDER_HOOD=false' -D 'RENDER_CAP=false' housing_v2.scad
