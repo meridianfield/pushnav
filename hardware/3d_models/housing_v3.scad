@@ -43,13 +43,14 @@ use <vendor/threads.scad>
 // PRINTING:
 //   To export an individual part, set its RENDER_* flag to true and all
 //   others to false — a single part is placed in its print orientation —
-//   then Render (F6) and export as STL. No supports needed:
-//     - Mount: back face on the bed.
-//     - Base: upside down, lip on the bed. The pocket floor and USB
-//       tunnel print as bridges and a 45° cone replaces the flat ledge
-//       inside the lip.
-//     - Hood: lip-thread end on the bed.
-//     - Cap: closed top on the bed.
+//   then Render (F6) and export as STL.
+//     - Mount: back face on the bed, no supports.
+//     - Base: spigot on the bed. Supports under the floor around the
+//       spigot, plus v2's two spots (USB cutout roof, upper edge of the
+//       chord-flat). The spigot's end face — the clamping face — is the
+//       first layer, so it comes out flat.
+//     - Hood: lip-thread end on the bed, no supports.
+//     - Cap: closed top on the bed, no supports.
 // Recommended: 0.2mm layer height, 3 perimeters, 20% infill.
 
 
@@ -141,17 +142,19 @@ dovetail_length       = 39;      // rail length (Z extrusion)
 dovetail_axis_dist    = 43;      // optical axis → rail's wide (shoe) face, as v2
 
 /* Rotation joint — the housing's spigot turns in a socket in the mount's
-   seat; the housing floor bears on the seat rim. An M4 × 20 star knob
-   from behind the mount runs through the seat floor into an insert in
-   the spigot and clamps floor to rim. */
+   seat. An M4 × 20 star knob from behind the mount runs through the seat
+   floor into an insert in the spigot and clamps the spigot's end face
+   onto the socket floor. That face is printed on the bed, so it is flat;
+   the housing floor (printed over supports) clears the seat rim. */
 knob_collar_dia       = 12.5;    // star knob bearing face
 knob_thread_len       = 20;      // M4 thread under the collar
 spigot_dia            = 20;      // under the housing floor, centers the rotation
 spigot_height         = 6;
-socket_clearance      = 0.5;     // diametral (socket) and below the spigot — printed
-                                 // holes run small, so this keeps the turn free
-seat_dia              = 30;      // rim ring the housing floor bears on
-seat_floor            = 12;      // seat material under the socket — sized so the
+socket_clearance      = 0.5;     // diametral — printed holes run small, so this
+                                 // keeps the turn free
+rim_clearance         = 0.5;     // housing floor above the seat rim
+seat_dia              = 30;      // socket wall around the spigot
+seat_floor            = 12.3;    // seat material under the socket — sized so the
                                  // 20 mm thread fills the insert without bottoming
 bridge_width          = 10;      // rib from the rail to the seat (X)
 bridge_height         = 8;       // rib height from the back face; ties the seat's
@@ -200,11 +203,12 @@ dovetail_y_offset = -dovetail_axis_dist;                          // -43
 rail_inner_y     = dovetail_y_offset + dovetail_height;           // -32
 
 // Rotation joint
-socket_depth     = spigot_height + socket_clearance;              // 6.5
-seat_height      = seat_floor + socket_depth;                     // 18.5 — housing floor Z
-knob_tip         = knob_thread_len - seat_floor - socket_clearance;  // 7.5 — from spigot face
-seat_taper_top   = seat_floor - 1;                                // 11 — full seat_dia from here up
-seat_taper_bot   = seat_taper_top - (seat_dia - seat_column_dia) / 2;  // 4
+socket_depth     = spigot_height - rim_clearance;                 // 5.5
+seat_height      = seat_floor + socket_depth;                     // 17.8 — seat rim Z
+housing_z        = seat_floor + spigot_height;                    // 18.3 — housing floor Z
+knob_tip         = knob_thread_len - seat_floor;                  // 7.7 — from spigot face
+seat_taper_top   = seat_floor - 1;                                // 11.3 — full seat_dia from here up
+seat_taper_bot   = seat_taper_top - (seat_dia - seat_column_dia) / 2;  // 4.3
 
 assert(knob_tip >= insert_hole_depth - 0.3,
        "knob thread would not reach through the whole insert");
@@ -239,10 +243,10 @@ single_part = (RENDER_MOUNT ? 1 : 0) + (RENDER_BASE ? 1 : 0)
 // --------------------------------------------------
 // Mount — dovetail rail, bridge and seat
 // --------------------------------------------------
-// The rail sits where it was on v2. A bridge the full seat height joins
-// its narrow face to the round seat on the optical axis; the seat's
-// socket takes the housing's spigot. The star knob goes in from the back
-// face (Z = 0). Prints back face down, no supports.
+// The rail sits where it was on v2. A low rib joins its narrow face to
+// the round seat on the optical axis; the seat's socket takes the
+// housing's spigot, which bottoms on the socket floor. The star knob
+// goes in from the back face (Z = 0). Prints back face down, no supports.
 
 module mount() {
     difference() {
@@ -289,14 +293,6 @@ module pcb_base() {
             difference() {
                 // Outer shell — cylindrical, centered at (0,0)
                 cylinder(d = base_outer_dia, h = base_height);
-
-                // Lip transition — 45° cone from the thread root down to the
-                // pocket, so the base prints upside down without a flat
-                // overhang inside the lip
-                lip_root_dia = lip_thread_dia + lip_thread_tolerance;
-                translate([0, 0, base_height - (lip_root_dia - body_width) / 2])
-                    cylinder(d1 = body_width, d2 = lip_root_dia,
-                             h = (lip_root_dia - body_width) / 2 + 0.01);
 
                 // Upper pocket — full PCB clearance zone (above floor),
                 // bounded at the base top so the lip's thread stays intact.
@@ -534,15 +530,14 @@ module _dovetail_rail() {
 // export; otherwise the assembly is shown along the optical axis,
 // pulled apart by `explode`.
 
-base_z = seat_height + explode;
+base_z = housing_z + explode;
 hood_z = base_z + base_height + lip_height + preview_gap;
 cap_z  = hood_z + hood_top + preview_gap;
 
 if (single_part) {
     if (RENDER_MOUNT) mount();
     if (RENDER_BASE)
-        translate([0, 0, base_height + lip_height]) rotate([180, 0, 0])
-            pcb_base();
+        translate([0, 0, spigot_height]) pcb_base();
     if (RENDER_HOOD) hood();
     if (RENDER_CAP)
         translate([0, 0, cap_height]) rotate([180, 0, 0])
