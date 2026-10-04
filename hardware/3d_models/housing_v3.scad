@@ -96,9 +96,12 @@ lip_height            = 8;       // collar height above the base
 lip_thread_dia        = 44;      // nominal female thread diameter
 lip_thread_pitch      = 3;       // coarse pitch — FDM-friendly
 lip_tooth_angle       = 30;      // half-angle of thread flank (30° = 60° included, metric)
-lip_thread_tolerance  = 0.6;     // clearance for the mating male thread — 0.4 (v2)
-                                 // printed too tight; each +0.1 adds ≈ 0.12 mm
-                                 // diametral clearance
+lip_thread_tolerance  = 0.6;     // female thread in the base — 0.4 (v2) printed too
+                                 // tight; each +0.1 opens it by ≈ 0.15 mm diameter
+hood_thread_tolerance = 0.4;     // male thread on the hood — kept at v2's value so
+                                 // existing hoods fit; the library only uses it as a
+                                 // small shrinkage allowance (+0.25 × tolerance on the
+                                 // diameter), so raising it would tighten the fit
 
 /* USB cable cutout (rear face of base) */
 usb_width             = 13;      // cutout width
@@ -388,7 +391,7 @@ module hood() {
                         height = lip_height,
                         pitch = lip_thread_pitch,
                         tooth_angle = lip_tooth_angle,
-                        tolerance = lip_thread_tolerance);
+                        tolerance = hood_thread_tolerance);
             translate([0, 0, -1])
                 cylinder(d = hood_bore_dia, h = lip_height + 2);
         }
