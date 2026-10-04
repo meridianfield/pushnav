@@ -96,7 +96,9 @@ lip_height            = 8;       // collar height above the base
 lip_thread_dia        = 44;      // nominal female thread diameter
 lip_thread_pitch      = 3;       // coarse pitch — FDM-friendly
 lip_tooth_angle       = 30;      // half-angle of thread flank (30° = 60° included, metric)
-lip_thread_tolerance  = 0.4;     // clearance for the mating male thread
+lip_thread_tolerance  = 0.6;     // clearance for the mating male thread — 0.4 (v2)
+                                 // printed too tight; each +0.1 adds ≈ 0.12 mm
+                                 // diametral clearance
 
 /* USB cable cutout (rear face of base) */
 usb_width             = 13;      // cutout width

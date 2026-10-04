@@ -19,6 +19,8 @@ Four parts controlled by `RENDER_*` flags (with one flag on, the part is placed 
 
 **Hardware:** one M4 × 20 star knob (Ø12.5 collar) from behind the mount into one M4 × 6 heat-set insert (5.9 mm knurl) in the center of the housing's bottom. Tightening it clamps the housing's flat bottom onto the seat. The insert pocket has a 45° lead-in and a narrower relief that catches displaced plastic and stops the insert flush.
 
+**Thread fit:** v3 uses `lip_thread_tolerance = 0.6` mm (v2's 0.4 printed too tight). If the hood still binds, go to 0.7; if it's sloppy, back to 0.5 — then re-export the base and hood together.
+
 **Cap:** use the cap from the bottom of any 1.25" eyepiece (or Barlow / diagonal) barrel — the caps for the eye-lens end vary in size and won't fit.
 
 **Printing** (a single part exports in its print orientation):
