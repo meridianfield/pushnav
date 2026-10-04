@@ -29,8 +29,9 @@ use <vendor/threads.scad>
 // mount, turn the camera, tighten.
 //
 //   1. Mount          — finder-shoe rail, bridge and round seat
-//   2. PCB Base       — camera housing; a spigot underneath turns in the
-//                       seat's socket and takes the knob's insert
+//   2. PCB Base       — camera housing; its base extends below the floor to
+//                       a flat bottom that turns on the seat and holds the
+//                       knob's insert
 //   3. Hood + Baffle  — screws onto the base, lens shroud with integral stepped
 //                       baffle; its barrel end takes a standard 1.25" eyepiece
 //                       barrel cap
@@ -38,17 +39,16 @@ use <vendor/threads.scad>
 //
 // HARDWARE:
 //   1 × M4 × 20 star knob (Ø12.5 collar), 1 × M4 × 6 heat-set insert
-//   (5.9 mm knurl) in the spigot.
+//   (5.9 mm knurl) in the center of the base's bottom face.
 //
 // PRINTING:
 //   To export an individual part, set its RENDER_* flag to true and all
 //   others to false — a single part is placed in its print orientation —
 //   then Render (F6) and export as STL.
 //     - Mount: back face on the bed, no supports.
-//     - Base: spigot on the bed. Supports under the floor around the
-//       spigot, plus v2's two spots (USB cutout roof, upper edge of the
-//       chord-flat). The spigot's end face — the clamping face — is the
-//       first layer, so it comes out flat.
+//     - Base: bottom face on the bed — it is the clamping face, so it
+//       comes out flat. Supports at v2's two spots only (USB cutout roof,
+//       upper edge of the chord-flat).
 //     - Hood: lip-thread end on the bed, no supports.
 //     - Cap: closed top on the bed, no supports.
 // Recommended: 0.2mm layer height, 3 perimeters, 20% infill.
@@ -141,31 +141,28 @@ dovetail_height       = 11;      // trapezoid cross-section height (Y extent)
 dovetail_length       = 39;      // rail length (Z extrusion)
 dovetail_axis_dist    = 43;      // optical axis → rail's wide (shoe) face, as v2
 
-/* Rotation joint — the housing's spigot turns in a socket in the mount's
+/* Rotation joint — the housing's flat bottom turns on the mount's flat
    seat. An M4 × 20 star knob from behind the mount runs through the seat
-   floor into an insert in the spigot and clamps the spigot's end face
-   onto the socket floor. That face is printed on the bed, so it is flat;
-   the housing floor (printed over supports) clears the seat rim. */
+   into an insert in the center of the housing's bottom and clamps the two
+   faces together. The knob screw alone centers the housing (±0.25 mm in
+   its clearance hole), which doesn't matter optically. */
 knob_collar_dia       = 12.5;    // star knob bearing face
 knob_thread_len       = 20;      // M4 thread under the collar
-spigot_dia            = 20;      // under the housing floor, centers the rotation
-spigot_height         = 6;
-socket_clearance      = 0.5;     // diametral — printed holes run small, so this
-                                 // keeps the turn free
-rim_clearance         = 0.5;     // housing floor above the seat rim
-seat_dia              = 30;      // socket wall around the spigot
-seat_floor            = 12.3;    // seat material under the socket — sized so the
-                                 // 20 mm thread fills the insert without bottoming
+base_extension        = 6;       // solid base below the floor, holds the insert
+seat_dia              = 30;      // clamping face the housing bottom rests on
+seat_height           = 12.3;    // seat material the knob passes through — sized
+                                 // so the 20 mm thread fills the insert without
+                                 // bottoming
 bridge_width          = 10;      // rib from the rail to the seat (X)
 bridge_height         = 8;       // rib height from the back face; ties the seat's
                                  // column and lower taper to the rail
 seat_column_dia       = 16;      // seat narrows to this around the knob hole, below
                                  // a 45° taper up to the full seat_dia
 
-/* Heat-set insert pocket in the spigot — M4 × 6, 5.9 mm knurl OD. Modeled
-   at the knurl OD (FDM holes print ~0.2–0.3 mm under) with a 45° lead-in;
-   a narrower relief beyond catches displaced plastic and stops the insert
-   flush with the spigot face. */
+/* Heat-set insert pocket in the housing's bottom — M4 × 6, 5.9 mm knurl
+   OD. Modeled at the knurl OD (FDM holes print ~0.2–0.3 mm under) with a
+   45° lead-in; a narrower relief beyond catches displaced plastic and
+   stops the insert flush with the bottom face. */
 insert_hole_dia       = 5.9;
 insert_lead_in        = 0.8;
 insert_hole_depth     = 6.3;     // 6 mm insert + 0.3 mm
@@ -203,11 +200,9 @@ dovetail_y_offset = -dovetail_axis_dist;                          // -43
 rail_inner_y     = dovetail_y_offset + dovetail_height;           // -32
 
 // Rotation joint
-socket_depth     = spigot_height - rim_clearance;                 // 5.5
-seat_height      = seat_floor + socket_depth;                     // 17.8 — seat rim Z
-housing_z        = seat_floor + spigot_height;                    // 18.3 — housing floor Z
-knob_tip         = knob_thread_len - seat_floor;                  // 7.7 — from spigot face
-seat_taper_top   = seat_floor - 1;                                // 11.3 — full seat_dia from here up
+housing_z        = seat_height + base_extension;                  // 18.3 — housing floor Z
+knob_tip         = knob_thread_len - seat_height;                 // 7.7 — from the bottom face
+seat_taper_top   = seat_height - 1;                               // 11.3 — full seat_dia from here up
 seat_taper_bot   = seat_taper_top - (seat_dia - seat_column_dia) / 2;  // 4.3
 
 assert(knob_tip >= insert_hole_depth - 0.3,
@@ -215,16 +210,16 @@ assert(knob_tip >= insert_hole_depth - 0.3,
 assert(knob_tip < insert_hole_depth + insert_relief_depth,
        "knob tip would bottom out past the insert relief");
 assert(insert_hole_depth + insert_relief_depth
-           <= spigot_height + base_floor_thickness - pcb_ledge_depth - 1,
+           <= base_extension + base_floor_thickness - pcb_ledge_depth - 1,
        "insert pocket would come within 1 mm of the PCB pocket");
 assert(seat_dia / 2 < back_flat_y,
-       "seat rim would extend past the housing's back flat");
+       "seat face would extend past the housing's back flat");
 assert(seat_column_dia >= knob_collar_dia + 2,
        "knob collar too large for the seat column's back face");
 assert(bridge_height > seat_taper_bot && bridge_height < seat_taper_top,
        "bridge rib should end on the seat's taper");
-assert(seat_taper_top <= seat_floor - 1,
-       "seat taper must reach the full diameter at least 1 mm below the socket floor");
+assert(seat_taper_top <= seat_height - 1,
+       "seat taper must reach the full diameter at least 1 mm below the seat face");
 assert(base_outer_dia / 2 < -rail_inner_y - 1,
        "housing would come within 1 mm of the rail");
 
@@ -244,9 +239,9 @@ single_part = (RENDER_MOUNT ? 1 : 0) + (RENDER_BASE ? 1 : 0)
 // Mount — dovetail rail, bridge and seat
 // --------------------------------------------------
 // The rail sits where it was on v2. A low rib joins its narrow face to
-// the round seat on the optical axis; the seat's socket takes the
-// housing's spigot, which bottoms on the socket floor. The star knob
-// goes in from the back face (Z = 0). Prints back face down, no supports.
+// the round seat on the optical axis; the housing's flat bottom rests on
+// the seat's flat top. The star knob goes in from the back face (Z = 0).
+// Prints back face down, no supports.
 
 module mount() {
     difference() {
@@ -259,7 +254,7 @@ module mount() {
                 cube([bridge_width, -rail_inner_y + 1, bridge_height]);
 
             // Seat — column around the knob, 45° taper (prints unsupported),
-            // full diameter under the socket and rim
+            // full diameter at the clamping face
             cylinder(d = seat_column_dia, h = seat_taper_bot + 0.01);
             translate([0, 0, seat_taper_bot])
                 cylinder(d1 = seat_column_dia, d2 = seat_dia,
@@ -268,13 +263,9 @@ module mount() {
                 cylinder(d = seat_dia, h = seat_height - seat_taper_top);
         }
 
-        // Socket for the spigot
-        translate([0, 0, seat_floor])
-            cylinder(d = spigot_dia + socket_clearance, h = socket_depth + 1);
-
         // Knob hole
         translate([0, 0, -1])
-            cylinder(d = knob_hole_dia, h = seat_floor + 2);
+            cylinder(d = knob_hole_dia, h = seat_height + 2);
     }
 }
 
@@ -284,15 +275,17 @@ module mount() {
 // --------------------------------------------------
 // Cylindrical shell with a stepped pocket for the camera PCB. The PCB
 // sits on a shallow ledge. USB cable exits through a cutout on the rear
-// face. A spigot under the floor turns in the mount's socket and holds
-// the knob's insert.
+// face. The base extends base_extension below the floor to a flat bottom
+// that turns on the mount's seat and holds the knob's insert.
 
 module pcb_base() {
     difference() {
         union() {
             difference() {
-                // Outer shell — cylindrical, centered at (0,0)
-                cylinder(d = base_outer_dia, h = base_height);
+                // Outer shell — cylindrical, centered at (0,0), extended
+                // below the floor to the flat bottom
+                translate([0, 0, -base_extension])
+                    cylinder(d = base_outer_dia, h = base_height + base_extension);
 
                 // Upper pocket — full PCB clearance zone (above floor),
                 // bounded at the base top so the lip's thread stays intact.
@@ -323,20 +316,16 @@ module pcb_base() {
             // Threaded lip — sits on top of the base
             translate([0, 0, base_height])
                 _threaded_lip();
-
-            // Spigot — under the floor
-            translate([0, 0, -spigot_height])
-                cylinder(d = spigot_dia, h = spigot_height + 0.01);
         }
 
         // Chord-flat on the back — shortens the USB tunnel. Runs from the
-        // base bottom up to Z = base_height - 1, leaving a 1 mm full-circle
-        // ring just below the lip and keeping the lip itself a full circle.
-        translate([-base_outer_dia, back_flat_y, -1])
-            cube([2 * base_outer_dia, base_outer_dia, base_height]);
+        // bottom up to Z = base_height - 1, leaving a 1 mm full-circle ring
+        // just below the lip and keeping the lip itself a full circle.
+        translate([-base_outer_dia, back_flat_y, -base_extension - 1])
+            cube([2 * base_outer_dia, base_outer_dia, base_height + base_extension]);
 
-        // Insert pocket — from the spigot face
-        translate([0, 0, -spigot_height])
+        // Insert pocket — from the bottom face
+        translate([0, 0, -base_extension])
             _insert_pocket();
     }
 }
@@ -537,7 +526,7 @@ cap_z  = hood_z + hood_top + preview_gap;
 if (single_part) {
     if (RENDER_MOUNT) mount();
     if (RENDER_BASE)
-        translate([0, 0, spigot_height]) pcb_base();
+        translate([0, 0, base_extension]) pcb_base();
     if (RENDER_HOOD) hood();
     if (RENDER_CAP)
         translate([0, 0, cap_height]) rotate([180, 0, 0])
