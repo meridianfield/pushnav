@@ -30,7 +30,7 @@ import threading
 import time
 from typing import Callable, Protocol
 
-from aiohttp import web
+from aiohttp import WSCloseCode, web
 
 from evf.config.manager import ConfigManager
 from evf.engine.frame_buffer import LatestFrame
@@ -176,6 +176,7 @@ class WebServer:
         self._clients: set[web.WebSocketResponse] = set()
         self._mjpeg_clients: int = 0
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._serve_task: asyncio.Task | None = None
         self._thread: threading.Thread | None = None
         self._url: str | None = None
         self._port: int | None = None  # actual bound port (for tests on ephemeral port)
@@ -189,8 +190,13 @@ class WebServer:
         self._thread.start()
 
     def stop(self, timeout: float = 2.0) -> None:
-        if self._loop is not None and self._loop.is_running():
-            self._loop.call_soon_threadsafe(self._loop.stop)
+        # Cancel the serve task (not loop.stop()) so _serve's finally block
+        # can close websockets and release the port before the loop exits.
+        if self._loop is not None and self._serve_task is not None:
+            try:
+                self._loop.call_soon_threadsafe(self._serve_task.cancel)
+            except RuntimeError:
+                pass  # loop already closed
         if self._thread is not None:
             self._thread.join(timeout=timeout)
         logger.info("Web server stopped")
@@ -205,10 +211,25 @@ class WebServer:
     def _run(self) -> None:
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
+        self._serve_task = self._loop.create_task(self._serve())
         try:
-            self._loop.run_until_complete(self._serve())
+            self._loop.run_until_complete(self._serve_task)
+        except asyncio.CancelledError:
+            pass  # normal stop()
         except Exception as exc:
             logger.error("Web server error: %s", exc)
+        finally:
+            # Request handlers still streaming (MJPEG) can outlive
+            # runner.cleanup(); cancel and drain them before closing.
+            pending = asyncio.all_tasks(self._loop)
+            for task in pending:
+                task.cancel()
+            if pending:
+                self._loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+            self._loop.close()
 
     async def _serve(self) -> None:
         port = self._config.web_port
@@ -246,7 +267,9 @@ class WebServer:
         if dist.exists():
             app.router.add_static("/static", dist, name="react_static")
 
-        runner = web.AppRunner(app)
+        # Short shutdown_timeout: /frame.mjpg streams never finish on their
+        # own, and aiohttp would otherwise wait 60 s for them in cleanup().
+        runner = web.AppRunner(app, shutdown_timeout=0.5)
         await runner.setup()
         site = web.TCPSite(runner, "0.0.0.0", port)
         await site.start()
@@ -261,7 +284,13 @@ class WebServer:
             self._port = port
         logger.info("Web server listening on port %d", self._port)
 
-        await self._broadcast_loop()
+        try:
+            await self._broadcast_loop()
+        finally:
+            for ws in list(self._clients):
+                await ws.close(code=WSCloseCode.GOING_AWAY, message=b"server shutdown")
+            self._clients.clear()
+            await runner.cleanup()
 
     async def _handle_index(self, request: web.Request) -> web.StreamResponse:
         """Serve the React app shell from web_dist_dir().
