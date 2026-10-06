@@ -195,14 +195,14 @@ Installed layout:
 **Files:** `docs/rpi-headless.md`, `README.md`, `docs/install.md`,
 `CLAUDE.md`
 
-- [ ] Rewrite `docs/rpi-headless.md`: apt install as the primary path
+- [x] Rewrite `docs/rpi-headless.md`: apt install as the primary path
       (download `.deb`, `sudo apt install ./…`, open URL), service
       management (`systemctl status/stop/disable`, `journalctl -u`),
       config location (`/var/lib/pushnav-headless/config/…`), Pi 4 and
       Pi 5 both supported. Keep from-source as a developer section and
       fix its Stellarium log line (`0.0.0.0:10001`).
-- [ ] Mention the `pushnav-headless` package in install docs and README.
-- [ ] Note the `desktop` dependency group and the new build script in
+- [x] Mention the `pushnav-headless` package in install docs and README.
+- [x] Note the `desktop` dependency group and the new build script in
       `CLAUDE.md`.
 
 ### Task 8: Hardware verification (this Pi 5, trixie)

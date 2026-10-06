@@ -55,7 +55,18 @@ camera\windows\build.bat            :: Windows — C/DirectShow camera server (r
 scripts/build_mac.sh                # macOS — Nuitka → .app → .dmg
 scripts/build_linux.sh              # Linux — Nuitka standalone
 scripts/build_windows.bat           # Windows — Nuitka → Inno Setup installer
+scripts/build_headless_deb.sh       # Raspberry Pi — pushnav-headless .deb (arm64, bookworm container)
+scripts/smoke_test_headless_deb.sh  # install + run the .deb in clean bookworm / trixie containers
 ```
+
+The Raspberry Pi build is **always headless** and named `pushnav-headless` to
+keep it distinct from the Linux PC/laptop build. It bundles a standalone
+Python under `/usr/lib/pushnav-headless` without the `desktop` dependency
+group (no pywebview / PyQt6), runs as the `pushnav-headless` systemd service
+(user `pushnav`, state in `/var/lib/pushnav-headless`), and the launcher sets
+`PUSHNAV_ROOT` so `evf/paths.py` uses the Linux release layout. With
+`--no-window` the engine runs a camera watchdog that keeps retrying the
+camera in the background.
 
 ### Running tests
 
@@ -141,11 +152,14 @@ hardware/                       # 3D-printable mechanical designs (OpenSCAD)
     stls/                       # pre-built STL files ready for printing
 marketing/                      # app branding assets (logo, in-app title)
 linux/                          # Linux desktop integration (pushnav.desktop)
+packaging/headless/             # pushnav-headless .deb: launcher, systemd unit, debian/ maintainer scripts
 build/                          # build output (gitignored)
 scripts/                        # build and dev scripts
   build_mac.sh                  # macOS Nuitka build → .app/.dmg
   build_linux.sh                # Linux Nuitka build
   build_windows.bat             # Windows Nuitka + Inno Setup build
+  build_headless_deb.sh         # Raspberry Pi pushnav-headless .deb build
+  smoke_test_headless_deb.sh    # container install/run test for the .deb
   build_camera_mac.sh           # compile Swift camera server
   run_dev.sh                    # dev launch (macOS)
   run_dev_linux.sh              # dev launch (Linux)
