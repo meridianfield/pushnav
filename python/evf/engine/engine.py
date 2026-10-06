@@ -24,6 +24,7 @@ Central coordinator that owns the lifecycle of every subsystem.
 import io
 import json
 import logging
+import re
 import threading
 import time
 from pathlib import Path
@@ -72,6 +73,30 @@ def _read_app_version() -> str:
         return "0.0.0"
 
 
+_V4L2_SYSFS = Path("/sys/class/video4linux")
+# A USB camera's sysfs device path runs through a root hub (".../usb3/3-2/...");
+# SoC video blocks (Pi ISP, HEVC decoder) sit under /platform/ with no /usbN/.
+_USB_DEVICE_PATH = re.compile(r"/usb\d+/")
+
+
+def _usb_video_device_present() -> bool:
+    """True if any USB video device is attached (Linux sysfs).
+
+    Lets the headless camera watchdog skip spawning camera_server — and
+    logging its failure — every few seconds while nothing is plugged in.
+    Returns True when sysfs is unavailable, so the caller just tries.
+    """
+    if not _V4L2_SYSFS.is_dir():
+        return True
+    for node in _V4L2_SYSFS.iterdir():
+        try:
+            if _USB_DEVICE_PATH.search(str((node / "device").resolve())):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 class Engine:
     """Central coordinator that owns all components and manages their lifecycle.
 
@@ -104,6 +129,12 @@ class Engine:
         self._solver_thread: SolverThread | None = None
         self._audio: AudioAlert | None = None
         self._subprocess_mgr: SubprocessManager | None = None
+        # Serializes camera (re)starts: the UI "Retry camera" button, the
+        # headless watchdog and shutdown must never race each other.
+        self._camera_lock = threading.Lock()
+        self._camera_watchdog: threading.Thread | None = None
+        # Set once shutdown() begins; stops the watchdog and refuses retries.
+        self._shutting_down = threading.Event()
         self._stellarium: StellariumServer | None = None
         self._lx200: Lx200Server | None = None
         self._webserver: WebServer | None = None
@@ -532,16 +563,68 @@ class Engine:
         is identical to what already runs once at every launch.
         Returns the post-attempt camera_connected state.
         """
-        if self.camera_connected:
+        with self._camera_lock:
+            if self._shutting_down.is_set():
+                return False
+            if self.camera_connected:
+                return True
+            # Stop the stale manager (ends any recovery loop still running)
+            # and drop it so startup_camera builds a fresh one;
+            # _kill_stale_server inside SubprocessManager._spawn_process will
+            # reap any orphaned camera_server left over from the prior failure.
+            stale, self._subprocess_mgr = self._subprocess_mgr, None
+            if stale is not None:
+                try:
+                    stale.stop()
+                except Exception as exc:
+                    logger.warning("Error stopping stale camera manager: %s", exc)
+            self.startup_camera()
+            if not self.camera_connected:
+                return False
+            # Recovery may have left the engine in RECONNECTING / ERROR.
+            if self._state_machine.state in (
+                EngineState.RECONNECTING, EngineState.ERROR
+            ):
+                self._state_machine.transition(EngineState.SETUP)
+            if self._solver_thread is None:
+                self.startup_solver_thread()
             return True
-        # Drop the stale manager so startup_camera builds a fresh one;
-        # _kill_stale_server inside SubprocessManager._spawn_process will
-        # reap any orphaned camera_server left over from the prior failure.
-        self._subprocess_mgr = None
-        self.startup_camera()
-        if self.camera_connected and self._solver_thread is None:
-            self.startup_solver_thread()
-        return self.camera_connected
+
+    def start_camera_watchdog(self, interval_s: float = 10.0) -> None:
+        """Keep retrying the camera in the background (headless mode).
+
+        A headless Pi has no "Retry camera" click to fall back on: the
+        service may boot before the camera is plugged in, and the
+        SubprocessManager's own recovery gives up after 5 attempts. Every
+        `interval_s` this checks for a missing camera and, once a USB
+        video device is present, calls retry_camera(). It stays out of
+        the way while SubprocessManager is mid-recovery.
+        """
+        if self._camera_watchdog is not None:
+            return
+        self._camera_watchdog = threading.Thread(
+            target=self._camera_watchdog_loop,
+            args=(interval_s,),
+            name="camera-watchdog",
+            daemon=True,
+        )
+        self._camera_watchdog.start()
+
+    def _camera_watchdog_loop(self, interval_s: float) -> None:
+        waiting_logged = False
+        while not self._shutting_down.wait(interval_s):
+            mgr = self._subprocess_mgr
+            if self.camera_connected or (mgr is not None and mgr.recovering):
+                waiting_logged = False
+                continue
+            if not _usb_video_device_present():
+                if not waiting_logged:
+                    logger.info("Waiting for camera — plug it in to continue")
+                    waiting_logged = True
+                continue
+            if self.retry_camera():
+                logger.info("Camera connected by watchdog")
+                waiting_logged = False
 
     def startup_solver_thread(self) -> None:
         """Create solver thread object (not started until user enables tracking)."""
@@ -749,6 +832,7 @@ class Engine:
     def shutdown(self) -> None:
         """Graceful shutdown. Each step with independent timeout."""
         logger.info("Shutting down")
+        self._shutting_down.set()
 
         # 0. Stop sample injector (so it stops writing frames before solver stops)
         try:
@@ -784,12 +868,19 @@ class Engine:
             except Exception as exc:
                 logger.error("Error stopping web server: %s", exc)
 
-        # 3. Terminate camera subprocess
-        if self._subprocess_mgr:
-            try:
-                self._subprocess_mgr.stop()
-            except Exception as exc:
-                logger.error("Error stopping camera: %s", exc)
+        # 3. Terminate camera subprocess. Taking _camera_lock waits out any
+        # retry already in flight (_shutting_down refuses new ones), so no
+        # camera_server can be spawned after we've stopped the manager.
+        locked = self._camera_lock.acquire(timeout=30)
+        try:
+            if self._subprocess_mgr:
+                try:
+                    self._subprocess_mgr.stop()
+                except Exception as exc:
+                    logger.error("Error stopping camera: %s", exc)
+        finally:
+            if locked:
+                self._camera_lock.release()
 
         # 4. Save config
         try:

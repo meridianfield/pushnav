@@ -163,6 +163,9 @@ def main() -> None:
 
     if no_window:
         _start_camera()  # headless: no window to unblock, so start it inline
+        # No "Retry camera" click to rely on: keep retrying in the background
+        # so a camera plugged in after boot (or after recovery gave up) comes up.
+        engine.start_camera_watchdog()
         logger.info("Running headless (--no-window). Press Ctrl-C to exit.")
         stop = threading.Event()
         signal.signal(signal.SIGINT, lambda *_: stop.set())

@@ -108,6 +108,11 @@ class SubprocessManager:
     def running(self) -> bool:
         return self._client is not None and self._client.connected
 
+    @property
+    def recovering(self) -> bool:
+        """True while the backoff recovery loop owns the camera."""
+        return self._recovering
+
     # -- binary resolution ----------------------------------------------------
 
     @staticmethod

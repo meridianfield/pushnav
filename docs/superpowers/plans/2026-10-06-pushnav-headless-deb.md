@@ -86,24 +86,24 @@ from phone), SD-card image.
 
 **Files:** `python/evf/engine/engine.py`, `python/evf/main.py`, `tests/`
 
-- [ ] Add a lock around `Engine.retry_camera()` so the UI button and the
+- [x] Add a lock around `Engine.retry_camera()` so the UI button and the
       background retry can't spawn two camera servers at once.
-- [ ] Add `Engine.start_camera_watchdog(interval_s=10)`: a daemon thread
+- [x] Add `Engine.start_camera_watchdog(interval_s=10)`: a daemon thread
       that, every interval, calls `retry_camera()` when
       `camera_connected` is False **and** the `SubprocessManager` is not
       mid-recovery (don't stomp on its own backoff loop). Stops on
       `engine.shutdown()`.
-- [ ] Rate-limit logging: one "Waiting for camera…" line when the camera
+- [x] Rate-limit logging: one "Waiting for camera…" line when the camera
       first goes missing, one "Camera connected" on success — not an
       error line every 10 s.
-- [ ] Ensure a successful retry from `EngineState.ERROR` returns the
+- [x] Ensure a successful retry from `EngineState.ERROR` returns the
       state machine to `SETUP` (same as recovery does).
-- [ ] Call it from `main.py` only on the `--no-window` path. The desktop
+- [x] Call it from `main.py` only on the `--no-window` path. The desktop
       app keeps its current behaviour (Retry button).
-- [ ] Unit test with a fake `SubprocessManager`: watchdog retries while
+- [x] Unit test with a fake `SubprocessManager`: watchdog retries while
       disconnected, stops retrying once connected, skips while recovering,
       exits on shutdown.
-- [ ] Manual on this Pi: start with camera unplugged → web UI reachable;
+- [x] Manual on this Pi: start with camera unplugged → web UI reachable;
       plug in → connects within ~10 s; unplug/replug → recovers.
 
 ### Task 3: Headless install-root detection in `paths.py`
