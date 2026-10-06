@@ -29,7 +29,7 @@ Linux PC/laptop build). Users run
 
 ## Already verified (on the Pi 5)
 
-- `uv run pytest tests/`: 295 passed.
+- `uv run pytest tests/`: 311 passed (incl. 16 in `test_sync_reference.py`).
 - `.deb` installed on the Pi 5 (trixie): service starts at boot; booting
   without a camera logs one "Waiting for camera" line, and the camera
   connects by itself when plugged in; clean stop; `--reinstall` keeps
@@ -86,12 +86,14 @@ case the two outputs differ by one ULP in the z component at Dec ≈ +90°,
 and `vec_to_radec`'s `arcsin(z)` turns that into exactly
 √(2·1.1e-16) rad = 3.07 mas. The scipy version has the same limit.
 
-Gap (not addressed): `tests/test_sync.py` computes its expected values
-with the same `orientation_from_radec_roll` it tests, so nothing in the
-repo independently checks the rotation, and the scipy comparison was
-never committed. A possible follow-up: golden input/output values
-captured from the scipy version, plus an orthonormality/det check over
-random RA/Dec/roll. Not done yet; waiting on a decision.
+Gap found here: `tests/test_sync.py` computes its expected values with
+the same `orientation_from_radec_roll` it tests. **Closed on the Pi** in
+`tests/test_sync_reference.py`: 9 reference cases recorded from the
+pre-`65ccf7d` scipy `sync.py` (incl. RA seam, both poles, roll wrap), plus
+orthonormality/det, boresight, roll-convention and roll-periodicity checks
+over random pointings. Planted-bug check: a reversed roll sign and swapped
+image axes both pass all 25 old `test_sync.py` tests but fail the new ones;
+dropping the inverse fails both.
 
 ## Still to do
 
