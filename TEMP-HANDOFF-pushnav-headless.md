@@ -1,9 +1,10 @@
 # TEMPORARY handoff note: `feat/pushnav-headless-deb`
 
-> **Delete this file before merging.** It exists only to carry context from
-> the Raspberry Pi 5 dev box to the Linux PC.
+> **Delete this file before merging.** It exists only to carry context
+> between the Raspberry Pi 5 dev box and the Linux PC.
 
-Written 2026-10-06. Plan with per-task details and results:
+Written 2026-10-06 on the Pi; updated the same day on the Linux PC with
+the results of the checks below. Plan with per-task details and results:
 `docs/superpowers/plans/2026-10-06-pushnav-headless-deb.md`.
 
 ## What this branch does
@@ -38,42 +39,65 @@ Linux PC/laptop build). Users run
   ([run 37429677591](https://github.com/meridianfield/pushnav/actions/runs/37429677591)).
 - `mkdocs build --strict` passes.
 
-## NOT verified yet: do this on the Linux PC
+## Verified on the Linux PC (x86_64), 2026-10-06
 
-The desktop builds were never run with this branch's dependency changes.
-A full CI run was started and then cancelled (run 37430430167); only the
-headless job finished.
+### 1. Full CI run: passed
 
-### 1. Full CI run (no release)
+[Run 37435807221](https://github.com/meridianfield/pushnav/actions/runs/37435807221)
+(`platform=all`, `create_release=false`): `build-macos`, `build-linux`,
+`build-windows` (36 min) and `build-headless-deb` all succeeded;
+`release` was skipped.
+
+- **pywebview:** the plain `uv sync` in CI installed `pywebview==6.2.1` in
+  the macOS, Linux and Windows jobs, so `default-groups` works with the
+  uv version in CI.
+- **scipy:** Nuitka didn't pull it in. The only "scipy" in the logs is
+  `numpy.libs/libscipy_openblas64_…dll`, which is numpy's own OpenBLAS.
+- Warnings only: Nuitka's usual numpy `doctest` anti-bloat warning, and
+  GitHub's Node.js 20 deprecation notice for `actions/checkout@v4` and
+  `actions/upload-artifact@v4`.
+- `gh` on the Linux PC must be logged in as `arunvenkataswamy` (admin).
+  `arun-venkataswamy` only has read access and gets HTTP 403 on
+  `gh workflow run`.
+
+### 2. Desktop app: command-line checks passed
+
+- `uv sync` removed scipy and qrcode; `import webview` and
+  `import PyQt6` work; `import scipy` gives `ModuleNotFoundError`.
+- `uv run pytest tests/`: 295 passed.
+- `make -C camera/linux` (already up to date) and `npm run build` succeed.
+- `git grep -i scipy` finds nothing outside this note, `uv.lock` and the
+  plan.
+
+### scipy → numpy rotation: re-checked on x86
+
+Compared the current `solver/sync.py` with the pre-`65ccf7d` scipy
+version (`uv run --with scipy`, scipy 1.18.1, numpy 2.4.2), using
+`compute_body_frame_sync` + `apply_body_frame_sync`:
+
+| Cases | Max difference |
+|---|---|
+| 100k random sync/track pairs, sync star up to 30° off-axis, roll −360..720 | 3.6e-9 arcsec on sky; 6.7e-16 in `d_body` |
+| 5,625 pairs at/near the poles, RA 0/360, roll wraparound | 3.1e-3 arcsec |
+| Orientation matrix `T` | `|TᵀT − I|` ≤ 5.6e-16, `det(T)` = 1 |
+
+The 3 milliarcsec at the poles isn't from the rotation code. In the worst
+case the two outputs differ by one ULP in the z component at Dec ≈ +90°,
+and `vec_to_radec`'s `arcsin(z)` turns that into exactly
+√(2·1.1e-16) rad = 3.07 mas. The scipy version has the same limit.
+
+Gap (not addressed): `tests/test_sync.py` computes its expected values
+with the same `orientation_from_radec_roll` it tests, so nothing in the
+repo independently checks the rotation, and the scipy comparison was
+never committed. A possible follow-up: golden input/output values
+captured from the scipy version, plus an orthonormality/det check over
+random RA/Dec/roll. Not done yet; waiting on a decision.
+
+## Still to do
+
+### Desktop window checks (needs a person at the Linux PC)
 
 ```bash
-gh workflow run build.yml --ref feat/pushnav-headless-deb -f platform=all -f create_release=false
-gh run list --workflow build.yml --branch feat/pushnav-headless-deb --limit 1
-gh run watch <run-id> --exit-status
-```
-
-Expect all four build jobs (`build-macos`, `build-linux`, `build-windows`,
-`build-headless-deb`) to succeed; `release` is skipped.
-
-Most likely failure points:
-
-- **Nuitka builds.** scipy is gone from both the dependencies and the
-  `--include-package` lists. If Nuitka still complains about scipy,
-  something else imports it.
-- **pywebview missing from a build.** CI runs a plain `uv sync`, which
-  should install the `desktop` group through `default-groups`. If a build
-  fails with `No module named 'webview'`, that mechanism isn't working
-  with the uv version in CI.
-
-### 2. Desktop app on the Linux PC (x86_64)
-
-```bash
-git fetch && git switch feat/pushnav-headless-deb
-uv sync                                    # should still install pywebview + PyQt6
-uv run python -c "import webview; print('webview ok')"
-uv run python -c "import scipy" 2>&1 | tail -1   # expect ModuleNotFoundError
-uv run pytest tests/
-make -C camera/linux && (cd web && npm install && npm run build)
 uv run python -m evf.main                  # window should open as before
 ```
 
@@ -89,13 +113,13 @@ In the window, check:
 - Closing the window: the log should have no "Web server error: Event loop
   stopped" line.
 
-Optionally, build the Linux release locally: `scripts/build_linux.sh`.
+### Optional
 
-### 3. Optional: the .deb build on x86
-
-`scripts/build_headless_deb.sh` runs the arm64 container under QEMU on
-x86. It's slow, but it confirms the "build on a PC" path from the plan.
-It needs `qemu-user-static` and `binfmt-support`.
+- Build the Linux release locally: `scripts/build_linux.sh` (CI already
+  built it).
+- The .deb build on x86: `scripts/build_headless_deb.sh` runs the arm64
+  container under QEMU. It's slow, but it confirms the "build on a PC"
+  path from the plan. It needs `qemu-user-static` and `binfmt-support`.
 
 ## After that
 
