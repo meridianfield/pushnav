@@ -159,3 +159,28 @@ def test_usb_probe_finds_usb_camera(tmp_path, monkeypatch):
 def test_usb_probe_without_sysfs_says_try(tmp_path, monkeypatch):
     monkeypatch.setattr(engine_mod, "_V4L2_SYSFS", tmp_path / "missing")
     assert _usb_video_device_present() is True
+
+
+# -- startup without a USB camera -------------------------------------------------
+
+
+def test_startup_camera_skips_spawn_without_usb(tmp_path, monkeypatch, caplog):
+    """No USB video device → no camera_server spawn, one info line, no errors."""
+
+    def boom(*_a, **_k):
+        raise AssertionError("SubprocessManager must not be created")
+
+    monkeypatch.setattr(engine_mod, "_usb_video_device_present", lambda: False)
+    monkeypatch.setattr(engine_mod, "SubprocessManager", boom)
+    eng = Engine(dev_mode=False, config=ConfigManager(config_dir=tmp_path / "cfg"))
+    try:
+        with caplog.at_level(logging.INFO, logger="evf.engine.engine"):
+            eng.startup_camera()
+            eng.start_camera_watchdog(interval_s=0.01)
+            time.sleep(0.1)
+        assert not eng.camera_connected
+        waiting = [r for r in caplog.records if "Waiting for camera" in r.message]
+        assert len(waiting) == 1  # startup + watchdog ticks share one line
+        assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+    finally:
+        eng._shutting_down.set()

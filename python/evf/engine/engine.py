@@ -135,6 +135,8 @@ class Engine:
         self._camera_watchdog: threading.Thread | None = None
         # Set once shutdown() begins; stops the watchdog and refuses retries.
         self._shutting_down = threading.Event()
+        # "Waiting for camera" is logged once per absence, not every attempt.
+        self._camera_wait_logged = False
         self._stellarium: StellariumServer | None = None
         self._lx200: Lx200Server | None = None
         self._webserver: WebServer | None = None
@@ -517,13 +519,20 @@ class Engine:
         On first launch (config has no saved exposure/gain), each control is
         initialized to the midpoint of the range the camera reports — which
         differs by OS/camera backend, so we can't hardcode sensible defaults.
+
+        With no USB video device attached (Linux), skips spawning
+        camera_server — it would only fail and log its allowlist.
         """
+        if not _usb_video_device_present():
+            self._log_waiting_for_camera()
+            return
         try:
             self._subprocess_mgr = SubprocessManager(
                 self._frame_buffer, self._state_machine, self._config
             )
             hello = self._subprocess_mgr.start()
             logger.info("Camera connected: %s", hello)
+            self._camera_wait_logged = False
 
             client = self._subprocess_mgr.client
             if client:
@@ -610,21 +619,23 @@ class Engine:
         )
         self._camera_watchdog.start()
 
+    def _log_waiting_for_camera(self) -> None:
+        if not self._camera_wait_logged:
+            logger.info("Waiting for camera — plug it in to continue")
+            self._camera_wait_logged = True
+
     def _camera_watchdog_loop(self, interval_s: float) -> None:
-        waiting_logged = False
         while not self._shutting_down.wait(interval_s):
             mgr = self._subprocess_mgr
             if self.camera_connected or (mgr is not None and mgr.recovering):
-                waiting_logged = False
+                self._camera_wait_logged = False
                 continue
             if not _usb_video_device_present():
-                if not waiting_logged:
-                    logger.info("Waiting for camera — plug it in to continue")
-                    waiting_logged = True
+                self._log_waiting_for_camera()
                 continue
             if self.retry_camera():
                 logger.info("Camera connected by watchdog")
-                waiting_logged = False
+                self._camera_wait_logged = False
 
     def startup_solver_thread(self) -> None:
         """Create solver thread object (not started until user enables tracking)."""
