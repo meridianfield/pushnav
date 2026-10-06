@@ -110,11 +110,11 @@ from phone), SD-card image.
 
 **Files:** `python/evf/paths.py`, `tests/`
 
-- [ ] Treat `PUSHNAV_ROOT=<dir>` (set by the launcher) as a Linux
+- [x] Treat `PUSHNAV_ROOT=<dir>` (set by the launcher) as a Linux
       release root, reusing every existing `_LINUX_RELEASE` branch
       (`camera_server`, `data/tetra3rs_gaia.bin`, `data/VERSION.json`,
       `data/sounds`, `data/web_dist`, `data/samples`, `marketing/`).
-- [ ] Test: with `PUSHNAV_ROOT` pointing at a temp dir in release
+- [x] Test: with `PUSHNAV_ROOT` pointing at a temp dir in release
       layout, all path functions resolve inside it.
 
 ### Task 4: Package layout, launcher and maintainer scripts
