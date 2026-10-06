@@ -1,0 +1,34 @@
+[Unit]
+Description=PushNav headless plate-solving push-to (web UI on port 8765)
+Documentation=https://meridianfield.github.io/pushnav/rpi-headless/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=pushnav
+Group=pushnav
+SupplementaryGroups=video
+ExecStart=/usr/bin/pushnav-headless
+# Config and logs live under /var/lib/pushnav-headless (created by systemd,
+# owned by the pushnav user, removed on `apt purge`).
+StateDirectory=pushnav-headless
+Environment=HOME=/var/lib/pushnav-headless
+Environment=XDG_CONFIG_HOME=/var/lib/pushnav-headless/config
+Environment=XDG_STATE_HOME=/var/lib/pushnav-headless/state
+# SIGTERM only the engine, which stops camera_server itself. The default
+# (control-group) would kill camera_server at the same moment, and the
+# engine would start camera recovery in the middle of shutting down.
+KillMode=mixed
+# shutdown() can wait out a camera retry already in flight (~30 s worst case).
+TimeoutStopSec=45
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

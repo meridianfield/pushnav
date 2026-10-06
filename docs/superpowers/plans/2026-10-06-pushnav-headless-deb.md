@@ -134,24 +134,24 @@ Installed layout:
 /lib/systemd/system/pushnav-headless.service
 ```
 
-- [ ] Launcher: `exec env PUSHNAV_ROOT=/usr/lib/pushnav-headless
+- [x] Launcher: `exec env PUSHNAV_ROOT=/usr/lib/pushnav-headless
       /usr/lib/pushnav-headless/python/bin/python3 -m evf.main --no-window "$@"`.
-- [ ] Unit: `User=pushnav`, `SupplementaryGroups=video`,
+- [x] Unit: `User=pushnav`, `SupplementaryGroups=video`,
       `StateDirectory=pushnav-headless`,
       `Environment=XDG_CONFIG_HOME=/var/lib/pushnav-headless/config`
       and `XDG_STATE_HOME=/var/lib/pushnav-headless/state`,
       `Restart=on-failure`, `RestartSec=5`, `After=network-online.target`,
       `WantedBy=multi-user.target`. SIGTERM already triggers a clean
       `engine.shutdown()`.
-- [ ] `control`: `Package: pushnav-headless`, `Architecture: arm64`,
+- [x] `control`: `Package: pushnav-headless`, `Architecture: arm64`,
       `Depends: libjpeg62-turbo, adduser`, `Section: science`,
       description making clear it's the headless Raspberry Pi build.
-- [ ] `postinst`: create system user `pushnav` (no login, home
+- [x] `postinst`: create system user `pushnav` (no login, home
       `/var/lib/pushnav-headless`), add to `video`, `systemctl enable --now`.
       Print the phone URL (LAN IP + `:8765`).
-- [ ] `prerm`: stop the service. `postrm purge`: disable, remove the
+- [x] `prerm`: stop the service. `postrm purge`: disable, remove the
       user and `/var/lib/pushnav-headless`.
-- [ ] Running `pushnav-headless` by hand while the service is up hits the
+- [x] Running `pushnav-headless` by hand while the service is up hits the
       existing single-instance guard — make sure its message mentions
       `sudo systemctl stop pushnav-headless`.
 
@@ -159,10 +159,10 @@ Installed layout:
 
 **Files (new):** `scripts/build_headless_deb.sh`
 
-- [ ] Runs inside a `debian:bookworm` arm64 container (native on a Pi or
+- [x] Runs inside a `debian:bookworm` arm64 container (native on a Pi or
       ARM CI runner; QEMU on an x86 PC). Flag to run directly on the
       host for quick iteration.
-- [ ] Steps: build `camera/linux/camera_server` (gcc + libjpeg-dev) →
+- [x] Steps: build `camera/linux/camera_server` (gcc + libjpeg-dev) →
       build the React UI (`npm ci && npm run build`) → fetch
       python-build-standalone 3.12 via `uv python install` and copy it
       into the staging tree → install deps from
@@ -171,8 +171,11 @@ Installed layout:
       strip `__pycache__`, tests, and the `gaia-catalog` blob only if it
       is truly unused at runtime (verify first) → `dpkg-deb --build
       --root-owner-group`.
-- [ ] Version from `data/VERSION.json` (`0.3.0-beta` → `0.3.0~beta-1`).
-- [ ] Output: `build/pushnav-headless_<ver>_arm64.deb`. Report its size.
+- [x] Version from `data/VERSION.json` (`0.3.0-beta` → `0.3.0~beta-1`).
+- [x] Output: `build/pushnav-headless_<ver>_arm64.deb`. Report its size.
+      → 87 MB `.deb`, 385 MB installed (scipy ~145 MB of it). Container
+      install + `/api/version` smoke test passes on bookworm and trixie;
+      the 4 sample images solve in ~90 ms each on a Pi 5.
 
 ### Task 6: CI
 
