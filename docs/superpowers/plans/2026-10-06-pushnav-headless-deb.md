@@ -69,17 +69,17 @@ from phone), SD-card image.
 
 **Files:** `pyproject.toml`, `uv.lock`
 
-- [ ] Move `pywebview>=5.0` and `pywebview[qt]>=5.0 ; sys_platform == 'linux'`
+- [x] Move `pywebview>=5.0` and `pywebview[qt]>=5.0 ; sys_platform == 'linux'`
       (with their explanatory comment) into a new `[dependency-groups] desktop`.
-- [ ] Add `[tool.uv] default-groups = ["dev", "desktop"]` so plain
+- [x] Add `[tool.uv] default-groups = ["dev", "desktop"]` so plain
       `uv sync` is unchanged for development and for the macOS / Windows /
       Linux-laptop build scripts and CI.
-- [ ] Remove the unused `qrcode[pil]` dependency (Pillow stays — the
+- [x] Remove the unused `qrcode[pil]` dependency (Pillow stays — the
       solver uses it).
-- [ ] `uv lock`; verify `uv sync` still installs pywebview and
+- [x] `uv lock`; verify `uv sync` still installs pywebview and
       `uv sync --no-group desktop` does not.
-- [ ] Run `uv run pytest tests/` — must pass.
-- [ ] Confirm `uv run python -m evf.main --no-window` starts in a venv
+- [x] Run `uv run pytest tests/` — must pass.
+- [x] Confirm `uv run python -m evf.main --no-window` starts in a venv
       without the desktop group.
 
 ### Task 2: Background camera retry when headless
