@@ -181,13 +181,13 @@ Installed layout:
 
 **Files:** `.github/workflows/build.yml`
 
-- [ ] New job `build-headless-deb` on `ubuntu-24.04-arm`, running
+- [x] New job `build-headless-deb` on `ubuntu-24.04-arm`, running
       `scripts/build_headless_deb.sh` in `debian:bookworm`.
-- [ ] Smoke test in a fresh `debian:bookworm` and `debian:trixie`
+- [x] Smoke test (`scripts/smoke_test_headless_deb.sh`) in a fresh `debian:bookworm` and `debian:trixie`
       container: `apt install ./*.deb`, run `pushnav-headless` with no
       camera for a few seconds, assert `GET /api/version` returns
       `"app": "pushnav"`.
-- [ ] Add a `headless` option to the `platform` input; add the job to
+- [x] Add a `headless` option to the `platform` input; add the job to
       `release.needs` and upload the `.deb` as a release asset.
 
 ### Task 7: Docs
