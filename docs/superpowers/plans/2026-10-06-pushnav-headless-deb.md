@@ -207,11 +207,19 @@ Installed layout:
 
 ### Task 8: Hardware verification (this Pi 5, trixie)
 
-- [ ] Fresh install of the built `.deb`; service active; phone UI works;
+- [x] Fresh install of the built `.deb`; service active; phone UI works;
       camera streams.
-- [ ] Reboot → comes back by itself.
-- [ ] Boot with camera unplugged → UI reachable; plug in → connects.
-- [ ] Unplug / replug during use → recovers.
-- [ ] Reinstall / upgrade over an older version keeps config.
-- [ ] `apt purge` removes user, state and unit.
-- [ ] Record the installed size and first-solve time on Pi 5.
+- [x] Reboot → comes back by itself.
+- [x] Boot with camera unplugged → UI reachable; plug in → connects.
+- [x] Unplug / replug during use → recovers.
+- [x] Reinstall / upgrade over an older version keeps config.
+- [x] `apt purge` removes user, state and unit.
+- [x] Record the installed size and first-solve time on Pi 5.
+      → 385 MB installed; sample frames solve in ~90 ms on a Pi 5.
+
+Verified 2026-10-06 on the Pi 5 (Pi OS trixie): service starts at boot;
+boot without camera logs one "Waiting for camera" line and connects via
+the watchdog when plugged in; stop with the camera attached is clean
+(KillMode=mixed, no recovery noise); `--reinstall` keeps config.json
+byte-identical and keeps the unit enabled; `apt purge` removes unit,
+user/group, /var/lib and /usr/lib trees.

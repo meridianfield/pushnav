@@ -11,7 +11,9 @@ if [ "$1" = "configure" ]; then
             --home /var/lib/pushnav-headless \
             --gecos "PushNav headless" pushnav
     fi
-    adduser --quiet pushnav video
+    if ! id -nG pushnav | grep -qw video; then
+        adduser --quiet pushnav video
+    fi
 
     if [ -d /run/systemd/system ]; then
         systemctl daemon-reload
