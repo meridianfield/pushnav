@@ -5,7 +5,6 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
     "Pillow",
     "numpy",
-    "scipy",
     # tetra3rs transitively pulls gaia-catalog (~17 MB bundled Gaia DR3 +
     # Hipparcos blob). gaia-catalog is needed by scripts/build_tetra3rs_catalog.py
     # to regenerate data/tetra3rs_gaia.bin; the runtime path

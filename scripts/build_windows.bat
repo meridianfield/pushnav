@@ -105,7 +105,6 @@ uv run python -m nuitka ^
     --output-dir="%BUILD_DIR%" ^
     --output-filename=PushNav.exe ^
     --include-package=numpy ^
-    --include-package=scipy ^
     --include-package=PIL ^
     --include-package=playsound3 ^
     --include-package=tetra3rs ^

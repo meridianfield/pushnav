@@ -162,13 +162,13 @@ specs/start/                    # design specifications
 ## Key Dependencies
 
 - **tetra3rs** — Rust (pyo3) plate-solver, installed from a prebuilt wheel (`tetra3rs==0.7.1`); no vendoring or Rust toolchain needed
-- **pywebview** — wraps the OS webview (WebKit/WebView2/GTK) for the desktop window
+- **pywebview** — wraps the OS webview (WebKit/WebView2/GTK) for the desktop window; lives in the `desktop` dependency group (default for `uv sync`, left out of the headless Pi package)
 - **React + Vite + TypeScript + Tailwind + shadcn/ui** — front-end stack (under `web/`)
 - **three** + **@react-three/fiber** + **@react-three/drei** — WebGL rendering for the always-visible Sky View 3D dome (`web/src/components/live-view/SkyDome/`). Labels use drei `<Html>` to stay offline; `<Text>` is intentionally avoided so troika-three-text's CDN font-resolver is never loaded
-- **numpy**, **scipy**, **Pillow** — image/array handling (numpy + Pillow in the solver wrapper; scipy bundled by the build)
+- **numpy**, **Pillow** — image/array handling (solver wrapper) and the sync rotation maths
 - **playsound3** — audio feedback for solve lock/lost events
 - **aiohttp** — HTTP + WebSocket server (serves the React build, /ws state, /frame.mjpg, /api/*)
-- **qrcode[pil]** — QR-code rendering for the LAN URL in the Settings panel
+- **qrcode.react** (npm) — QR-code rendering for the LAN URL in the Settings panel
 - **pyerfa** — IAU 2006 precession (J2000 ↔ JNow) for the LX200 protocol server
 - **pyyaml** — used only by `scripts/sync_catalog.py` to parse the buddy-site
   markdown frontmatter when refreshing `web/src/data/objects.json`

@@ -27,7 +27,6 @@ body-frame offset vector.  Two-phase flow:
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.spatial.transform import Rotation
 
 EPS = 1e-12
 
@@ -54,10 +53,12 @@ def vec_to_radec(v: np.ndarray) -> tuple[float, float]:
 
 def orientation_from_radec_roll(
     ra_deg: float, dec_deg: float, roll_deg: float,
-) -> Rotation:
+) -> np.ndarray:
     """Build camera orientation from plate-solve (RA, Dec, Roll).
 
-    Returns Rotation T that maps body-frame vectors to celestial vectors.
+    Returns the 3x3 rotation matrix T that maps body-frame vectors to
+    celestial vectors (T @ v). Its columns are orthonormal by construction,
+    so the inverse is the transpose (T.T @ v).
     Body frame: X=left-in-image, Y=up-in-image, Z=boresight (right-handed).
 
     Roll convention matches tetra3 / navigation.py gnomonic_project:
@@ -89,7 +90,7 @@ def orientation_from_radec_roll(
     body_y = east * sr + north * cr   # up in image
     body_z = boresight                # boresight
 
-    return Rotation.from_matrix(np.column_stack([body_x, body_y, body_z]))
+    return np.column_stack([body_x, body_y, body_z])
 
 
 def compute_body_frame_sync(
@@ -114,7 +115,7 @@ def compute_body_frame_sync(
     """
     T_sync = orientation_from_radec_roll(cam_ra, cam_dec, cam_roll)
     target_vec = radec_to_vec(target_ra, target_dec)
-    d_body = T_sync.inv().apply(target_vec)
+    d_body = T_sync.T @ target_vec
     return d_body
 
 
@@ -131,7 +132,7 @@ def apply_body_frame_sync(
         (corrected_ra, corrected_dec) — the telescope's true pointing.
     """
     T_current = orientation_from_radec_roll(ra, dec, roll)
-    corrected = T_current.apply(d_body)
+    corrected = T_current @ d_body
     return vec_to_radec(corrected)
 
 
