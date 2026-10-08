@@ -1,0 +1,39 @@
+#!/bin/sh
+# pushnav-headless postinst
+set -e
+
+UNIT=pushnav-headless.service
+
+if [ "$1" = "configure" ]; then
+    # Unprivileged system user for the service; `video` gives it the camera.
+    if ! getent passwd pushnav >/dev/null; then
+        adduser --quiet --system --group --no-create-home \
+            --home /var/lib/pushnav-headless \
+            --gecos "PushNav headless" pushnav
+    fi
+    if ! id -nG pushnav | grep -qw video; then
+        adduser --quiet pushnav video
+    fi
+
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload
+        # Enable on first install only, so a later upgrade doesn't undo a
+        # `systemctl disable pushnav-headless` the user chose.
+        if [ -z "$2" ]; then
+            systemctl enable "$UNIT" >/dev/null 2>&1 || true
+        fi
+        if systemctl is-enabled --quiet "$UNIT"; then
+            systemctl restart "$UNIT" || true
+        fi
+    fi
+
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    echo ""
+    echo "PushNav headless is installed."
+    echo "  Open on your phone (same Wi-Fi):  http://${ip:-<pi-ip>}:8765"
+    echo "  Service:  sudo systemctl status pushnav-headless"
+    echo "  Logs:     journalctl -u pushnav-headless -f"
+    echo ""
+fi
+
+exit 0

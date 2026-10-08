@@ -1,142 +1,166 @@
 ---
-title: Raspberry Pi 4 (headless)
+title: Raspberry Pi (headless)
 ---
 
-# Running PushNav headless on a Raspberry Pi 4
+# Running PushNav headless on a Raspberry Pi
 
-!!! warning "Work in progress"
-    Raspberry Pi headless support is under active development. This page is
-    incomplete and **the steps below are expected to change** — treat it as an
-    early preview rather than a finished guide, and check back for updates
-    before relying on it.
+PushNav runs headless on a Raspberry Pi 4 or 5 as the `pushnav-headless`
+package. There is no window: PushNav runs in the background as a system
+service, and you control it from a phone or laptop browser on the same
+Wi-Fi at `http://<pi-ip>:8765`. The laptop builds (macOS `.dmg`, Windows
+installer, Linux AppImage) are separate and unchanged.
 
-PushNav runs headless on a Raspberry Pi 4 (Debian 13 / aarch64) and is
-controlled entirely from a phone on the same Wi-Fi via the existing
-mobile web UI at `http://<pi-ip>:8765`. This page is the install-and-run
-runbook; the laptop builds (macOS `.app`, Windows installer, Linux
-x86_64 AppImage) are unchanged.
+!!! warning "Beta"
+    The Raspberry Pi package is new. It has been tested on a Raspberry Pi 5
+    running Raspberry Pi OS (trixie), and in clean Debian bookworm and trixie
+    installs. Please [report problems](https://github.com/meridianfield/pushnav/issues).
 
-!!! note "Scope"
-    This is "make it work from source" — no auto-start, no mDNS, no
-    pre-flashed SD-card image. Those land in a later appliance milestone.
+## What you need
 
-## Prerequisites
+- A **Raspberry Pi 4 or 5** running **64-bit** Raspberry Pi OS, either
+  bookworm or trixie. The Lite (no desktop) edition is enough. PushNav uses
+  about 150 MB of memory, so any RAM size works.
+- A [supported camera](hardware.md). The Waveshare, Arducam and DECXIN
+  OV9281 USB modules are recognised automatically.
+- A phone, tablet or laptop on the same network as the Pi.
 
-- Raspberry Pi 4 (4 GB or more) running Raspberry Pi OS / Debian 13.
-- An [openaicam USB camera](hardware.md) (VID `0x32E6` / PID `0x9251`) —
-  the Linux camera server targets this device specifically.
-- A phone on the same Wi-Fi as the Pi for the UI.
+## Install
 
-System packages and `uv`:
-
-```bash
-sudo apt update
-sudo apt install -y gcc libjpeg-dev nodejs npm
-# Add your user to the `video` group so the camera server can open
-# /dev/video0 without sudo; log out and back in afterwards.
-sudo usermod -aG video "$USER"
-# Install uv per https://docs.astral.sh/uv/getting-started/installation/
-```
-
-## Clone and build
-
-```bash
-git clone git@github.com:meridianfield/pushnav.git
-cd pushnav
-uv sync
-make -C camera/linux
-(cd web && npm install && npm run build)
-```
-
-`uv sync` fetches a standalone Python 3.12 (one-time, ~30 MB) and
-installs the Python deps. `make` produces `camera/linux/camera_server`.
-`npm run build` writes the React UI to `web/dist/`.
-
-## Run
-
-```bash
-uv run python -m evf.main --no-window
-```
-
-Expected first-startup log lines (in any order):
-
-- `Spawned camera server (PID ...)`
-- `Camera HELLO` (handshake complete)
-- `Stellarium server listening on 127.0.0.1:10001`
-- `LX200 server listening on 0.0.0.0:4030`
-- `Mobile web interface at http://<pi-ip>:8765`
-
-Press Ctrl-C to stop. The engine cleans up all subsystems before
-exiting.
-
-!!! tip "Keep it running after SSH disconnect"
-    If you started the engine over SSH and want it to survive when
-    you log out, run it under `tmux` (or `nohup`):
+1. On the [releases page](https://github.com/meridianfield/pushnav/releases/latest),
+   download `pushnav-headless_<version>_arm64.deb` onto the Pi. For
+   example, copy its link and run `wget <link>` on the Pi.
+2. Install it:
 
     ```bash
-    tmux new -s pushnav
-    # inside tmux:
-    uv run python -m evf.main --no-window
-    # Ctrl-b d to detach; the engine keeps running.
-    # tmux attach -t pushnav  to reattach later.
+    sudo apt install ./pushnav-headless_*_arm64.deb
     ```
 
-    Or, without tmux:
+    apt may print a notice that the download "is performed unsandboxed as
+    root". That's normal for a local file and safe to ignore.
 
-    ```bash
-    nohup uv run python -m evf.main --no-window > pushnav.log 2>&1 &
-    disown
-    # tail -f pushnav.log  to watch startup.
+3. The install starts PushNav straight away, and it starts again on every
+   boot. The last lines of the install show the address to open:
+
+    ```text
+    PushNav headless is installed.
+      Open on your phone (same Wi-Fi):  http://192.168.0.111:8765
     ```
 
-## Connect from a phone
+4. Open that address on your phone. You can plug the camera in before or
+   after this; PushNav picks it up within about 10 seconds, and again if it
+   is unplugged and plugged back in.
 
-1. Find the Pi's LAN IP: `ip -4 -o addr show scope global`.
-2. On a phone joined to the same Wi-Fi, open
-   `http://<pi-ip>:8765`. The Navigation tab is the default.
-3. Optional — connect SkySafari or Stellarium Mobile to the LX200
-   server at `<pi-ip>:4030` (Meade LX200 Classic, TCP).
+The package includes everything it needs, including its own Python, under
+`/usr/lib/pushnav-headless`. It doesn't touch the Pi's system Python.
+
+## Connect planetarium apps
+
+- **SkySafari or Stellarium Mobile:** add a telescope of type *Meade LX200
+  Classic* over Wi-Fi/TCP at `<pi-ip>`, port `4030`. See
+  [SkySafari & Other Apps](skysafari-setup.md).
+- **Stellarium (desktop):** use the Stellarium telescope plugin at
+  `<pi-ip>`, port `10001`. See [Stellarium Setup](stellarium-setup.md).
+
+## Managing the service
+
+| Task | Command |
+|---|---|
+| Is it running? | `systemctl status pushnav-headless` |
+| Watch the log | `journalctl -u pushnav-headless -f` |
+| Stop / start / restart | `sudo systemctl stop pushnav-headless` (or `start` / `restart`) |
+| Don't start at boot | `sudo systemctl disable pushnav-headless` |
+| Start at boot again | `sudo systemctl enable pushnav-headless` |
+
+PushNav runs as its own `pushnav` system user. Its files are in
+`/var/lib/pushnav-headless`:
+
+- Settings and calibration: `config/electronic-viewfinder/config.json`
+- Log file: `state/electronic-viewfinder/logs/evf.log`
+
+Settings you change in the web UI are saved there automatically. If you
+edit `config.json` by hand, restart the service afterwards.
+
+## Update
+
+Download the newer `.deb` and install it the same way. Your settings and
+calibration are kept, and if you disabled starting at boot, that stays
+disabled.
+
+```bash
+sudo apt install ./pushnav-headless_<new-version>_arm64.deb
+```
+
+## Uninstall
+
+```bash
+sudo apt remove pushnav-headless   # remove PushNav, keep settings and calibration
+sudo apt purge pushnav-headless    # remove everything, including the pushnav user
+```
 
 ## Troubleshooting
 
-**`Camera server not listening on 127.0.0.1:8764`** — Either the
-openaicam isn't plugged in (`lsusb | grep 32e6:9251`) or your user
-isn't in the `video` group (`groups | grep video`).
+**The log says "Waiting for camera".** No USB camera is detected. Check the
+cable and run `lsusb`: a supported camera appears as `32e6:9251`,
+`0c45:6366` or `1bcf:2cd1`. A camera with a different ID can be added in
+`config.json` as `"camera": {"extra_camera_ids": ["1234:abcd"], ...}`
+(then restart the service).
 
-**`Permission denied: /dev/video0`** — As above; `sudo usermod -aG
-video "$USER"` and log out / back in.
+**USB devices stop being detected at all.** On some Pis the USB controller
+can fail until the next reboot. If `lsusb` lists nothing but hubs, check
+`journalctl -k | grep "HC died"`, then reboot.
 
-**`Port 8765 is in use`** — Another PushNav (or something else) is
-already on that port. Find it with `lsof -i :8765` and stop it, or
-change `webserver.port` in your config file
-(`~/.config/electronic-viewfinder/config.json` on Linux).
+**"PushNav is already running on port 8765" when you run `pushnav-headless`
+by hand.** The service is already running. Stop it first with
+`sudo systemctl stop pushnav-headless`.
 
-**Phone can't reach the URL** — Confirm phone and Pi are on the same
-Wi-Fi SSID (not Pi on Ethernet + phone on Wi-Fi unless your router
-routes between them). Some captive-portal Wi-Fi APs block client-to-
-client traffic; try a regular home network.
+**The phone can't open the address.** The phone and Pi must be on the same
+network. A Pi on Ethernet and a phone on Wi-Fi usually works on a home
+router. Guest or public Wi-Fi networks often block devices from reaching
+each other.
 
-**Audio warnings in the log** — Harmless on a headless Pi with no
-audio sink. The engine plays lock/lost/goto_ack WAVs through
-`playsound3`; if there's no sink it logs once and continues.
-
-**First-solve startup** — tetra3rs loads the ~50 MB star catalog into
-memory at startup (~0.1 s); subsequent solves run from memory. The
-tetra3rs (Rust) solver is dramatically faster than the old pure-Python
-tetra3 — frame solves that took seconds on a Pi 4 now complete far
-faster, so locks come quickly even on the Pi.
+**No sound.** The lock / lost / target sounds play on the Pi itself, which
+usually has no speaker. That doesn't affect anything else.
 
 ## Limitations
 
-- No auto-start. You run `uv run python -m evf.main --no-window`
-  manually after each boot.
-- No mDNS / `pushnav.local`. Type the IP into the phone.
-- No Wi-Fi onboarding. Configure the Pi's Wi-Fi the usual way
-  (Raspberry Pi Imager, `raspi-config`, or `nmcli`).
-- No in-app settings UI. The desktop app exposes settings through a
-  Settings panel; on headless there is no window, so tweaks
-  (`webserver.port`, audio, etc.) go through
-  `~/.config/electronic-viewfinder/config.json` directly. Restart the
-  engine after editing.
+These are planned for a later "appliance" version:
 
-Each of these is on the roadmap as a later appliance slice.
+- No Wi-Fi hotspot: the Pi has to join an existing network, set up the
+  usual way (Raspberry Pi Imager, `raspi-config` or `nmcli`).
+- No `pushnav.local` address: type the Pi's IP into the browser.
+- No ready-to-flash SD card image.
+- No shutdown button in the web UI: use `sudo shutdown now` over SSH.
+
+## For developers
+
+### Run from source
+
+```bash
+sudo apt install -y gcc libjpeg-dev nodejs npm   # Node 20.19+ for the web build
+# install uv: https://docs.astral.sh/uv/getting-started/installation/
+git clone git@github.com:meridianfield/pushnav.git
+cd pushnav
+uv sync --no-group desktop     # no pywebview / PyQt6 needed headless
+make -C camera/linux
+(cd web && npm install && npm run build)
+uv run --no-group desktop python -m evf.main --no-window
+```
+
+Your user needs to be in the `video` group to open the camera
+(`sudo usermod -aG video "$USER"`, then log out and back in). Stop the
+`pushnav-headless` service first if it's installed, because both use the
+same ports.
+
+### Build the package
+
+```bash
+scripts/build_headless_deb.sh            # in a Debian bookworm arm64 container (Docker)
+scripts/build_headless_deb.sh --host     # directly on a Pi, for quick iteration
+scripts/smoke_test_headless_deb.sh       # install + run test on bookworm and trixie
+```
+
+The container build is the release path. It compiles the camera server
+against bookworm's C library so one package runs on bookworm and trixie.
+On an x86 PC, Docker runs the arm64 image under QEMU, which works but is
+slow. CI builds the package on a native ARM runner and attaches it to
+each release.

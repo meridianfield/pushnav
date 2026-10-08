@@ -85,7 +85,7 @@ dependencies = ["tetra3rs==0.7.1", ...]
 
 Uses `pyproject.toml` (hatchling build backend) with `uv` for dependency locking (`uv.lock`).
 
-Dependencies: pywebview, Pillow, numpy, scipy, tetra3rs, playsound3, aiohttp, qrcode[pil], pyerfa (>=2.0.0, for LX200 J2000↔JNow precession). The React front-end (under `web/`) is built separately with Vite (Node deps from `web/package.json`) and bundled into the Nuitka output as a data dir.
+Dependencies: pywebview, Pillow, numpy, tetra3rs, playsound3, aiohttp, pyerfa (>=2.0.0, for LX200 J2000↔JNow precession). The React front-end (under `web/`) is built separately with Vite (Node deps from `web/package.json`) and bundled into the Nuitka output as a data dir.
 Dev dependencies: nuitka (>=4.0.2), pytest
 
 ---
@@ -123,7 +123,7 @@ Key Nuitka flags:
   network prompt, and on Linux it keeps `ps`/`top` output legible.
 - `--include-package=erfa` (bundles the pyerfa C extension used by the LX200
   J2000↔JNow precession helpers)
-- `--include-package=` for `numpy`, `scipy`, `PIL`, `playsound3`, `tetra3rs`, `webview` (packs the compiled `tetra3rs` extension)
+- `--include-package=` for `numpy`, `PIL`, `playsound3`, `tetra3rs`, `webview` (packs the compiled `tetra3rs` extension)
 - `--include-data-dir=web/dist=web_dist` (or `data/web_dist` on Linux/Windows) bundles the React build
 - Other data files (database, sounds, fonts, marketing) are copied manually post-build
 

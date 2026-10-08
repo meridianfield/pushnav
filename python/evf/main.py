@@ -100,7 +100,14 @@ def _check_single_instance(port: int) -> None:
     except (urllib.error.URLError, OSError, TimeoutError, json.JSONDecodeError):
         pass
 
-    if is_pushnav:
+    if is_pushnav and os.environ.get("PUSHNAV_ROOT"):
+        # pushnav-headless .deb: the other instance is almost always the service.
+        msg = (
+            f"PushNav is already running on port {port} "
+            f"(probably the pushnav-headless service).\n"
+            f"Stop it first with: sudo systemctl stop pushnav-headless"
+        )
+    elif is_pushnav:
         msg = (
             f"PushNav is already running on port {port}.\n"
             f"Close the existing window before launching another instance."
@@ -163,6 +170,9 @@ def main() -> None:
 
     if no_window:
         _start_camera()  # headless: no window to unblock, so start it inline
+        # No "Retry camera" click to rely on: keep retrying in the background
+        # so a camera plugged in after boot (or after recovery gave up) comes up.
+        engine.start_camera_watchdog()
         logger.info("Running headless (--no-window). Press Ctrl-C to exit.")
         stop = threading.Event()
         signal.signal(signal.SIGINT, lambda *_: stop.set())
