@@ -4,7 +4,25 @@
 
 ## Parts
 
-### Camera Housing v3 (`housing_v3.scad`) — rotation adjustment (new)
+### Camera Housing v4 (`housing_v4.scad`) — Raspberry Pi 3A+ standalone unit (in progress)
+
+v3's camera on a taller mount, with a Raspberry Pi 3A+ in a slim box between the camera and the finder shoe. The camera's housing, hood and cap are **v3's parts, unchanged** — print them from `housing_v3.scad` (this file pulls them in for the preview only).
+
+| Part | Flag | Description |
+|------|------|-------------|
+| Mount | `RENDER_MOUNT` | v3's dovetail, seat and knob, with a 15 mm riser on the rail — finger room for the shoe's thumbscrews under the box — and a taller 20 × 10 mm stem that lifts the camera 5 mm clear of the box |
+| Box base | `RENDER_BOX_BASE` | Holds the Pi on pins; sits on the riser with its back against the stem |
+| Box lid | `RENDER_BOX_LID` | Snaps onto the base; pushers hold the Pi down; vent slots over the SoC |
+
+**Board layout** (standing behind the unit): USB-A faces forward, under the camera — the one side that is clear on every scope. Power is on the right (a right-angle micro-USB plug keeps it within ~10 mm of the side). The status LEDs show through a window in the back wall, right of the stem. The microSD card is at the back with no slot — lift the lid to change it.
+
+The box is generated with [YAPP_Box](https://github.com/mrWheel/YAPP_Box) (MIT, vendored under [`vendor/YAPP_Box/`](vendor/YAPP_Box/)).
+
+**Hardware:** v3's knob and insert for the camera, plus 2 × M4 × 4 heat-set inserts in the riser's top and 2 × M4 × 6–10 pan or button head screws from inside the box (fit them before the Pi).
+
+**Printing:** no supports. Mount back face down (as v3), box base floor down, lid top down. The mount has no prebuilt STL yet — export it from the file.
+
+### Camera Housing v3 (`housing_v3.scad`) — rotation adjustment
 
 Same camera pocket and threaded hood as v2, but the housing **turns about the optical axis** on a separate dovetail mount, so the camera's up/down and left/right line up with the telescope's even when the finder shoe sits at an angle. Loosen the knob behind the mount, turn the camera until the app's mount axes look square with the screen, tighten, and recalibrate.
 
@@ -104,6 +122,8 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 
 | File | Description |
 |------|-------------|
+| `housing_v4_box_base.stl` | **v4** Pi 3A+ box base |
+| `housing_v4_box_lid.stl`  | **v4** Pi 3A+ box lid |
 | `housing_v3_mount.stl` | **v3** Dovetail mount with rotation seat |
 | `housing_v3_base.stl` | **v3** PCB Base + Thread, flat clamping bottom |
 | `housing_v3_hood.stl` | **v3** Hood with 1.25" cap band |
@@ -143,6 +163,16 @@ Requires [OpenSCAD](https://openscad.org/) (command line or GUI).
 ### Command Line
 
 ```bash
+# v4 (Pi 3A+) — each part alone is placed in its print orientation
+for part in MOUNT BOX_BASE BOX_LID; do
+  args=""
+  for p in MOUNT BOX_BASE BOX_LID; do
+    [ "$p" = "$part" ] && v=true || v=false
+    args="$args -D RENDER_$p=$v"
+  done
+  openscad -o "stls/housing_v4_$(echo $part | tr A-Z a-z).stl" $args housing_v4.scad
+done
+
 # v3 (rotation) — each part alone is placed in its print orientation
 for part in MOUNT BASE HOOD CAP; do
   args=""
