@@ -75,6 +75,37 @@ The package includes everything it needs, including its own Python, under
 - **Stellarium (desktop):** use the Stellarium telescope plugin at
   `<pi-ip>`, port `10001`. See [Stellarium Setup](stellarium-setup.md).
 
+## Status light
+
+With no screen attached, the Pi's own LEDs show what PushNav is doing.
+**Red means it needs your attention; green means it's working.**
+
+| What you see | What it means | What to do |
+|---|---|---|
+| Red, slow blink | No camera found | Check the camera cable |
+| Red, steady | Something went wrong | Open the PushNav page on your phone |
+| Green, slow blink | Ready, needs a sync | Open the page and run the sync wizard |
+| Green, short flash every 3 seconds | Tracking, all good | Nothing: enjoy observing |
+| Green, fast blink | Lost the stars | Check where the scope points, or for dew on the lens |
+
+The "all good" flash is deliberately brief, so it doesn't spoil your
+night vision. While the Pi starts up, and whenever PushNav isn't
+running, the LEDs behave as they normally do on a Pi.
+
+On a Pi with only a green LED (such as the Pi Zero 2 W), "no camera" is
+a green double blink and "something went wrong" is steady green.
+
+Good to know:
+
+- Some Pi cases hide the LEDs. A case with a window or light pipe over
+  them makes the status light visible.
+- While PushNav runs, the green LED no longer flickers with SD card
+  activity. On a Pi 4, the red LED also stops warning about a weak power
+  supply.
+- To turn the status light off, set `"led": {"enabled": false}` in
+  `config.json` (see below), then run
+  `sudo systemctl restart pushnav-headless`.
+
 ## Managing the service
 
 | Task | Command |
@@ -164,6 +195,16 @@ Your user needs to be in the `video` group to open the camera
 (`sudo usermod -aG video "$USER"`, then log out and back in). Stop the
 `pushnav-headless` service first if it's installed, because both use the
 same ports.
+
+A run from source leaves the LEDs alone, because only the service is
+given access to them. To try the status light from source, hand the
+LEDs to your user first, then give them back when you're done:
+
+```bash
+sudo .venv/bin/python -s -m evf.engine.led_helper take --group "$(id -gn)"
+# ... run PushNav as above ...
+sudo .venv/bin/python -s -m evf.engine.led_helper restore
+```
 
 ### Build the package
 

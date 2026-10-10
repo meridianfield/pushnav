@@ -153,13 +153,13 @@ Run as root by systemd: `python3 -m evf.engine.led_helper take|restore [--group 
 
 **Files:** `docs/rpi-headless.md`, `CLAUDE.md`
 
-- [ ] Pi guide: a "Status light" section with the pattern table in plain
+- [x] Pi guide: a "Status light" section with the pattern table in plain
       words; how to turn it off (`"led": {"enabled": false}` in
       config.json, then restart the service); a note that some cases hide
       the LEDs; that the green LED stops showing SD activity while
       PushNav runs; and that on a Pi 4 the red LED's under-voltage
       warning is replaced while PushNav runs.
-- [ ] CLAUDE.md: one line under the headless notes.
+- [x] CLAUDE.md: one line under the headless notes.
 
 ### Task 6: Verify on the Pi 5 (and the 3A+ if available)
 
