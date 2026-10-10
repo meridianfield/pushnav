@@ -17,6 +17,12 @@ ExecStart=/usr/bin/pushnav-headless
 # exit 0, and 'take' honours led.enabled in config.json.
 ExecStartPre=+/usr/lib/pushnav-headless/python/bin/python3 -s -m evf.engine.led_helper take --group pushnav
 ExecStopPost=+/usr/lib/pushnav-headless/python/bin/python3 -s -m evf.engine.led_helper restore
+# Debug mode: a jumper from GPIO21 (pin 40) to GND (pin 39). This root step
+# reads the pin and creates /run/pushnav-headless/debug if it's jumpered;
+# PushNav turns debug mode on when that file exists. RuntimeDirectory=
+# removes the directory, flag included, whenever the service stops.
+RuntimeDirectory=pushnav-headless
+ExecStartPre=+/usr/lib/pushnav-headless/python/bin/python3 -s -m evf.engine.debug_pin
 # Config and logs live under /var/lib/pushnav-headless (created by systemd,
 # owned by the pushnav user, removed on `apt purge`).
 StateDirectory=pushnav-headless

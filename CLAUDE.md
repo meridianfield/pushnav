@@ -72,6 +72,10 @@ connects or sends a target (the servers' `on_client_connected` callbacks
 and `GotoTarget` changes). The LEDs are only writable because the
 unit's `ExecStartPre=+`/`ExecStopPost=+` run `evf.engine.led_helper
 take`/`restore` as root; `led.enabled` in config.json turns it off.
+A jumper from GPIO21 (pin 40) to GND (pin 39) turns on debug mode on the Pi
+without environment variables: another root `ExecStartPre=+` step,
+`evf.engine.debug_pin`, reads the pin and creates `/run/pushnav-headless/debug`
+(in the unit's `RuntimeDirectory=`), which `main.py` treats like `PUSHNAV_DEBUG=1`.
 
 ### Running tests
 

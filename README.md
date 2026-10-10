@@ -213,6 +213,9 @@ Two independent toggles:
   in-app dev features: the React DebugPanel, the `/api/dev/*` endpoints,
   sample-image injection, and frame capture. Works on macOS, Linux, and
   Windows.
+  On the headless Raspberry Pi package, a jumper from GPIO21 (pin 40)
+  to GND (pin 39) does the same without environment variables; see
+  [Debug mode](docs/rpi-headless.md#debug-mode).
 - **`WEBVIEW_DEBUG=1`** — opens the webview inspector inside the
   pywebview window (right-click → Inspect Element). Independent of
   `PUSHNAV_DEBUG`; set both when you want dev features *and* the

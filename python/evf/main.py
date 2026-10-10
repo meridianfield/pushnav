@@ -31,6 +31,7 @@ import urllib.error
 import urllib.request
 
 from evf.config.manager import ConfigManager
+from evf.engine.debug_pin import debug_flag_set
 from evf.engine.engine import Engine
 
 logger = logging.getLogger(__name__)
@@ -124,13 +125,18 @@ def _check_single_instance(port: int) -> None:
 
 def main() -> None:
     # PUSHNAV_DEBUG=1 / --dev toggles in-app dev features only (sample
-    # injection, frame capture, DebugPanel). Opening the webview's
-    # inspector is a separate opt-in via WEBVIEW_DEBUG=1: on Linux Qt,
-    # pywebview's debug=True starts QtWebEngine's remote-debugging server
-    # which truncates aiohttp static-file responses to ~440 bytes and
-    # leaves the React bundle unparseable, so we keep the inspector off
+    # injection, frame capture, DebugPanel). On the headless Pi a jumper
+    # from GPIO21 to GND does the same (evf.engine.debug_pin). Opening the
+    # webview's inspector is a separate opt-in via WEBVIEW_DEBUG=1: on
+    # Linux Qt, pywebview's debug=True starts QtWebEngine's remote-debugging
+    # server which truncates aiohttp static-file responses to ~440 bytes
+    # and leaves the React bundle unparseable, so we keep the inspector off
     # by default even in dev_mode.
-    dev_mode = "--dev" in sys.argv or os.environ.get("PUSHNAV_DEBUG") == "1"
+    dev_mode = (
+        "--dev" in sys.argv
+        or os.environ.get("PUSHNAV_DEBUG") == "1"
+        or debug_flag_set()
+    )
     webview_debug = os.environ.get("WEBVIEW_DEBUG") == "1"
     no_window = "--no-window" in sys.argv
     # --react is now the default; accept the flag as a no-op for back-compat
