@@ -10,6 +10,12 @@ service, and you control it from a phone or laptop browser on the same
 Wi-Fi at `http://<pi-ip>:8765`. The laptop builds (macOS `.dmg`, Windows
 installer, Linux AppImage) are separate and unchanged.
 
+!!! info "Not in a release yet"
+    Raspberry Pi support is on the `main` branch but isn't part of a
+    published release yet. It will be included in the next release. Until
+    then, [build the package yourself](#build-the-package) on the Pi and
+    install it as described below.
+
 !!! warning "Beta"
     The Raspberry Pi package is new. It has been tested on a Raspberry Pi 5
     running Raspberry Pi OS (trixie), on a Raspberry Pi 3A+, and in clean
@@ -35,12 +41,8 @@ installer, Linux AppImage) are separate and unchanged.
 1. On the [releases page](https://github.com/meridianfield/pushnav/releases),
    find the newest release that lists `pushnav-headless_<version>_arm64.deb`
    (it may be marked *Pre-release*) and download it onto the Pi. For
-   example, copy its link and run `wget <link>` on the Pi.
-
-    !!! note "Not in a release yet?"
-        The package is attached to releases made after it was added. If no
-        release lists it yet, [build it yourself](#build-the-package) on the
-        Pi, or check back after the next release.
+   example, copy its link and run `wget <link>` on the Pi. If no release
+   lists it yet, build it yourself instead (see the note at the top).
 2. Install it:
 
     ```bash
