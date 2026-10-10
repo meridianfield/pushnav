@@ -52,7 +52,7 @@ If you already have a GOTO mount, or you want a phone-only experience with no la
 
 ## Cross platform from the ground up
 
-Supports **Windows**, **macOS**, and **Linux**. The core app is written in Python with a React UI hosted in a pywebview window (OS-native WebKit/WebView2/GTK), while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.
+Supports **Windows**, **macOS**, and **Linux**, plus a headless package for the **Raspberry Pi**. The core app is written in Python with a React UI hosted in a pywebview window (OS-native WebKit/WebView2/GTK), while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.
 
 ## How It Works
 
@@ -78,6 +78,7 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 - Live activity indicators in the app showing when Stellarium or LX200 clients are talking
 - IAU 2006 J2000 ↔ JNow precession via `pyerfa` at the LX200 boundary (SkySafari expects JNow, PushNav stores J2000)
 - Audio feedback for lock/lost/GOTO events
+- **Raspberry Pi (headless):** the `pushnav-headless` package runs PushNav as a background service on a Pi 3A+, 4 or 5, controlled from your phone. With no screen attached, the Pi's own LEDs show the status: red when it needs attention (no camera, error), green when it's working (needs sync, tracking, lost the stars). See the [Pi guide](https://meridianfield.github.io/pushnav/rpi-headless/#status-light)
 - Always-visible **Sky View** — an interactive 3D hemispheric dome rendered alongside the wizard, showing where the scope is pointing (yellow marker + semi-transparent red telescope cylinder) and where the target sits (cream marker with name label), with solid/dashed lines from the dome centre. Useful as a spatial check during sync, roll calibration, and tracking alike.
 - Saves calibration for quick re-sync
 - Works from urban light-polluted skies with the right camera/lens combo (see hardware guide)

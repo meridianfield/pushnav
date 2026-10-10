@@ -34,6 +34,8 @@ DEFAULT_CONFIG = {
     "calibration": {"finder_rotation": 0.0, "sync_d_body": None},
     "logging": {"verbose": False},
     "audio": {"enabled": True},
+    # Headless Pi status LED (see evf/engine/status_led.py).
+    "led": {"enabled": True},
     "lx200": {"epoch": "jnow"},
     "webserver": {"port": 8765},
     "location": {"latitude": None, "longitude": None},
@@ -193,6 +195,10 @@ class ConfigManager:
     @audio_enabled.setter
     def audio_enabled(self, value: bool) -> None:
         self.set("audio", "enabled", value)
+
+    @property
+    def led_enabled(self) -> bool:
+        return self.get("led", "enabled") is not False
 
     @property
     def verbose(self) -> bool:

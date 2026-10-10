@@ -173,6 +173,7 @@ def main() -> None:
         # No "Retry camera" click to rely on: keep retrying in the background
         # so a camera plugged in after boot (or after recovery gave up) comes up.
         engine.start_camera_watchdog()
+        engine.start_status_led()
         logger.info("Running headless (--no-window). Press Ctrl-C to exit.")
         stop = threading.Event()
         signal.signal(signal.SIGINT, lambda *_: stop.set())

@@ -66,7 +66,10 @@ group (no pywebview / PyQt6), runs as the `pushnav-headless` systemd service
 (user `pushnav`, state in `/var/lib/pushnav-headless`), and the launcher sets
 `PUSHNAV_ROOT` so `evf/paths.py` uses the Linux release layout. With
 `--no-window` the engine runs a camera watchdog that keeps retrying the
-camera in the background.
+camera in the background, and shows its status on the Pi's ACT/PWR LEDs
+(`evf/engine/status_led.py`). The LEDs are only writable because the
+unit's `ExecStartPre=+`/`ExecStopPost=+` run `evf.engine.led_helper
+take`/`restore` as root; `led.enabled` in config.json turns it off.
 
 ### Running tests
 

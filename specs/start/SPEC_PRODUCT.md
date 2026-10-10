@@ -457,7 +457,6 @@ Verbose mode logs:
 # 12. Explicit Non-Goals
 
 - No multiple camera support
-- No headless mode (architecture supports future)
 - No multi-planetarium abstraction
 - No motion smoothing
 - No FOV auto-calibration

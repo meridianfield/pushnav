@@ -10,6 +10,13 @@ User=pushnav
 Group=pushnav
 SupplementaryGroups=video
 ExecStart=/usr/bin/pushnav-headless
+# Status LED: '+' runs just these steps as root, outside the sandbox. 'take'
+# saves the Pi LEDs' state, sets trigger=none and lets group pushnav write
+# brightness; 'restore' gives them back. ExecStopPost also runs after a
+# crash, so the LEDs never stay frozen on a PushNav pattern. Both always
+# exit 0, and 'take' honours led.enabled in config.json.
+ExecStartPre=+/usr/lib/pushnav-headless/python/bin/python3 -s -m evf.engine.led_helper take --group pushnav
+ExecStopPost=+/usr/lib/pushnav-headless/python/bin/python3 -s -m evf.engine.led_helper restore
 # Config and logs live under /var/lib/pushnav-headless (created by systemd,
 # owned by the pushnav user, removed on `apt purge`).
 StateDirectory=pushnav-headless

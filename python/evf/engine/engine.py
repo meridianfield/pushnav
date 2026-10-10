@@ -38,6 +38,7 @@ from evf.engine.goto_target import GotoTarget
 from evf.engine.pointing import PointingState
 from evf.engine.sample_injector import SampleInjector
 from evf.engine.state import EngineState, StateMachine
+from evf.engine.status_led import StatusLedController, find_leds
 from evf.solver.solver import PlateSolver
 import numpy as np
 
@@ -133,6 +134,7 @@ class Engine:
         # headless watchdog and shutdown must never race each other.
         self._camera_lock = threading.Lock()
         self._camera_watchdog: threading.Thread | None = None
+        self._status_led: StatusLedController | None = None
         # Set once shutdown() begins; stops the watchdog and refuses retries.
         self._shutting_down = threading.Event()
         # "Waiting for camera" is logged once per absence, not every attempt.
@@ -619,6 +621,31 @@ class Engine:
         )
         self._camera_watchdog.start()
 
+    def start_status_led(self) -> None:
+        """Show engine status on the Pi's LEDs (headless mode).
+
+        Needs LEDs this process may write, which only the
+        pushnav-headless service's root helper (evf.engine.led_helper)
+        sets up; anywhere else this logs one line and does nothing.
+        """
+        if not self._config.led_enabled:
+            logger.info("Status LED: disabled in config (led.enabled)")
+            return
+        leds = find_leds()
+        if not leds:
+            logger.info("Status LED: no writable LEDs, not used")
+            return
+        self._status_led = StatusLedController(
+            lambda: (
+                self._state_machine.state,
+                self.camera_connected,
+                self.consecutive_failures,
+            ),
+            leds,
+        )
+        self._status_led.start()
+        logger.info("Status LED: using %s", ", ".join(sorted(leds)))
+
     def _log_waiting_for_camera(self) -> None:
         if not self._camera_wait_logged:
             logger.info("Waiting for camera — plug it in to continue")
@@ -844,6 +871,14 @@ class Engine:
         """Graceful shutdown. Each step with independent timeout."""
         logger.info("Shutting down")
         self._shutting_down.set()
+
+        # 0a. Stop the status LED first so it can't show a stale state while
+        # subsystems go down (the service's ExecStopPost restores the LEDs).
+        if self._status_led:
+            try:
+                self._status_led.stop()
+            except Exception as exc:
+                logger.error("Error stopping status LED: %s", exc)
 
         # 0. Stop sample injector (so it stops writing frames before solver stops)
         try:
