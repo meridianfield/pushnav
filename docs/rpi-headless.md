@@ -6,44 +6,64 @@ title: Raspberry Pi (headless)
 
 PushNav runs headless on a Raspberry Pi 3A+, 4 or 5 as the `pushnav-headless`
 package. There is no window: PushNav runs in the background as a system
-service, and you control it from a phone or laptop browser on the same
-Wi-Fi at `http://<pi-ip>:8765`. The laptop builds (macOS `.dmg`, Windows
+service, and you control it from a phone or laptop browser at
+`http://<pi-address>:8765`. The laptop builds (macOS `.dmg`, Windows
 installer, Linux AppImage) are separate and unchanged.
 
-!!! info "Not in a release yet"
-    Raspberry Pi support is on the `main` branch but isn't part of a
-    published release yet. It will be included in the next release. Until
-    then, [build the package yourself](#build-the-package) on the Pi and
-    install it as described below.
+!!! info "Where to get it"
+    The Pi package comes with the PushNav releases from `v0.3.0-beta6` on.
+    On the [releases page](https://github.com/meridianfield/pushnav/releases),
+    pick the newest release that lists `pushnav-headless_<version>_arm64.deb`
+    (it may be marked *Pre-release*). It sits next to `user-data`, which
+    method B below uses. If no release lists it yet,
+    [build the package yourself](#build-the-package).
 
 !!! warning "Beta"
     The Raspberry Pi package is new. It has been tested on a Raspberry Pi 5
-    running Raspberry Pi OS (trixie), on a Raspberry Pi 3A+, and in clean
-    Debian bookworm and trixie installs. The Pi 4 hasn't been tested yet but
-    is expected to work, since it sits between the two. Please
+    and a Raspberry Pi 3A+ running Raspberry Pi OS (trixie), including the
+    ready-made SD card on the 3A+, and in clean Debian bookworm and trixie
+    installs. The Pi 4 hasn't been tested yet but is expected to work, since
+    it sits between the two. Please
     [report problems](https://github.com/meridianfield/pushnav/issues).
+
+## Which way to install?
+
+There are two ways to set up the Pi. Both install the same package, and
+everything after the install (status light, debug mode, updates) works
+the same.
+
+| | **A. Install with apt** | **B. Ready-made PushNav SD card** |
+|---|---|---|
+| **Best for** | People used to setting up a Pi, or a Pi that also does other things | A dedicated PushNav box, with no command line needed |
+| **Network** | Your existing Wi-Fi or Ethernet | The Pi's own Wi-Fi hotspot, `PushNav-XXXX` (no internet needed) |
+| **Open PushNav at** | `http://<pi-address>:8765` | `http://192.168.77.1:8765` |
+| **Setup** | Flash the card the usual way, SSH in, `apt install` the package | Flash the card, copy two files onto it, boot |
+| **Raspberry Pi OS** | 64-bit, bookworm or trixie | 64-bit **Lite**, **trixie** only |
 
 ## What you need
 
-- A **Raspberry Pi 3A+, 4 or 5** running **64-bit** Raspberry Pi OS, either
-  bookworm or trixie. The Lite (no desktop) edition is enough. In Raspberry
-  Pi Imager, pick the 64-bit OS; the package doesn't install on 32-bit.
-  PushNav uses about 150 MB of memory, so even the 3A+'s 512 MB is enough.
+- A **Raspberry Pi 3A+, 4 or 5** with **64-bit** Raspberry Pi OS. The Lite
+  (no desktop) edition is enough. In Raspberry Pi Imager, pick a 64-bit
+  OS; the package doesn't install on 32-bit. PushNav uses about 150 MB of
+  memory, so even the 3A+'s 512 MB is enough.
 - **Speed:** a Pi 5 solves the sample frames in under a tenth of a second
   each. A Pi 3A+ manages about 2 solves per second, which is slower but
   still fine for push-to.
 - A [supported camera](hardware.md). The Waveshare, Arducam and DECXIN
   OV9281 USB modules are recognised automatically.
-- A phone, tablet or laptop on the same network as the Pi.
+- A phone, tablet or laptop to open PushNav in a browser.
 
-## Install
+## A. Install with apt
 
-1. On the [releases page](https://github.com/meridianfield/pushnav/releases),
-   find the newest release that lists `pushnav-headless_<version>_arm64.deb`
-   (it may be marked *Pre-release*) and download it onto the Pi. For
-   example, copy its link and run `wget <link>` on the Pi. If no release
-   lists it yet, build it yourself instead (see the note at the top).
-2. Install it:
+For a Pi you set up yourself, on your own Wi-Fi or Ethernet.
+
+1. Set up the Pi as usual with 64-bit Raspberry Pi OS (bookworm or trixie),
+   networking and SSH, for example with Raspberry Pi Imager's OS
+   customisation.
+2. On the [releases page](https://github.com/meridianfield/pushnav/releases),
+   download `pushnav-headless_<version>_arm64.deb` onto the Pi. For
+   example, copy its link and run `wget <link>` on the Pi.
+3. Install it:
 
     ```bash
     sudo apt install ./pushnav-headless_*_arm64.deb
@@ -52,7 +72,7 @@ installer, Linux AppImage) are separate and unchanged.
     apt may print a notice that the download "is performed unsandboxed as
     root". That's normal for a local file and safe to ignore.
 
-3. The install starts PushNav straight away, and it starts again on every
+4. The install starts PushNav straight away, and it starts again on every
    boot. The last lines of the install show the address to open:
 
     ```text
@@ -60,20 +80,68 @@ installer, Linux AppImage) are separate and unchanged.
       Open on your phone (same Wi-Fi):  http://192.168.0.111:8765
     ```
 
-4. Open that address on your phone. You can plug the camera in before or
+5. Open that address on your phone. You can plug the camera in before or
    after this; PushNav picks it up within about 10 seconds, and again if it
    is unplugged and plugged back in.
 
 The package includes everything it needs, including its own Python, under
 `/usr/lib/pushnav-headless`. It doesn't touch the Pi's system Python.
 
+## B. Ready-made PushNav SD card
+
+Turns a fresh SD card into a dedicated PushNav box with its own Wi-Fi
+hotspot, so it works anywhere, with no router and no internet. You copy
+two files onto the card after flashing it, and the Pi sets itself up on
+the first boot.
+
+1. **Download two files** from the same release on the
+   [releases page](https://github.com/meridianfield/pushnav/releases):
+   `pushnav-headless_<version>_arm64.deb` and `user-data`.
+2. **Edit `user-data`** in a plain-text editor. Lines marked `CHANGE`:
+    - the Wi-Fi **country code** (`IN` is India; use yours, e.g. `US`, `GB`,
+      `DE`, `AU`). The wrong country can stop the hotspot from working.
+    - the hotspot password (`pushnav123`) and the login password
+      (`pushnav`), if other people may be within Wi-Fi range.
+
+    Keep the file name exactly `user-data`, with no `.txt` or other
+    extension. Some editors add one when saving.
+3. **Flash the card** with [Raspberry Pi Imager](https://www.raspberrypi.com/software/):
+   choose your Pi model and **Raspberry Pi OS Lite (64-bit)**, which is
+   under *Raspberry Pi OS (other)*. **Skip OS customisation**: when Imager
+   offers it, choose *No*.
+4. **Copy the two files onto the card.** After flashing, take the card out
+   and put it back in. Open the partition called `bootfs` (it contains
+   `config.txt` and `cmdline.txt`) and copy both files to its **top
+   level**, replacing the `user-data` that's already there.
+5. **Boot the Pi** with the card and, if you have it, the camera. The first
+   boot sets everything up and takes a few minutes. When PushNav is
+   running, the Pi's [status light](#status-light) blinks red slowly (no
+   camera) or green slowly (ready).
+6. **Connect your phone** to the Wi-Fi network `PushNav-XXXX` (password
+   `pushnav123`, unless you changed it) and open
+   **`http://192.168.77.1:8765`**. Your phone may warn that the network has
+   no internet: stay connected anyway. `http://pushnav.local:8765` also
+   works on phones that support `.local` names (iPhones do; many Android
+   phones don't).
+
+To log in to the Pi, connect to the hotspot and run `ssh pi@192.168.77.1`
+(password `pushnav`, unless you changed it).
+
+The setup in `user-data` runs **only on the first boot**. To install a
+newer PushNav later, see [For power users](#for-power-users-installing-a-deb-yourself),
+or flash the card again with the new files.
+
 ## Connect planetarium apps
 
+Use the Pi's address: `192.168.77.1` with the ready-made SD card (B), or
+the Pi's address on your network with apt (A). The Connectivity section of
+the PushNav page shows the exact addresses to use.
+
 - **SkySafari or Stellarium Mobile:** add a telescope of type *Meade LX200
-  Classic* over Wi-Fi/TCP at `<pi-ip>`, port `4030`. See
+  Classic* over Wi-Fi/TCP at the Pi's address, port `4030`. See
   [SkySafari & Other Apps](skysafari-setup.md).
-- **Stellarium (desktop):** use the Stellarium telescope plugin at
-  `<pi-ip>`, port `10001`. See [Stellarium Setup](stellarium-setup.md).
+- **Stellarium (desktop):** use the Stellarium telescope plugin at the Pi's
+  address, port `10001`. See [Stellarium Setup](stellarium-setup.md).
 
 ## Status light
 
@@ -159,14 +227,78 @@ PushNav runs as its own `pushnav` system user. Its files are in
 Settings you change in the web UI are saved there automatically. If you
 edit `config.json` by hand, restart the service afterwards.
 
-## Update
+## For power users: installing a .deb yourself
 
-Download the newer `.deb` and install it the same way. Your settings and
-calibration are kept, and if you disabled starting at boot, that stays
-disabled.
+These work the same with both setups. Log in to the Pi over SSH first
+(`ssh pi@192.168.77.1` on the hotspot of a ready-made card).
+
+### Get the .deb onto the Pi
+
+- **Over the network**, from a laptop on the same network or hotspot:
+  `scp pushnav-headless_<version>_arm64.deb pi@<pi-address>:`
+- **On the SD card**, from a PC: copy it to the boot partition. On the Pi
+  it is then in `/boot/firmware/`.
+
+A ready-made card installs the `.deb` it finds **only on its first boot**.
+A `.deb` you copy onto it later has to be installed with the commands
+below.
+
+### Install, update or reinstall
+
+| What | Command |
+|---|---|
+| Install, or update to a newer version | `sudo apt install ./pushnav-headless_<version>_arm64.deb` |
+| Install the same version again | add `--reinstall` |
+| Go back to an older version, or install a local build | add `--allow-downgrades` |
+| Install a copy from the boot partition | `sudo apt install /boot/firmware/pushnav-headless_<version>_arm64.deb` |
+| Which version is installed? | `dpkg-query -W pushnav-headless` |
+
+Settings and calibration are kept, and if you disabled starting at boot,
+that stays disabled.
+
+- **No internet needed:** the package depends only on `libjpeg62-turbo`,
+  `adduser` and `libc6` (2.36 or newer), which Raspberry Pi OS already has.
+- **File names:** a release download is named `…0.3.0.beta6-1…` where a
+  local build is named `…0.3.0~beta6-1…`. Both are fine: apt reads the
+  version from inside the file.
+
+### More settings
+
+- **Verbose logging:** set `"logging": {"verbose": true}` in `config.json`
+  (see [Managing the service](#managing-the-service)), then restart the
+  service.
+- **Debug mode without the jumper:** add a systemd override.
+
+    ```bash
+    sudo mkdir -p /etc/systemd/system/pushnav-headless.service.d
+    printf '[Service]\nEnvironment=PUSHNAV_DEBUG=1\n' | \
+        sudo tee /etc/systemd/system/pushnav-headless.service.d/debug.conf
+    sudo systemctl daemon-reload && sudo systemctl restart pushnav-headless
+    ```
+
+    To turn it off again, `sudo rm -r /etc/systemd/system/pushnav-headless.service.d`,
+    then the same `daemon-reload` and `restart`.
+- **Status light off:** see [Status light](#status-light).
+
+### Ready-made card: going online
+
+The hotspot has no internet. To update Raspberry Pi OS or download a
+release directly on the Pi, put it on your home Wi-Fi for a while:
 
 ```bash
-sudo apt install ./pushnav-headless_<new-version>_arm64.deb
+sudo nmcli con add type wifi ifname wlan0 con-name home \
+    ssid "<your Wi-Fi name>" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "<password>"
+sudo nmcli con mod hotspot connection.autoconnect no
+sudo nmcli con up home    # the SSH session drops here
+```
+
+The Pi is then on your home network, as `pushnav.local` or at the address
+your router shows. When you're done, switch back to the hotspot:
+
+```bash
+sudo nmcli con mod home connection.autoconnect no
+sudo nmcli con mod hotspot connection.autoconnect yes
+sudo nmcli con up hotspot    # the SSH session drops again
 ```
 
 ## Uninstall
@@ -177,6 +309,18 @@ sudo apt purge pushnav-headless    # remove everything, including the pushnav us
 ```
 
 ## Troubleshooting
+
+**Ready-made card: no `PushNav-XXXX` network appears.** Give the first
+boot a few minutes. Then check that the card has Raspberry Pi OS Lite
+(64-bit, trixie), that `user-data` is at the top level of `bootfs` with
+exactly that name (no `.txt`), and that the country code in it is right.
+
+**Ready-made card: the hotspot works but PushNav doesn't open.** If the
+Pi's LEDs show their normal behaviour instead of the
+[status light](#status-light), PushNav wasn't installed, usually because
+the `.deb` wasn't on the card. Log in with `ssh pi@192.168.77.1`, check
+`sudo grep -n "PushNav .deb" /var/log/cloud-init-output.log`, and
+[install the `.deb` by hand](#for-power-users-installing-a-deb-yourself).
 
 **The log says "Waiting for camera".** No USB camera is detected. Check the
 cable and run `lsusb`: a supported camera appears as `32e6:9251`,
@@ -202,12 +346,10 @@ usually has no speaker. That doesn't affect anything else.
 
 ## Limitations
 
-These are planned for a later "appliance" version:
+Not there yet:
 
-- No Wi-Fi hotspot: the Pi has to join an existing network, set up the
-  usual way (Raspberry Pi Imager, `raspi-config` or `nmcli`).
-- No `pushnav.local` address: type the Pi's IP into the browser.
-- No ready-to-flash SD card image.
+- No single ready-to-flash image: the [ready-made SD card](#b-ready-made-pushnav-sd-card)
+  needs two files copied onto it after flashing.
 - No shutdown button in the web UI: use `sudo shutdown now` over SSH.
 
 ## For developers
@@ -253,3 +395,7 @@ against bookworm's C library so one package runs on bookworm and trixie.
 On an x86 PC, Docker runs the arm64 image under QEMU, which works but is
 slow. CI builds the package on a native ARM runner and attaches it to
 each release.
+
+The ready-made SD card's first-boot configuration is
+`packaging/headless/user-data`; CI attaches it to each release next to the
+`.deb`, and `tests/test_headless_user_data.py` checks it.
