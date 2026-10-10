@@ -94,6 +94,10 @@ hotspot, so it works anywhere, with no router and no internet. You copy
 two files onto the card after flashing it, and the Pi sets itself up on
 the first boot.
 
+Use **Raspberry Pi OS Lite**: the box has no screen, so a desktop would
+only take memory away from PushNav (the 3A+ has just 512 MB) and slow the
+boot. Lite is also what this setup was tested with.
+
 1. **Download two files** from the same release on the
    [releases page](https://github.com/meridianfield/pushnav/releases):
    `pushnav-headless_<version>_arm64.deb` and `user-data`.
