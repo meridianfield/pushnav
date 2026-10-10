@@ -139,14 +139,14 @@ Run as root by systemd: `python3 -m evf.engine.led_helper take|restore [--group 
 
 **Files:** `packaging/headless/pushnav-headless.service`, `scripts/build_headless_deb.sh` (if needed)
 
-- [ ] Unit:
+- [x] Unit:
       `ExecStartPre=+/usr/lib/pushnav-headless/python/bin/python3 -m evf.engine.led_helper take --group pushnav`
       and
       `ExecStopPost=+/usr/lib/pushnav-headless/python/bin/python3 -m evf.engine.led_helper restore`.
       The `+` prefix runs only these steps as root, without the sandbox.
       The unit's `Environment=` (XDG paths) applies to them, so `take`
       finds the service config.
-- [ ] Confirm the helper module ships in the bundle (it's part of `evf`,
+- [x] Confirm the helper module ships in the bundle (it's part of `evf`,
       so it should with no build change).
 
 ### Task 5: Docs
