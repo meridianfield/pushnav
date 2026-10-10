@@ -55,7 +55,7 @@ If you already have a GOTO mount, or you want a phone-only experience with no la
 
 ## Cross platform from the ground up
 
-Supports **Windows**, **macOS**, and **Linux**. The core app is written in Python, while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.
+Supports **Windows**, **macOS**, and **Linux**, plus a headless package for the **Raspberry Pi**. The core app is written in Python, while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.
 
 
 ## How It Works
@@ -79,6 +79,7 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 - Works with **SkySafari**, **Stellarium Mobile**, **INDI**, and **ASCOM** clients over Wi-Fi via the LX200 protocol. See [SkySafari & Other Apps](skysafari-setup.md)
 - Built-in **"What to See"** target picker — pick a target without leaving PushNav. Three modes: a curated **Buddy** catalog (161 hand-picked deep-sky objects with filters), an **Advanced** fuzzy search across 12,522 NGC objects and 8,825 bright stars, and **Manual coordinates** for anything else. See [Using PushNav](using-pushnav.md#picking-targets-inside-pushnav).
 - Audio feedback for lock/lost/GOTO events
+- **Raspberry Pi (headless):** runs as a background service on a Pi 3A+, 4 or 5, controlled from your phone. The Pi's own LEDs show the status, so no screen is needed. See [Raspberry Pi (headless)](rpi-headless.md#status-light)
 - Mobile web interface: scan a QR code on the PushNav screen with your phone for at-the-eyepiece push direction, no app install needed
 - Always-visible **Sky View** — an interactive 3D hemispheric dome showing current pointing, the active target, and a small telescope marker on the pointing axis; visible during every step of the workflow.
 - Saves calibration for quick re-sync

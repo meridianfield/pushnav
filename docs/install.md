@@ -137,7 +137,8 @@ Raspberry Pi support is on the `main` branch and isn't in a published
 release yet; until the next release, the guide shows how to build the
 package yourself.
 It has no window: it runs in the background as a service, and you use
-it from a phone browser over Wi-Fi.
+it from a phone browser over Wi-Fi. The Pi's LEDs show whether PushNav
+needs attention (red) or is working (green).
 
 See **[Running PushNav headless on a Raspberry Pi](rpi-headless.md)**
 for install, updates and troubleshooting.

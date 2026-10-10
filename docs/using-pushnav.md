@@ -93,6 +93,9 @@ When you're pushing a Dobsonian or a manual EQ, the laptop typically sits on a c
 
 No app to install, no Bluetooth pairing, no configuration. Your phone and laptop only need to be on the same Wi-Fi network. Multiple devices can connect at the same time too, so for outreach sessions or sharing the view with someone, just hand them their own phone and they'll see exactly what you see.
 
+!!! tip "On a Raspberry Pi"
+    With the headless Raspberry Pi package, the phone *is* the screen: open `http://<pi-ip>:8765`. When the phone isn't open, the Pi's own LEDs show the status at a glance. See [Status light](rpi-headless.md#status-light).
+
 !!! tip "Prefer SkySafari or Stellarium Mobile?"
     PushNav also speaks the LX200 telescope protocol, so you can pick targets and see your scope's crosshair directly in **SkySafari**, **Stellarium Mobile PLUS**, **INDI** (KStars/Ekos), or **ASCOM** clients. See [SkySafari & Other Apps](skysafari-setup.md) for the one-time setup.
 
@@ -120,7 +123,7 @@ A few common scenarios and what to do.
 PushNav holds your last good position and shows a rising failure count in the side panel. Once stars are visible again, solves resume on their own. There's nothing to restart.
 
 **The camera disconnects (USB cable wiggle, computer sleep).**
-PushNav notices within a couple of seconds and tries to reconnect automatically with exponential backoff (1, 2, 4, 8, 15 seconds, up to 5 attempts). Plug the cable back in firmly and tracking picks up where it left off. If the retries exhaust, the app shows an error state and you'll need to relaunch PushNav.
+PushNav notices within a couple of seconds and tries to reconnect automatically with exponential backoff (1, 2, 4, 8, 15 seconds, up to 5 attempts). Plug the cable back in firmly and tracking picks up where it left off. If the retries exhaust, the app shows an error state: plug the camera back in and press **Retry camera**. On the Raspberry Pi package, PushNav keeps retrying by itself, and the Pi's LED shows a slow red blink until the camera is back.
 
 **You send a below-horizon target from Stellarium (or another planetarium app).**
 External apps don't enforce the horizon check, so the push arrows will try to point you through the ground. Clear the target and pick something currently above the horizon. PushNav's own **What to See** tab disables the **Set as target** button for below-horizon objects when a location is set.
