@@ -278,6 +278,15 @@ jobs:
           path: build/pushnav-headless_*_arm64.deb
           retention-days: 90
 
+      # First-boot config for the ready-made SD card (docs/rpi-headless.md),
+      # attached to each release next to the .deb.
+      - name: Upload user-data
+        uses: actions/upload-artifact@v4
+        with:
+          name: PushNav-headless-user-data
+          path: packaging/headless/user-data
+          retention-days: 90
+
   # ---------------------------------------------------------------------------
   # Windows — C/DirectShow camera server + Nuitka Python app → zip + installer
   # ---------------------------------------------------------------------------
@@ -383,7 +392,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd artifacts
-          find . -type f \( -name "*.dmg" -o -name "*.tar.gz" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.exe" -o -name "*.deb" \) \
+          find . -type f \( -name "*.dmg" -o -name "*.tar.gz" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.exe" -o -name "*.deb" -o -name "user-data" \) \
             | sort \
             | while read -r f; do
                 sha256sum "$f"
@@ -404,4 +413,5 @@ jobs:
             artifacts/PushNav-windows-zip/PushNav-windows-x64.zip
             artifacts/PushNav-windows-setup/PushNav-windows-x64-setup.exe
             artifacts/PushNav-headless-deb/pushnav-headless_*_arm64.deb
+            artifacts/PushNav-headless-user-data/user-data
             checksums-sha256.txt
