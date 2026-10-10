@@ -67,6 +67,11 @@ GREEN_DOUBLE_BLINK = Pattern("green", ((1, 0.15), (0, 0.15), (1, 0.15), (0, 1.55
 GREEN_SLOW_BLINK = _blink("green", 0.5, 1.5)
 GREEN_FAST_BLINK = _blink("green", 0.1, 0.1)
 GREEN_BLIP = _blink("green", 0.06, 2.94)
+# Shown once, over the status pattern, when a client connects or sends a
+# target; the trailing gap keeps it apart from the pattern that resumes.
+ACTIVITY_FLASH = Pattern(
+    "green", ((1, 0.05), (0, 0.05), (1, 0.05), (0, 0.05), (1, 0.05), (0, 0.15))
+)
 
 
 def pattern_for(
@@ -108,6 +113,7 @@ class StatusLedController:
     `snapshot` returns (state, camera_connected, consecutive_failures) and
     is polled every `poll_s`. Brightness is written only when it changes.
     A failed write disables the controller rather than retrying forever.
+    `flash()` shows ACTIVITY_FLASH once, then the status pattern resumes.
     """
 
     def __init__(
@@ -123,11 +129,24 @@ class StatusLedController:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._pattern: Pattern | None = None
+        self._flash_requested = threading.Event()
+        self._flashing = False
+        # What is on the LEDs now (the status pattern or ACTIVITY_FLASH).
+        self._shown: Pattern | None = None
+        self._step = 0
+        self._step_end = 0.0
 
     @property
     def pattern(self) -> Pattern | None:
-        """The pattern currently shown (for logs and tests)."""
+        """The status pattern (for logs and tests); a flash doesn't change it."""
         return self._pattern
+
+    def flash(self) -> None:
+        """Ask for one ACTIVITY_FLASH. Safe from any thread, never blocks.
+
+        Requests that arrive while a flash is showing are merged into it.
+        """
+        self._flash_requested.set()
 
     def start(self) -> None:
         self._thread = threading.Thread(
@@ -172,28 +191,54 @@ class StatusLedController:
         self._written[colour] = value
         return True
 
+    def _start_pattern(self, pattern: Pattern, now: float) -> bool:
+        self._shown, self._step = pattern, 0
+        self._step_end = now + pattern.steps[0][1]
+        return self._show(pattern, 0)
+
+    def _poll(self, now: float) -> bool:
+        pattern = self._current_pattern()
+        if pattern is not None and pattern != self._pattern:
+            logger.debug("Status LED: %s", pattern)
+            self._pattern = pattern
+            if not self._flashing and not self._start_pattern(pattern, now):
+                return False
+        if self._flash_requested.is_set() and not self._flashing:
+            self._flash_requested.clear()
+            self._flashing = True
+            return self._start_pattern(ACTIVITY_FLASH, now)
+        return True
+
+    def _advance(self, now: float) -> bool:
+        pattern = self._shown
+        assert pattern is not None
+        self._step += 1
+        if self._flashing and self._step == len(pattern.steps):
+            # One flash only: drop requests that came in during it, then
+            # resume the status pattern from its first step.
+            self._flashing = False
+            self._flash_requested.clear()
+            if self._pattern is None:
+                self._shown = None
+                return True
+            return self._start_pattern(self._pattern, now)
+        self._step %= len(pattern.steps)
+        # Advance from the scheduled end so blinks don't drift; resync if
+        # we fell a whole step behind (e.g. a stall).
+        self._step_end += pattern.steps[self._step][1]
+        if self._step_end < now:
+            self._step_end = now + pattern.steps[self._step][1]
+        return self._show(pattern, self._step)
+
     def _run(self) -> None:
-        step = 0
-        step_end = next_poll = time.monotonic()
+        self._step_end = next_poll = time.monotonic()
         while not self._stop.is_set():
             now = time.monotonic()
             if now >= next_poll:
                 next_poll = now + self._poll_s
-                pattern = self._current_pattern()
-                if pattern is not None and pattern != self._pattern:
-                    logger.debug("Status LED: %s", pattern)
-                    self._pattern, step = pattern, 0
-                    step_end = now + pattern.steps[0][1]
-                    if not self._show(pattern, step):
-                        return
-            pattern = self._pattern
-            if pattern is not None and now >= step_end:
-                step = (step + 1) % len(pattern.steps)
-                # Advance from the scheduled end so blinks don't drift;
-                # resync if we fell a whole step behind (e.g. a stall).
-                step_end += pattern.steps[step][1]
-                if step_end < now:
-                    step_end = now + pattern.steps[step][1]
-                if not self._show(pattern, step):
+                if not self._poll(now):
                     return
-            self._stop.wait(max(0.0, min(next_poll, step_end) - time.monotonic()))
+            if self._shown is not None and now >= self._step_end:
+                if not self._advance(now):
+                    return
+            self._stop.wait(max(0.0, min(next_poll, self._step_end) - time.monotonic()))

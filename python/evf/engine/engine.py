@@ -431,7 +431,9 @@ class Engine:
         """Start Stellarium TCP server."""
         try:
             self._stellarium = StellariumServer(
-                self._pointing_state, goto_target=self._goto_target
+                self._pointing_state,
+                goto_target=self._goto_target,
+                on_client_connected=self._flash_status_led,
             )
             self._stellarium.start()
         except Exception as exc:
@@ -451,6 +453,7 @@ class Engine:
                 goto_target=self._goto_target,
                 app_version=self._app_version,
                 report_j2000=(self._config.lx200_epoch == "j2000"),
+                on_client_connected=self._flash_status_led,
             )
             self._lx200.start()
         except Exception as exc:
@@ -465,6 +468,7 @@ class Engine:
                 self._state_machine,
                 self._goto_target,
                 self._config,
+                on_client_connected=self._flash_status_led,
                 frame_buffer=self._frame_buffer,
                 stellarium_object=lambda: self.stellarium_object,
                 camera_controls=lambda: self.camera_controls,
@@ -644,7 +648,23 @@ class Engine:
             leds,
         )
         self._status_led.start()
+        self._goto_target.add_on_change(self._flash_on_new_target)
         logger.info("Status LED: using %s", ", ".join(sorted(leds)))
+
+    def _flash_status_led(self) -> None:
+        """Brief LED flash for a client connecting or sending a target.
+
+        Called from the server threads; a no-op until start_status_led()
+        has found writable LEDs.
+        """
+        led = self._status_led
+        if led is not None:
+            led.flash()
+
+    def _flash_on_new_target(self) -> None:
+        # GotoTarget also fires on clear(); only a new target flashes.
+        if self._goto_target.read().active:
+            self._flash_status_led()
 
     def _log_waiting_for_camera(self) -> None:
         if not self._camera_wait_logged:

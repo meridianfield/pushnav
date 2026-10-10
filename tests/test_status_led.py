@@ -199,6 +199,41 @@ def test_controller_keeps_last_pattern_if_snapshot_fails():
         c.stop()
 
 
+def _on_count(led):
+    return [v for _, v in led.writes].count("1")
+
+
+def test_flash_blinks_green_then_resumes_the_status_pattern():
+    green, red = _FakeLed(), _FakeLed()
+    c = _controller(_Status(S.ERROR), {"green": green, "red": red})  # red steady
+    try:
+        assert _wait_for(lambda: red.value == "1")
+        c.flash()
+        # Red goes off for the flash and comes back on afterwards.
+        assert _wait_for(lambda: [v for _, v in red.writes] == ["1", "0", "1"])
+    finally:
+        c.stop()
+    assert [v for _, v in green.writes] == ["0", "1", "0", "1", "0", "1", "0"]
+    flash = green.writes[1:]
+    assert 0.2 < flash[-1][0] - flash[0][0] < 0.4  # three 50 ms blinks
+    assert c.pattern == sl.RED_STEADY
+
+
+def test_flash_requests_during_a_flash_are_merged():
+    green, red = _FakeLed(), _FakeLed()
+    c = _controller(_Status(S.ERROR), {"green": green, "red": red})
+    try:
+        assert _wait_for(lambda: red.value == "1")
+        for _ in range(5):
+            c.flash()
+        assert _wait_for(lambda: green.value == "1")
+        c.flash()  # arrives mid-flash
+        time.sleep(0.6)  # the 0.4 s flash is over and red steady is back
+    finally:
+        c.stop()
+    assert _on_count(green) == 3  # one flash
+
+
 # -- root helper (take / restore) --------------------------------------------------
 
 import grp
@@ -363,3 +398,22 @@ def test_engine_drives_leds_from_its_state(tmp_path, monkeypatch):
     finally:
         eng._status_led.stop()
     assert green.value == "0" and red.value == "0"
+
+
+def test_engine_flash_is_a_noop_without_leds(tmp_path):
+    _engine(tmp_path)._flash_status_led()  # servers may call this before LEDs start
+
+
+def test_engine_flashes_on_a_new_target_not_on_clear(tmp_path, monkeypatch):
+    eng = _engine(tmp_path)
+    green, red = _FakeLed(), _FakeLed()
+    monkeypatch.setattr(engine_mod, "find_leds", lambda: {"green": green, "red": red})
+    eng.start_status_led()  # no camera → red slow blink, green stays off
+    try:
+        eng._goto_target.set(83.6, 22.0)
+        assert _wait_for(lambda: _on_count(green) == 3 and green.value == "0")
+        eng._goto_target.clear()
+        time.sleep(0.3)
+        assert _on_count(green) == 3
+    finally:
+        eng._status_led.stop()

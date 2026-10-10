@@ -82,18 +82,24 @@ With no screen attached, the Pi's own LEDs show what PushNav is doing.
 
 | What you see | What it means | What to do |
 |---|---|---|
-| Red, slow blink | No camera found | Check the camera cable |
-| Red, steady | Something went wrong | Open the PushNav page on your phone |
+| Red, slow blink | No camera found, or PushNav is trying to reconnect to it | Check the camera cable |
+| Red, steady | The camera was unplugged while in use, and reconnecting failed | Plug the camera back in: PushNav finds it within about 10 seconds |
 | Green, slow blink | Ready, needs a sync | Open the page and run the sync wizard |
 | Green, short flash every 3 seconds | Tracking, all good | Nothing: enjoy observing |
 | Green, fast blink | Lost the stars | Check where the scope points, or for dew on the lens |
+| Three quick green blinks, once | A phone, Stellarium or SkySafari just connected, or sent a target | Nothing: PushNav got it |
 
 The "all good" flash is deliberately brief, so it doesn't spoil your
-night vision. While the Pi starts up, and whenever PushNav isn't
-running, the LEDs behave as they normally do on a Pi.
+night vision. After a target or a new connection's three quick blinks,
+the light goes back to its pattern.
+
+While the Pi boots, and whenever PushNav isn't running, the LEDs behave
+as they normally do on a Pi. When PushNav starts, they go dark for a few
+seconds (up to about 20 seconds on a Pi 3A+) until it's ready and the
+status light takes over.
 
 On a Pi with only a green LED (such as the Pi Zero 2 W), "no camera" is
-a green double blink and "something went wrong" is steady green.
+a green double blink and "camera unplugged while in use" is steady green.
 
 Good to know:
 
