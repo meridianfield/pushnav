@@ -29,6 +29,7 @@ import select
 import socket
 import threading
 import time
+from typing import Callable
 
 from evf.engine.goto_target import GotoTarget
 from evf.engine.pointing import PointingState
@@ -47,6 +48,9 @@ _DEFAULT_HOST = "0.0.0.0"    # LAN-reachable - LX200 clients include mobile apps
 _DEFAULT_PORT = 4030          # SkyFi/SkySafari convention
 _SELECT_POLL_INTERVAL = 0.1   # seconds - snappy response to commands
 _MAX_RECV_BUFFER = 4096       # bytes - trim oldest half and WARN if exceeded
+# A connect counts as a new client only after this much LX200 silence:
+# SkySafari's polling mode reconnects about once a second.
+_SESSION_GAP_S = 10.0
 
 _SOUNDS_DIR = sounds_dir()
 _ACK_SOUND = _SOUNDS_DIR / "goto_ack.wav"
@@ -89,9 +93,11 @@ class Lx200Server:
         goto_target: GotoTarget | None = None,
         app_version: str = "0.0.0",
         report_j2000: bool = False,
+        on_client_connected: Callable[[], None] | None = None,
     ) -> None:
         self._host = host
         self._port = port
+        self._on_client_connected = on_client_connected
         self._ctx = Lx200Context(
             pointing=pointing,
             goto_target=goto_target,
@@ -178,7 +184,17 @@ class Lx200Server:
             return
         client.setblocking(False)
         self._clients[client] = Lx200ClientState()
-        self._last_activity_at = time.monotonic()
+        now = time.monotonic()
+        new_session = (
+            self._last_activity_at == 0.0
+            or now - self._last_activity_at > _SESSION_GAP_S
+        )
+        self._last_activity_at = now
+        if new_session and self._on_client_connected is not None:
+            try:
+                self._on_client_connected()
+            except Exception as exc:
+                logger.debug("on_client_connected failed: %s", exc)
         # Logged at DEBUG only. SkySafari's LX200-over-TCP polling mode opens a
         # fresh connection per poll (~1 Hz) rather than holding a persistent
         # socket, so connect/disconnect at INFO would drown the log.

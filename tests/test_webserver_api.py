@@ -17,6 +17,7 @@
 
 """Tests for POST /api/* action endpoints."""
 
+import asyncio
 import threading
 from unittest.mock import MagicMock
 
@@ -172,3 +173,34 @@ async def test_settings_location_clear(server_and_actions):
         ) as resp:
             assert resp.status == 204
     actions.set_location.assert_called_once_with(None, None)
+
+
+@pytest.mark.asyncio
+async def test_ws_connect_calls_on_client_connected(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    cfg = ConfigManager(config_dir=tmp_path / "evf-config")
+    cfg._data["webserver"]["port"] = 0
+    calls = []
+    ws = WebServer(
+        PointingState(), StateMachine(), GotoTarget(), cfg,
+        frame_buffer=LatestFrame(),
+        actions=MagicMock(),
+        on_client_connected=lambda: calls.append(1),
+    )
+    ws.start()
+    try:
+        for _ in range(20):
+            if ws._port is not None:
+                break
+            threading.Event().wait(0.05)
+        async with ClientSession() as s:
+            for _ in range(2):
+                async with s.ws_connect(f"http://127.0.0.1:{ws._port}/ws"):
+                    pass
+        for _ in range(40):  # the handler runs the callback after the handshake
+            if len(calls) == 2:
+                break
+            await asyncio.sleep(0.025)
+        assert len(calls) == 2
+    finally:
+        ws.stop()

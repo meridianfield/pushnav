@@ -313,3 +313,30 @@ class TestBufferOverflow:
         # should still be processed.
         assert reply == b"LX200 Classic#"
         s.close()
+
+
+class TestClientConnectedCallback:
+    def test_called_once_per_session_not_per_poll(self):
+        calls = []
+        srv = Lx200Server(PointingState(), host="127.0.0.1", port=0,
+                          goto_target=GotoTarget(), app_version="test",
+                          on_client_connected=lambda: calls.append(1))
+        srv.start()
+
+        def poll():
+            # SkySafari-style: a fresh connection per command. The reply
+            # proves the server accepted (and counted) the connection.
+            s = _connect(srv)
+            s.sendall(b":GVP#")
+            assert _recv_until_hash(s) == b"LX200 Classic#"
+            s.close()
+
+        try:
+            for _ in range(3):
+                poll()
+            assert len(calls) == 1
+            srv._last_activity_at -= 11.0  # pretend 11 s of LX200 silence
+            poll()
+            assert len(calls) == 2
+        finally:
+            srv.stop(timeout=2.0)

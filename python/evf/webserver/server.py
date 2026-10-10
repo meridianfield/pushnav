@@ -156,6 +156,7 @@ class WebServer:
         dev_mode: bool = False,
         sample_active: Callable[[], str | None] | None = None,
         actions: "EngineActions | None" = None,
+        on_client_connected: Callable[[], None] | None = None,
     ) -> None:
         self._pointing = pointing
         self._state_machine = state_machine
@@ -172,6 +173,7 @@ class WebServer:
         self._dev_mode = dev_mode
         self._sample_active = sample_active
         self._actions = actions
+        self._on_client_connected = on_client_connected
 
         self._clients: set[web.WebSocketResponse] = set()
         self._mjpeg_clients: int = 0
@@ -398,6 +400,11 @@ class WebServer:
         await ws.prepare(request)
         self._clients.add(ws)
         logger.info("Web client connected")
+        if self._on_client_connected is not None:
+            try:
+                self._on_client_connected()
+            except Exception as exc:
+                logger.debug("on_client_connected failed: %s", exc)
         try:
             async for _msg in ws:
                 pass  # read-only; ignore any incoming messages
