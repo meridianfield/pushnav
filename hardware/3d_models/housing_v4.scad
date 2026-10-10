@@ -79,8 +79,9 @@ RENDER_BOX_BASE = true;
 RENDER_BOX_LID  = true;
 
 // Preview only
-SHOW_CAMERA             = true;  // v3's housing and hood, from housing_v3.scad
-SHOW_PI                 = true;  // stand-in Pi 3A+ with its connectors
+SHOW_CAMERA             = true;  // v3's housing and hood, from housing_v3.scad —
+                                 // the threads make previews slow; turn off
+                                 // while working on the mount or the box
 camera_preview_rotation = 0;     // housing turned on its seat (degrees)
 
 /* Resolution */
@@ -100,19 +101,15 @@ $fn = 90;
 pi_length           = 65;
 pi_width            = 56;
 pi_thickness        = 1.4;
-pi_corner_radius    = 3;
 pi_hole_inset       = 3.5;            // hole centres from each edge
 pi_usb_face_bx      = 68.2;           // ~ USB-A front face, past the board edge
 pi_usb_by           = [24.8, 38.1];
 pi_usb_height       = 7.3;            // 7.0 body + flange
 pi_power_bx         = [6.7, 14.5];    // micro-USB, centre 10.6
 pi_power_height     = 2.65;
-pi_hdmi_bx          = [24.5, 39.5];
-pi_audio_bx         = [50, 57];
 pi_audio_overhang   = 2.5;            // ~ audio barrel past the power edge
 pi_led_bx           = 1;              // ~ PWR / ACT LEDs at the microSD edge
 pi_led_by           = [7.5, 12.5];
-pi_sd_by            = [22.5, 33.5];   // card, centred on by = 28
 pi_sd_overhang      = 2.5;            // ~ seated card past the board edge
 pi_sd_socket_bx     = [2, 13.5];      // underside
 pi_soc_bx           = [20, 34];
@@ -185,8 +182,9 @@ box_stem_gap          = 0.5;     // box's back wall → stem's front face
    the riser's top, on its centreline. Modeled at the knurl OD with a 45°
    lead-in, as v3; the relief beyond stops the insert flush and takes
    screws up to M4 × 10. */
-box_screws_bx         = [19, 39];   // board X — the front one clear of the
-                                    // microSD socket under the board
+box_screws_bx         = [19, 29];   // board X — the back one just clear of the
+                                    // microSD socket under the board, the front
+                                    // one as close as two insert pockets allow
 box_screw_hole_dia    = 4.5;
 box_screw_head_dia    = 8;       // M4 pan head — clearance checks only
 box_screw_head_height = 2.6;
@@ -236,9 +234,8 @@ dovetail_axis_dist  = -rail_y;                                       // 73.9 (v3
 box_z0              = stem_depth + box_stem_gap;                     // box's back face
 box_screws_z        = [for (bx = box_screws_bx) box_z0 + pcb_origin[0] + bx];
 riser_length        = max(box_screws_z) + riser_insert_dia / 2
-                      + riser_insert_lead_in + 2;                    // past the rail's
-                                                                     // front, to the
-                                                                     // front screw
+                      + riser_insert_lead_in + 2;                    // 2 mm past the
+                                                                     // front pocket
 seat_taper_top      = seat_height - 1;                               // 11.3
 seat_taper_bot      = seat_taper_top - (seat_dia - seat_column_dia) / 2;  // 4.3
 camera_z            = seat_height + camera_base_extension;           // housing floor
@@ -266,6 +263,10 @@ assert(seat_dia / 2 < -(box_floor_y + box_height),
        "seat would reach down into the box");
 assert(riser_insert_depth + riser_relief_depth <= riser_height - 2,
        "box screw pockets too deep for the riser");
+assert(box_screws_bx[1] - box_screws_bx[0] >= riser_insert_dia + 2 * riser_insert_lead_in + 2,
+       "box screw pockets less than 2 mm apart");
+assert(dovetail_top_width / 2 >= riser_insert_dia / 2 + riser_insert_lead_in + 2,
+       "riser's round end would leave less than 2 mm around the front pocket");
 
 
 // ============================================================
@@ -279,7 +280,7 @@ include <vendor/YAPP_Box/YAPPgenerator_v3.scad>
 printBaseShell      = RENDER_BOX_BASE;
 printLidShell       = RENDER_BOX_LID;
 showSideBySide      = false;          // preview: lid on the base (exports are always side by side)
-showPCB             = false;          // the stand-in Pi below shows more
+showPCB             = false;          // no board drawn — keeps the preview light
 showOrientation     = false;
 previewQuality      = 12;             // 48 facets, same on screen and in the STL
 renderQuality       = 12;
@@ -339,10 +340,11 @@ cutoutsBase  = [for (bx = box_screws_bx) [bx, box_screws_pcb_y, 0, 0,
 // Mount — rail, riser, stem and seat
 // --------------------------------------------------
 // v3's rail and seat, pushed apart by the riser, the box and the camera
-// gap. The riser runs on past the rail's front end to carry the front
-// box screw; it is no wider than the rail's top, so the shoe's
+// gap. The riser stops 2 mm past the front box screw's pocket, in a
+// semicircle; it is no wider than the rail's top, so the shoe's
 // thumbscrews stay clear. The stem rises from the riser behind the box
-// to the seat. Prints back face down, no supports.
+// to the seat. Prints back face down, no supports — the round end is
+// the top of the print.
 
 module mount() {
     difference() {
@@ -355,9 +357,16 @@ module mount() {
                              [ dovetail_top_width / 2, dovetail_height],
                              [-dovetail_top_width / 2, dovetail_height]]);
 
-            // Riser — the box floor rests on its top
-            translate([-dovetail_top_width / 2, riser_bottom_y - 0.01, 0])
-                cube([dovetail_top_width, riser_height + 0.01, riser_length]);
+            // Riser — the box floor rests on its top; round front end
+            translate([0, box_floor_y, 0]) rotate([90, 0, 0])
+                linear_extrude(riser_height + 0.01)
+                    hull() {
+                        translate([-dovetail_top_width / 2, 0])
+                            square([dovetail_top_width,
+                                    riser_length - dovetail_top_width / 2]);
+                        translate([0, riser_length - dovetail_top_width / 2])
+                            circle(d = dovetail_top_width);
+                    }
 
             // Stem — from the riser, behind the box, up to the seat
             translate([-stem_width / 2, box_floor_y - 0.01, 0])
@@ -419,47 +428,13 @@ module _box_on_mount() {
 }
 
 
-// --------------------------------------------------
-// Stand-in Pi 3A+ — preview and clearance checks only
-// --------------------------------------------------
-// Board coordinates, placed in the box.
-
-module pi_dummy() {
-    translate(pcb_origin) {
-        difference() {
-            hull()
-                for (bx = [pi_corner_radius, pi_length - pi_corner_radius])
-                for (by = [pi_corner_radius, pi_width - pi_corner_radius])
-                    translate([bx, by, 0])
-                        cylinder(r = pi_corner_radius, h = pi_thickness, $fn = 24);
-            for (bx = [pi_hole_inset, pi_length - pi_hole_inset])
-            for (by = [pi_hole_inset, pi_width - pi_hole_inset])
-                translate([bx, by, -1]) cylinder(d = 2.75, h = pi_thickness + 2, $fn = 16);
-        }
-        t = pi_thickness;
-        _box3([50, pi_usb_by[0], t], [pi_usb_face_bx, pi_usb_by[1], t + pi_usb_height]);   // USB-A
-        _box3([pi_power_bx[0], -1, t], [pi_power_bx[1], 5, t + pi_power_height]);         // micro-USB
-        _box3([pi_hdmi_bx[0], -1.6, t], [pi_hdmi_bx[1], 10.4, t + 6.5]);                   // HDMI
-        _box3([pi_audio_bx[0], -pi_audio_overhang, t], [pi_audio_bx[1], 12, t + 6]);       // audio
-        _box3([7.1, 50, t],  [57.9, 55, t + pi_gpio_height]);                              // GPIO
-        _box3([pi_soc_bx[0], pi_soc_by[0], t], [pi_soc_bx[1], pi_soc_by[1], t + 1]);      // SoC
-        _box3([8.4, 51.2, -pi_underside], [56.6, 53.8, 0]);                                // pin tails
-        _box3([pi_sd_socket_bx[0], 22, -1.28], [pi_sd_socket_bx[1], 34, 0]);              // SD socket
-        _box3([-pi_sd_overhang, pi_sd_by[0], -1.1], [2, pi_sd_by[1], -0.3]);              // SD card
-        _box3([pi_led_bx - 0.5, pi_led_by[0], t], [pi_led_bx + 0.5, pi_led_by[1], t + 0.6]);  // LEDs
-    }
-}
-
-module _box3(a, b) { translate(a) cube(b - a); }
-
-
 // ============================================================
 // RENDER
 // ============================================================
 // One part enabled → placed in its print orientation for export.
 // Otherwise the unit is shown assembled (F5): mount, box on the riser,
-// stand-in Pi, and v3's camera on the seat. In a full Render (F6) YAPP
-// lays the lid out beside the base instead.
+// and v3's camera on the seat. In a full Render (F6) YAPP lays the lid
+// out beside the base instead.
 
 single_part = (RENDER_MOUNT ? 1 : 0) + (RENDER_BOX_BASE ? 1 : 0)
             + (RENDER_BOX_LID ? 1 : 0) == 1;
@@ -471,8 +446,6 @@ if (single_part) {
     if (RENDER_MOUNT) mount();
     if (RENDER_BOX_BASE || RENDER_BOX_LID)
         _box_on_mount() YAPPgenerate();
-    if ($preview && SHOW_PI)
-        _box_on_mount() color("seagreen") pi_dummy();
     if ($preview && SHOW_CAMERA)
         color("dimgray") rotate([0, 0, camera_preview_rotation]) {
             translate([0, 0, camera_z]) pcb_base();
