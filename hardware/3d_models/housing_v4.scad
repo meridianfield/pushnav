@@ -176,7 +176,8 @@ stem_width            = 20;      // v3's rib: 10
 stem_depth            = 10;      // along the axis; v3's rib: 8
 camera_gap            = 5;       // box top → housing bottom: lets heat out of the
                                  // lid vent, and the housing turns without rubbing
-box_stem_gap          = 0.5;     // box's back wall → stem's front face
+box_stem_gap          = 2;       // box's back wall → stem's front face — room for
+                                 // print tolerances and to lift the box out
 
 /* Box screws — down through the box floor into M4 × 4 heat-set inserts in
    the riser's top, on its centreline. Modeled at the knurl OD with a 45°

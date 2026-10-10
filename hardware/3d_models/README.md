@@ -20,7 +20,7 @@ The box is generated with [YAPP_Box](https://github.com/mrWheel/YAPP_Box) (MIT, 
 
 **Hardware:** v3's knob and insert for the camera, plus 2 × M4 × 4 heat-set inserts in the riser's top and 2 × M4 × 6–10 pan or button head screws from inside the box (fit them before the Pi).
 
-**Printing:** no supports. Mount back face down (as v3), box base floor down, lid top down. The mount has no prebuilt STL yet — export it from the file.
+**Printing:** no supports. Mount back face down (as v3), box base floor down, lid top down.
 
 ### Camera Housing v3 (`housing_v3.scad`) — rotation adjustment
 
@@ -122,6 +122,7 @@ Ready-to-print STL files are in the [`stls/`](stls/) directory:
 
 | File | Description |
 |------|-------------|
+| `housing_v4_mount.stl`    | **v4** Dovetail mount with riser, stem and rotation seat |
 | `housing_v4_box_base.stl` | **v4** Pi 3A+ box base |
 | `housing_v4_box_lid.stl`  | **v4** Pi 3A+ box lid |
 | `housing_v3_mount.stl` | **v3** Dovetail mount with rotation seat |
