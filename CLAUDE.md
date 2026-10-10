@@ -161,7 +161,8 @@ hardware/                       # 3D-printable mechanical designs (OpenSCAD)
     stls/                       # pre-built STL files ready for printing
 marketing/                      # app branding assets (logo, in-app title)
 linux/                          # Linux desktop integration (pushnav.desktop)
-packaging/headless/             # pushnav-headless .deb: launcher, systemd unit, debian/ maintainer scripts
+packaging/headless/             # pushnav-headless .deb: launcher, systemd unit, debian/ maintainer scripts,
+                                #   and user-data (first-boot config for the ready-made SD card, attached to releases)
 build/                          # build output (gitignored)
 scripts/                        # build and dev scripts
   build_mac.sh                  # macOS Nuitka build → .app/.dmg
@@ -193,8 +194,9 @@ specs/start/                    # design specifications
 - **aiohttp** — HTTP + WebSocket server (serves the React build, /ws state, /frame.mjpg, /api/*)
 - **qrcode.react** (npm) — QR-code rendering for the LAN URL in the Settings panel
 - **pyerfa** — IAU 2006 precession (J2000 ↔ JNow) for the LX200 protocol server
-- **pyyaml** — used only by `scripts/sync_catalog.py` to parse the buddy-site
-  markdown frontmatter when refreshing `web/src/data/objects.json`
+- **pyyaml** (dev group) — used by `scripts/sync_catalog.py` to parse the
+  buddy-site markdown frontmatter when refreshing `web/src/data/objects.json`,
+  and by `tests/test_headless_user_data.py` to check `packaging/headless/user-data`
 
 Dev dependencies: **nuitka** (builds), **pytest** (tests).
 Docs dependency group (`uv sync --group docs`): **mkdocs-material** for the

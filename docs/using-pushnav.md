@@ -94,7 +94,7 @@ When you're pushing a Dobsonian or a manual EQ, the laptop typically sits on a c
 No app to install, no Bluetooth pairing, no configuration. Your phone and laptop only need to be on the same Wi-Fi network. Multiple devices can connect at the same time too, so for outreach sessions or sharing the view with someone, just hand them their own phone and they'll see exactly what you see.
 
 !!! tip "On a Raspberry Pi"
-    With the headless Raspberry Pi package, the phone *is* the screen: open `http://<pi-ip>:8765`. When the phone isn't open, the Pi's own LEDs show the status at a glance. See [Status light](rpi-headless.md#status-light).
+    With the headless Raspberry Pi package, the phone *is* the screen: open `http://<pi-address>:8765` (`http://192.168.77.1:8765` on the hotspot of a [ready-made SD card](rpi-headless.md#b-ready-made-pushnav-sd-card)). When the phone isn't open, the Pi's own LEDs show the status at a glance. See [Status light](rpi-headless.md#status-light).
 
 !!! tip "Prefer SkySafari or Stellarium Mobile?"
     PushNav also speaks the LX200 telescope protocol, so you can pick targets and see your scope's crosshair directly in **SkySafari**, **Stellarium Mobile PLUS**, **INDI** (KStars/Ekos), or **ASCOM** clients. See [SkySafari & Other Apps](skysafari-setup.md) for the one-time setup.
