@@ -123,15 +123,15 @@ Run as root by systemd: `python3 -m evf.engine.led_helper take|restore [--group 
 
 **Files:** `python/evf/engine/engine.py`, `python/evf/main.py`, `python/evf/config/manager.py`
 
-- [ ] `DEFAULT_CONFIG["led"] = {"enabled": True}` and a
+- [x] `DEFAULT_CONFIG["led"] = {"enabled": True}` and a
       `ConfigManager.led_enabled` property.
-- [ ] `Engine.start_status_led()`: if `led_enabled` and `find_leds()`
+- [x] `Engine.start_status_led()`: if `led_enabled` and `find_leds()`
       returns at least one writable LED, start the controller with a
       snapshot of `(state, camera_connected, consecutive_failures)`.
       Otherwise log one info line ("Status LED: not available" or
       "disabled") and do nothing.
-- [ ] `Engine.shutdown()`: stop the controller first.
-- [ ] `main.py`: call it only on the `--no-window` path, next to
+- [x] `Engine.shutdown()`: stop the controller first.
+- [x] `main.py`: call it only on the `--no-window` path, next to
       `start_camera_watchdog()`. A source/dev run without the helper
       finds no writable LEDs and does nothing.
 

@@ -1,5 +1,6 @@
 """Tests for the headless status LED: pattern mapping, LED discovery, driver."""
 
+import logging
 import os
 import time
 
@@ -315,3 +316,50 @@ def test_main_never_fails(tmp_path):
     rc = lh.main(["take", "--group", "no-such-group-xyz", "--root", str(root),
                   "--state-dir", str(tmp_path / "state"), "--config", str(tmp_path / "c.json")])
     assert rc == 0  # unknown group → logged, service still starts
+
+
+# -- engine wiring ---------------------------------------------------------------
+
+from evf.config.manager import ConfigManager
+from evf.engine import engine as engine_mod
+from evf.engine.engine import Engine
+
+
+def _engine(tmp_path):
+    return Engine(dev_mode=False, config=ConfigManager(config_dir=tmp_path / "cfg"))
+
+
+def test_led_enabled_by_default(tmp_path):
+    assert ConfigManager(config_dir=tmp_path / "cfg").led_enabled is True
+
+
+def test_engine_led_disabled_in_config(tmp_path, monkeypatch, caplog):
+    eng = _engine(tmp_path)
+    eng.config.set("led", "enabled", False)
+    monkeypatch.setattr(engine_mod, "find_leds", lambda: {"green": _FakeLed()})
+    with caplog.at_level(logging.INFO, logger="evf.engine.engine"):
+        eng.start_status_led()
+    assert eng._status_led is None
+    assert any("disabled in config" in r.message for r in caplog.records)
+
+
+def test_engine_without_writable_leds(tmp_path, monkeypatch, caplog):
+    eng = _engine(tmp_path)
+    monkeypatch.setattr(engine_mod, "find_leds", lambda: {})
+    with caplog.at_level(logging.INFO, logger="evf.engine.engine"):
+        eng.start_status_led()
+    assert eng._status_led is None
+    assert any("no writable LEDs" in r.message for r in caplog.records)
+
+
+def test_engine_drives_leds_from_its_state(tmp_path, monkeypatch):
+    eng = _engine(tmp_path)
+    green, red = _FakeLed(), _FakeLed()
+    monkeypatch.setattr(engine_mod, "find_leds", lambda: {"green": green, "red": red})
+    eng.start_status_led()
+    try:
+        # No camera yet (fresh engine) → red slow blink.
+        assert _wait_for(lambda: eng._status_led.pattern == sl.RED_SLOW_BLINK)
+    finally:
+        eng._status_led.stop()
+    assert green.value == "0" and red.value == "0"
