@@ -163,18 +163,25 @@ Run as root by systemd: `python3 -m evf.engine.led_helper take|restore [--group 
 
 ### Task 6: Verify on the Pi 5 (and the 3A+ if available)
 
-- [ ] `uv run pytest tests/` passes.
-- [ ] Build the `.deb`, install it (user runs sudo), then:
-  - [ ] Service up, camera unplugged: red slow blink.
-  - [ ] Plug the camera in: green slow blink within about 10 s.
-  - [ ] Sync and track (`PUSHNAV_DEBUG=1` sample injection through a
-        `systemctl edit` override, or real sky): blip; lost: fast blink.
-  - [ ] `sudo systemctl stop`: LEDs back to normal (green shows SD
-        activity again).
-  - [ ] `sudo systemctl kill -s KILL pushnav-headless`: LEDs restored by
-        `ExecStopPost`, then taken over again on the automatic restart.
-  - [ ] `"led": {"enabled": false}` + restart: LEDs keep their normal
-        Pi behaviour.
-  - [ ] Reboot: comes back with the status LED running.
-- [ ] Check the controller's CPU use on the Pi (expected to be
-      negligible: about 10 polls/s, writes only on change).
+- [x] `uv run pytest tests/` passes (351).
+- [x] Pi 5 (trixie), .deb reinstalled:
+  - [x] `led_helper` takes ACT and PWR at service start; PushNav logs
+        "Status LED: using green, red".
+  - [x] Camera unplugged: red slow blink (confirmed by eye).
+  - [x] Camera plugged in: green slow blink (confirmed by eye).
+  - [x] `sudo systemctl stop`: ACT back to `mmc0`, PWR `none`,
+        `root:root 644`; green back to normal (confirmed by eye).
+  - [ ] Tracking patterns (blip, fast blink) on real hardware need sky or
+        sample injection. The blink shapes were confirmed in the spike, and
+        the mapping is unit-tested.
+- [x] **Pi 3A+** (trixie, 64-bit), .deb reinstalled over SSH: `led_helper`
+      takes ACT and PWR; with no camera, PWR is written 0.5 s on / 1.5 s
+      off (sampled), and the red LED was confirmed blinking by eye, green
+      off. PWR reads back `255` when on (3-series firmware LED); harmless.
+      LED thread CPU about 0%; PushNav RSS ~130 MB of 415 MB.
+- [ ] Not done (user's call): `led.enabled=false`, reboot, crash tests.
+      Finding: `systemctl kill -s KILL` also kills the ExecStopPost
+      restore, so the LEDs stay in their last state until the restart
+      (5 s), when they're taken over again with the original state still
+      saved. A real crash (main process only) should run restore normally;
+      not verified.
