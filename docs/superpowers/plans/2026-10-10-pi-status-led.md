@@ -73,20 +73,20 @@ behaviour, so a frozen "all good" can never be left showing.
 
 **Files (new):** `python/evf/engine/status_led.py`, `tests/test_status_led.py`
 
-- [ ] `Pattern`: which LED (`"green"` / `"red"`) plus a repeating
+- [x] `Pattern`: which LED (`"green"` / `"red"`) plus a repeating
       sequence of on/off durations; steady = a single `(on, inf)` step.
-- [ ] `pattern_for(state, camera_connected, failures, has_red) -> Pattern`:
+- [x] `pattern_for(state, camera_connected, failures, has_red) -> Pattern`:
       a pure function implementing the table above, including the
       green-only fallbacks.
-- [ ] `find_leds(root=Path("/sys/class/leds")) -> dict`: green from
+- [x] `find_leds(root=Path("/sys/class/leds")) -> dict`: green from
       `ACT`/`led0`, red from `PWR`/`led1`. Only includes an LED whose
       `brightness` is writable (`os.access(W_OK)`).
-- [ ] `StatusLedController(snapshot_fn, leds, poll_s=0.1)`: a daemon
+- [x] `StatusLedController(snapshot_fn, leds, poll_s=0.1)`: a daemon
       thread that re-reads the snapshot every `poll_s`, steps the current
       pattern with monotonic timing, and writes `brightness` only when a
       value changes. A write `OSError` logs once and disables the
       controller. `stop()` turns both LEDs off and joins the thread.
-- [ ] Tests: the full mapping table for both LED sets; on a fake sysfs
+- [x] Tests: the full mapping table for both LED sets; on a fake sysfs
       tree in `tmp_path`, the controller writes the expected on/off
       values, writes only on change, follows a pattern switch within one
       poll, disables itself on an unwritable file, and `stop()` leaves
