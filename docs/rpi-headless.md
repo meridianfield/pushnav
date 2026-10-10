@@ -4,7 +4,7 @@ title: Raspberry Pi (headless)
 
 # Running PushNav headless on a Raspberry Pi
 
-PushNav runs headless on a Raspberry Pi 4 or 5 as the `pushnav-headless`
+PushNav runs headless on a Raspberry Pi 3A+, 4 or 5 as the `pushnav-headless`
 package. There is no window: PushNav runs in the background as a system
 service, and you control it from a phone or laptop browser on the same
 Wi-Fi at `http://<pi-ip>:8765`. The laptop builds (macOS `.dmg`, Windows
@@ -12,23 +12,35 @@ installer, Linux AppImage) are separate and unchanged.
 
 !!! warning "Beta"
     The Raspberry Pi package is new. It has been tested on a Raspberry Pi 5
-    running Raspberry Pi OS (trixie), and in clean Debian bookworm and trixie
-    installs. Please [report problems](https://github.com/meridianfield/pushnav/issues).
+    running Raspberry Pi OS (trixie), on a Raspberry Pi 3A+, and in clean
+    Debian bookworm and trixie installs. The Pi 4 hasn't been tested yet but
+    is expected to work, since it sits between the two. Please
+    [report problems](https://github.com/meridianfield/pushnav/issues).
 
 ## What you need
 
-- A **Raspberry Pi 4 or 5** running **64-bit** Raspberry Pi OS, either
-  bookworm or trixie. The Lite (no desktop) edition is enough. PushNav uses
-  about 150 MB of memory, so any RAM size works.
+- A **Raspberry Pi 3A+, 4 or 5** running **64-bit** Raspberry Pi OS, either
+  bookworm or trixie. The Lite (no desktop) edition is enough. In Raspberry
+  Pi Imager, pick the 64-bit OS; the package doesn't install on 32-bit.
+  PushNav uses about 150 MB of memory, so even the 3A+'s 512 MB is enough.
+- **Speed:** a Pi 5 solves the sample frames in under a tenth of a second
+  each. A Pi 3A+ manages about 2 solves per second, which is slower but
+  still fine for push-to.
 - A [supported camera](hardware.md). The Waveshare, Arducam and DECXIN
   OV9281 USB modules are recognised automatically.
 - A phone, tablet or laptop on the same network as the Pi.
 
 ## Install
 
-1. On the [releases page](https://github.com/meridianfield/pushnav/releases/latest),
-   download `pushnav-headless_<version>_arm64.deb` onto the Pi. For
+1. On the [releases page](https://github.com/meridianfield/pushnav/releases),
+   find the newest release that lists `pushnav-headless_<version>_arm64.deb`
+   (it may be marked *Pre-release*) and download it onto the Pi. For
    example, copy its link and run `wget <link>` on the Pi.
+
+    !!! note "Not in a release yet?"
+        The package is attached to releases made after it was added. If no
+        release lists it yet, [build it yourself](#build-the-package) on the
+        Pi, or check back after the next release.
 2. Install it:
 
     ```bash
