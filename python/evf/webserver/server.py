@@ -180,7 +180,6 @@ class WebServer:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._serve_task: asyncio.Task | None = None
         self._thread: threading.Thread | None = None
-        self._url: str | None = None
         self._port: int | None = None  # actual bound port (for tests on ephemeral port)
 
     # -- lifecycle ------------------------------------------------------------
@@ -205,8 +204,13 @@ class WebServer:
 
     @property
     def url(self) -> str | None:
-        """LAN URL of the mobile interface, available after start()."""
-        return self._url
+        """LAN URL of the mobile interface, or None without a LAN address.
+
+        Looked up on every call rather than once at start, so it follows the
+        network: a Pi's hotspot or Wi-Fi may come up after PushNav does.
+        """
+        ip = local_ip()
+        return f"http://{ip}:{self._config.web_port}" if ip else None
 
     # -- internal -------------------------------------------------------------
 
@@ -235,17 +239,15 @@ class WebServer:
 
     async def _serve(self) -> None:
         port = self._config.web_port
-        ip = local_ip()
-        if ip is None:
-            self._url = None
+        url = self.url
+        if url is None:
             logger.warning(
                 "Mobile web interface listening on port %d but no LAN IP "
                 "detected — mobile devices cannot reach the server",
                 port,
             )
         else:
-            self._url = f"http://{ip}:{port}"
-            logger.info("Mobile web interface at %s", self._url)
+            logger.info("Mobile web interface at %s", url)
 
         app = web.Application(middlewares=[_security_headers_middleware])
         app.router.add_get("/", self._handle_index)

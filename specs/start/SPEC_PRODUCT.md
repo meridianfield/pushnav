@@ -229,8 +229,13 @@ See `SPEC_PROTOCOL_LX200.md`.
   against public-internet exposure relies on the bind address, the host
   firewall, and the concurrent-client cap below.
 - The Settings panel shows the LAN URL plus a QR code for scan-to-connect.
-- Falls back to "No LAN connection" in the UI when `local_ip()` can't find
-  a routable LAN address.
+  The URL is looked up on every update, so it follows the network coming up
+  after PushNav starts.
+- `local_ip()` uses the default-route interface's address. A Pi running its
+  own hotspot has no default route, so it then falls back to the address of
+  a Wi-Fi or Ethernet interface (Linux only).
+- Falls back to "No LAN IP detected" in the UI when neither finds a usable
+  LAN address.
 
 ## 5.4 UI surface
 
