@@ -179,6 +179,10 @@ Run as root by systemd: `python3 -m evf.engine.led_helper take|restore [--group 
       off (sampled), and the red LED was confirmed blinking by eye, green
       off. PWR reads back `255` when on (3-series firmware LED); harmless.
       LED thread CPU about 0%; PushNav RSS ~130 MB of 415 MB.
+      Green ACT driven by hand as the `pushnav` user (1 s on/off, 30 s)
+      blinked as expected (confirmed by eye), so both LEDs are controllable
+      with the service's permissions. Green patterns themselves need a
+      camera on the 3A+.
 - [ ] Not done (user's call): `led.enabled=false`, reboot, crash tests.
       Finding: `systemctl kill -s KILL` also kills the ExecStopPost
       restore, so the LEDs stay in their last state until the restart
