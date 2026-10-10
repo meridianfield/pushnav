@@ -196,3 +196,122 @@ def test_controller_keeps_last_pattern_if_snapshot_fails():
         assert c._thread.is_alive()
     finally:
         c.stop()
+
+
+# -- root helper (take / restore) --------------------------------------------------
+
+import grp
+import json
+import stat
+
+from evf.engine import led_helper as lh
+
+
+def _helper_sysfs(tmp_path, leds):
+    """leds: {name: (trigger, brightness, mode)}"""
+    root = tmp_path / "leds"
+    for name, (trigger, brightness, mode) in leds.items():
+        d = root / name
+        d.mkdir(parents=True)
+        (d / "trigger").write_text(
+            " ".join(f"[{t}]" if t == trigger else t for t in ["none", "timer", "mmc0", "default-on"])
+        )
+        (d / "brightness").write_text(str(brightness))
+        (d / "brightness").chmod(mode)
+    return root
+
+
+def _trigger(d):
+    """Active trigger of a fake LED. Real sysfs always brackets it ("[mmc0]");
+    a plain file just holds the last word written, e.g. "mmc0"."""
+    text = (d / "trigger").read_text().strip()
+    return lh._current_trigger(d) if "[" in text else text
+
+
+def _snapshot(root):
+    return {
+        d.name: (_trigger(d), (d / "brightness").read_text().strip(),
+                 stat.S_IMODE((d / "brightness").stat().st_mode))
+        for d in sorted(root.iterdir())
+    }
+
+
+_MY_GROUP = grp.getgrgid(os.getgid()).gr_name
+
+
+def test_take_then_restore_round_trip(tmp_path):
+    root = _helper_sysfs(tmp_path, {"ACT": ("mmc0", 0, 0o644), "PWR": ("default-on", 1, 0o644)})
+    before = _snapshot(root)
+    state = tmp_path / "state"
+
+    lh.take(root, state, _MY_GROUP)
+    for name in ("ACT", "PWR"):
+        assert _trigger(root / name) == "none"
+        assert (root / name / "brightness").read_text() == "0"
+        assert (root / name / "brightness").stat().st_mode & stat.S_IWGRP
+    assert sorted(p.name for p in state.iterdir()) == ["ACT.json", "PWR.json"]
+
+    lh.restore(root, state)
+    assert _snapshot(root) == before
+    assert list(state.iterdir()) == []
+
+
+def test_second_take_keeps_the_original_state(tmp_path):
+    root = _helper_sysfs(tmp_path, {"ACT": ("mmc0", 0, 0o644)})
+    state = tmp_path / "state"
+    lh.take(root, state, _MY_GROUP)
+    lh.take(root, state, _MY_GROUP)  # e.g. restart without a restore in between
+    assert json.loads((state / "ACT.json").read_text())["trigger"] == "mmc0"
+    lh.restore(root, state)
+    assert _trigger(root / "ACT") == "mmc0"
+
+
+def test_restore_without_state_is_a_noop(tmp_path):
+    root = _helper_sysfs(tmp_path, {"ACT": ("mmc0", 0, 0o644)})
+    before = _snapshot(root)
+    lh.restore(root, tmp_path / "missing-state")
+    assert _snapshot(root) == before
+
+
+def test_take_handles_green_only_and_old_names(tmp_path):
+    root = _helper_sysfs(tmp_path, {"led0": ("mmc0", 0, 0o644)})
+    state = tmp_path / "state"
+    lh.take(root, state, _MY_GROUP)
+    assert [p.name for p in state.iterdir()] == ["led0.json"]
+    lh.restore(root, state)
+    assert _trigger(root / "led0") == "mmc0"
+
+
+@pytest.mark.parametrize("config,expected", [
+    (None, True),                                   # no config file yet
+    ({"led": {"enabled": True}}, True),
+    ({"led": {"enabled": False}}, False),
+    ({"version": 1}, True),                         # older config without the key
+    ("not json", True),
+])
+def test_led_enabled(tmp_path, config, expected):
+    path = tmp_path / "config.json"
+    if config is not None:
+        path.write_text(config if isinstance(config, str) else json.dumps(config))
+    assert lh.led_enabled(path) is expected
+    if config is None:
+        assert not path.exists()  # never creates the config as root
+
+
+def test_main_take_respects_disabled_config(tmp_path):
+    root = _helper_sysfs(tmp_path, {"ACT": ("mmc0", 0, 0o644)})
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps({"led": {"enabled": False}}))
+    state = tmp_path / "state"
+    rc = lh.main(["take", "--group", _MY_GROUP, "--root", str(root),
+                  "--state-dir", str(state), "--config", str(cfg)])
+    assert rc == 0
+    assert _trigger(root / "ACT") == "mmc0"
+    assert not state.exists()
+
+
+def test_main_never_fails(tmp_path):
+    root = _helper_sysfs(tmp_path, {"ACT": ("mmc0", 0, 0o644)})
+    rc = lh.main(["take", "--group", "no-such-group-xyz", "--root", str(root),
+                  "--state-dir", str(tmp_path / "state"), "--config", str(tmp_path / "c.json")])
+    assert rc == 0  # unknown group → logged, service still starts

@@ -99,7 +99,7 @@ behaviour, so a frozen "all good" can never be left showing.
 
 Run as root by systemd: `python3 -m evf.engine.led_helper take|restore [--group pushnav]`.
 
-- [ ] `take`: if `led.enabled` is false in the service's config.json
+- [x] `take`: if `led.enabled` is false in the service's config.json
       (read-only `json.load` from `$XDG_CONFIG_HOME/electronic-viewfinder/config.json`;
       a missing file means enabled; never create or save the config as
       root), do nothing. Otherwise, for each LED present:
@@ -109,11 +109,11 @@ Run as root by systemd: `python3 -m evf.engine.led_helper take|restore [--group 
         "none" as the original
       - set `trigger=none`, `brightness=0`, chgrp to `--group`, and
         `chmod g+w`
-- [ ] `restore`: for each saved file, restore the owner, mode,
+- [x] `restore`: for each saved file, restore the owner, mode,
       brightness and trigger, then delete the file. No saved state means
       nothing to do. Never fails the unit (exit 0, errors logged).
-- [ ] `--root` (sysfs) and `--state-dir` options for tests.
-- [ ] Tests on a fake sysfs tree: the take/restore round-trip returns
+- [x] `--root` (sysfs) and `--state-dir` options for tests.
+- [x] Tests on a fake sysfs tree: the take/restore round-trip returns
       everything to the original; a second `take` keeps the first saved
       state; `restore` without state is a no-op; `led.enabled=false`
       skips `take`; missing LEDs are skipped. Skip the chgrp/chown checks
