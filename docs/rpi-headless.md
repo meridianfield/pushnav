@@ -112,6 +112,34 @@ Good to know:
   `config.json` (see below), then run
   `sudo systemctl restart pushnav-headless`.
 
+## Debug mode
+
+Debug mode adds a Debug panel at the bottom of the PushNav page. Its
+sample star images stand in for the camera, so you can try the sync
+wizard indoors or check a setup without a clear sky. The panel can also
+save the current camera frame (to `/var/lib/pushnav-headless/Downloads`
+on the Pi).
+
+To turn it on, put a jumper across **pin 39 (GND) and pin 40 (GPIO21)**,
+the last two pins of the 40-pin header, at the opposite end from pin 1:
+
+```text
+            pin 1 end ...  37  ●  ●  38
+                           39  ●  ●  40   ← jumper across these two
+                               GND  GPIO21
+```
+
+Then restart PushNav: power-cycle the Pi, or run
+`sudo systemctl restart pushnav-headless`. To turn debug mode off, remove
+the jumper and restart again. PushNav checks the jumper only when it
+starts.
+
+- Use only pins 39 and 40. Never connect a GPIO pin to the 5 V pins.
+- A HAT that uses GPIO21 (some I2S audio boards do) leaves debug mode
+  off, because PushNav can't read the pin.
+- To see what the Pi reads, run
+  `sudo /usr/lib/pushnav-headless/python/bin/python3 -m evf.engine.debug_pin --check`.
+
 ## Managing the service
 
 | Task | Command |
