@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   altAzFromRaDec,
+  darknessAt,
   parseDec,
   parseRA,
   riseSetTransitUtc,
+  sunAltitudeDeg,
 } from "./astronomy";
 
 describe("parseRA", () => {
@@ -69,6 +71,75 @@ describe("altAzFromRaDec", () => {
     expect(Math.abs(r.altDeg - alt)).toBeLessThan(1);
     const dAz = ((r.azDeg - az + 540) % 360) - 180;
     expect(Math.abs(dAz)).toBeLessThan(1);
+  });
+});
+
+const SITES: Record<string, [number, number]> = {
+  Chennai: [13.0878, 80.2785],
+  Denver: [39.74, -104.99],
+  London: [51.5, -0.13],
+  Sydney: [-33.87, 151.21],
+};
+
+describe("sunAltitudeDeg", () => {
+  // astropy get_sun -> AltAz, no refraction
+  const REFS: [string, string, number][] = [
+    ["Chennai", "2026-10-10T06:00:00Z", 69.225],
+    ["Chennai", "2026-10-10T14:00:00Z", -24.394],
+    ["Denver", "2026-10-10T20:00:00Z", 40.41],
+    ["London", "2026-06-21T12:00:00Z", 61.933],
+    ["London", "2026-12-21T00:00:00Z", -61.934],
+    ["Sydney", "2026-10-10T20:00:00Z", 7.537],
+  ];
+  it.each(REFS)("%s at %s matches astropy", (site, iso, alt) => {
+    const [latDeg, lonDeg] = SITES[site];
+    const a = sunAltitudeDeg({ latDeg, lonDeg, date: new Date(iso) });
+    expect(Math.abs(a - alt)).toBeLessThan(0.5);
+  });
+});
+
+describe("darknessAt", () => {
+  const minutesApart = (a: Date, iso: string) =>
+    Math.abs(a.getTime() - new Date(iso).getTime()) / 60_000;
+
+  // astropy: first minute with the Sun below -18°
+  const REFS: [string, string, string, string][] = [
+    ["Chennai", "2026-10-10T06:00:00Z", "day", "2026-10-10T13:34:00Z"],
+    ["Denver", "2026-10-10T16:00:00Z", "day", "2026-10-11T01:58:00Z"],
+    ["Sydney", "2026-10-10T00:00:00Z", "day", "2026-10-10T09:31:00Z"],
+    ["London", "2026-12-21T12:00:00Z", "day", "2026-12-21T17:58:00Z"],
+  ];
+  it.each(REFS)("%s from %s: %s, dark from %s", (site, iso, status, darkIso) => {
+    const [latDeg, lonDeg] = SITES[site];
+    const d = darknessAt({ latDeg, lonDeg, date: new Date(iso) });
+    expect(d.status).toBe(status);
+    if (!("darkFrom" in d)) throw new Error("expected darkFrom");
+    expect(minutesApart(d.darkFrom, darkIso)).toBeLessThan(3);
+  });
+
+  it("is dark when the Sun is below -18°", () => {
+    const [latDeg, lonDeg] = SITES.Chennai;
+    expect(darknessAt({ latDeg, lonDeg, date: new Date("2026-10-10T14:00:00Z") }))
+      .toEqual({ status: "dark" });
+  });
+
+  it("is twilight between sunset and darkness", () => {
+    const [latDeg, lonDeg] = SITES.Chennai;
+    const d = darknessAt({ latDeg, lonDeg, date: new Date("2026-10-10T13:10:00Z") });
+    expect(d.status).toBe("twilight");
+    if (!("darkFrom" in d)) throw new Error("expected darkFrom");
+    expect(minutesApart(d.darkFrom, "2026-10-10T13:34:00Z")).toBeLessThan(3);
+  });
+
+  // London at midsummer never gets astronomically dark: astropy has the
+  // Sun bottoming out at -15.07° at 00:02 UTC
+  it("reports the darkest moment when it never gets dark", () => {
+    const [latDeg, lonDeg] = SITES.London;
+    const d = darknessAt({ latDeg, lonDeg, date: new Date("2026-06-21T12:00:00Z") });
+    expect(d.status).toBe("day");
+    if (!("darkest" in d)) throw new Error("expected darkest");
+    expect(minutesApart(d.darkest, "2026-06-22T00:02:00Z")).toBeLessThan(10);
+    expect(Math.abs(d.darkestSunAltDeg - -15.07)).toBeLessThan(0.5);
   });
 });
 

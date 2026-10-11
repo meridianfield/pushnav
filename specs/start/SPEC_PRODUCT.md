@@ -250,7 +250,13 @@ The header carries a two-tab segmented control:
   - **Buddy** sub-tab: 161 vendored deep-sky objects with equipment /
     light-pollution / visual-reward filters, an observation-time slider
     (Now → +6h), and a sortable table of objects above 20° altitude at
-    the chosen time.
+    the chosen time. When the Sun is above −18° at that time (daytime or
+    twilight, no astronomical darkness yet), a banner above the table says
+    when the sky gets dark, and its **Show then** button moves the
+    observation time there (the slider stretches past +6h if needed). At
+    high latitudes in summer, where it never gets fully dark, the banner
+    gives the darkest time instead. Visibility uses the phone or
+    computer's clock and the observer location.
   - **Advanced** sub-tab: a fuzzy-search input over two open catalogs
     trimmed to JSON under `web/src/data/`:
     - `openngc.json` — 12,522 NGC objects (OpenNGC v20260501, CC-BY-SA 4.0)

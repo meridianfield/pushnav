@@ -135,6 +135,81 @@ export function altAzFromRaDec({
   return { altDeg: alt * RAD2DEG, azDeg };
 }
 
+// Sun RA/Dec (of date), Astronomical Almanac low-precision formula,
+// good to ~0.01° for 1950–2050
+function sunRaDec(date: Date): { raHours: number; decDeg: number } {
+  const n = julianDay(date) - 2451545.0;
+  const L = 280.46 + 0.9856474 * n;
+  const g = (357.528 + 0.9856003 * n) * DEG2RAD;
+  const lambda = (L + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * DEG2RAD;
+  const eps = (23.439 - 0.0000004 * n) * DEG2RAD;
+  const ra = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda));
+  const dec = Math.asin(Math.sin(eps) * Math.sin(lambda));
+  return { raHours: wrap360(ra * RAD2DEG) / 15, decDeg: dec * RAD2DEG };
+}
+
+export function sunAltitudeDeg({
+  latDeg,
+  lonDeg,
+  date,
+}: {
+  latDeg: number;
+  lonDeg: number;
+  date: Date;
+}): number {
+  return altAzFromRaDec({ ...sunRaDec(date), latDeg, lonDeg, date }).altDeg;
+}
+
+// Astronomical darkness: Sun more than 18° below the horizon
+export const DARK_SUN_ALT_DEG = -18;
+
+export type DarknessInfo =
+  | { status: "dark" }
+  | { status: "day" | "twilight"; sunAltDeg: number; darkFrom: Date }
+  // No astronomical darkness in the next 24 h (high latitudes in summer):
+  // darkest is the lowest point the Sun reaches
+  | { status: "day" | "twilight"; sunAltDeg: number; darkest: Date; darkestSunAltDeg: number };
+
+const SEARCH_STEP_MS = 10 * 60_000;
+
+export function darknessAt({
+  latDeg,
+  lonDeg,
+  date,
+}: {
+  latDeg: number;
+  lonDeg: number;
+  date: Date;
+}): DarknessInfo {
+  const alt = (t: number) => sunAltitudeDeg({ latDeg, lonDeg, date: new Date(t) });
+  const t0 = date.getTime();
+  const sunAltDeg = alt(t0);
+  if (sunAltDeg < DARK_SUN_ALT_DEG) return { status: "dark" };
+  const status = sunAltDeg > 0 ? "day" : "twilight";
+
+  let lowT = t0;
+  let lowAlt = sunAltDeg;
+  for (let t = t0 + SEARCH_STEP_MS; t <= t0 + 24 * 3600_000; t += SEARCH_STEP_MS) {
+    const a = alt(t);
+    if (a < DARK_SUN_ALT_DEG) {
+      // bisect the crossing down to a few seconds
+      let lo = t - SEARCH_STEP_MS;
+      let hi = t;
+      while (hi - lo > 5_000) {
+        const mid = (lo + hi) / 2;
+        if (alt(mid) < DARK_SUN_ALT_DEG) hi = mid;
+        else lo = mid;
+      }
+      return { status, sunAltDeg, darkFrom: new Date(hi) };
+    }
+    if (a < lowAlt) {
+      lowAlt = a;
+      lowT = t;
+    }
+  }
+  return { status, sunAltDeg, darkest: new Date(lowT), darkestSunAltDeg: lowAlt };
+}
+
 // Maximum altitude at upper transit
 export function maxAltitudeDeg({
   decDeg,
