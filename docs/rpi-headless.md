@@ -133,6 +133,9 @@ boot. Lite is also what this setup was tested with.
 To log in to the Pi, connect to the hotspot and run `ssh pi@192.168.77.1`
 (password `pushnav`, unless you changed it).
 
+To stick these details on the box, with a QR code that opens PushNav,
+print a label: see [Label for a ready-made Pi](#label-for-a-ready-made-pi).
+
 The setup in `user-data` runs **only on the first boot**. To install a
 newer PushNav later, see [For power users](#for-power-users-installing-a-deb-yourself),
 or flash the card again with the new files.
@@ -406,3 +409,34 @@ each release.
 The ready-made SD card's first-boot configuration is
 `packaging/headless/user-data`; CI attaches it to each release next to the
 `.deb`, and `tests/test_headless_user_data.py` checks it.
+
+### Label for a ready-made Pi
+
+`scripts/make_pi_label.py` makes a 50 × 20 mm label for the box: a QR
+code that opens PushNav on a phone, then the hotspot name and password,
+the web address and the SSH login.
+
+![Example label: a QR code, then PushNav, Wi-Fi PushNav-3F2A, Pass pushnav123, Web 192.168.77.1:8765, SSH pi / pushnav](assets/pi-label.png){ width="420" style="border: 1px solid #9e9e9e; border-radius: 4px" }
+
+It runs on any computer (it doesn't need a Pi), from a copy of this
+repository with [uv](https://docs.astral.sh/uv/getting-started/installation/)
+installed. `uv run` installs what it needs the first time.
+
+```bash
+git clone https://github.com/meridianfield/pushnav.git
+cd pushnav
+uv run python scripts/make_pi_label.py 3F2A
+```
+
+`3F2A` is the end of the Pi's hotspot name (`PushNav-3F2A`), as the
+phone's Wi-Fi list shows it. The script writes `pushnav-label-3F2A.svg`
+and `pushnav-label-3F2A.png`, a 300 dpi image for apps that only take
+pictures (`--dpi 600` for another resolution). It takes the passwords and
+the address from `packaging/headless/user-data`. If you changed them for
+your card, point it at your copy with `--user-data path/to/user-data`.
+`--help` lists the other options.
+
+The text is drawn as shapes, so the SVG looks the same in any app; print
+it at 100% (actual size). The font is Atkinson Hyperlegible (in
+`scripts/fonts/`, SIL Open Font License), which keeps look-alike
+characters such as 8 and B, or 0 and D, apart.

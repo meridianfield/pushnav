@@ -182,6 +182,8 @@ scripts/                        # build and dev scripts
   run_mock_camera.sh            # launch mock camera for testing
   pushnav.iss                   # Inno Setup installer script (Windows)
   sync_catalog.py               # vendor objects.json from ~/Devel/Github/stargazing-buddy-site
+  make_pi_label.py              # 50 x 20 mm SVG + PNG label for a ready-made Pi (QR + hotspot details)
+  fonts/                        # Atkinson Hyperlegible (OFL), used only by make_pi_label.py
   render_3d_models.py           # render docs/assets/3d_model_*.png from the STLs (uv run, PyVista)
   test_stellarium_live.py       # manual Stellarium integration test
 tests/                          # test suite (pytest)
@@ -202,9 +204,13 @@ specs/start/                    # design specifications
 - **pyerfa** — IAU 2006 precession (J2000 ↔ JNow) for the LX200 protocol server
 - **pyyaml** (dev group) — used by `scripts/sync_catalog.py` to parse the
   buddy-site markdown frontmatter when refreshing `web/src/data/objects.json`,
-  and by `tests/test_headless_user_data.py` to check `packaging/headless/user-data`
+  by `tests/test_headless_user_data.py` to check `packaging/headless/user-data`,
+  and by `scripts/make_pi_label.py` to read its passwords and address
 
-Dev dependencies: **nuitka** (builds), **pytest** (tests).
+Dev dependencies: **nuitka** (builds), **pytest** (tests), and **segno**,
+**fonttools**, **uharfbuzz** and **freetype-py** for `scripts/make_pi_label.py`
+(QR code, outlined and kerned text, and the PNG). The Pi package is built
+with `--no-dev`, so none of these reach it.
 Docs dependency group (`uv sync --group docs`): **mkdocs-material** for the
 GitHub Pages site under `docs/`.
 

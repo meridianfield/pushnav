@@ -138,7 +138,9 @@ There are two ways:
 - **Install with apt** on a Pi you set up yourself, on your own Wi-Fi.
 - **Ready-made PushNav SD card:** flash Raspberry Pi OS Lite, copy the
   release's `.deb` and `user-data` onto the card, and boot. The Pi becomes
-  a dedicated box with its own Wi-Fi hotspot.
+  a dedicated box with its own Wi-Fi hotspot. You can
+  [print a label](rpi-headless.md#label-for-a-ready-made-pi) for the box
+  with the hotspot details and a QR code that opens PushNav.
 
 It has no window: it runs in the background as a service, and you use
 it from a phone browser over Wi-Fi. The Pi's LEDs show whether PushNav
