@@ -24,12 +24,12 @@ The camera ships with a wide-angle lens that needs to be replaced with the 25mm 
 - Install the M12 lens mount onto the camera PCB using the existing mounting holes. This will provide a standard M12 thread for attaching the new lens.
 - Add the 3D printed focus lock nut to the lens. You will need to tighten this lock nut against the lens holder once you have achieved proper focus to prevent the lens from moving due to vibrations while pushing the telescope.
 - Attach the 25mm F2.4 M12 lens to the new mount.
-- Reassemble the white plastic base of the camera.
+- Reassemble the white plastic base of the camera. If it breaks, print the [spare camera base](3d-models.md#spare-camera-base).
 
 ## DIY Assembly
 
 - Finish the camera modifications as described above to get the camera ready for use with PushNav. This involves replacing the stock lens with the 25mm M12 lens and ensuring it is securely mounted and focused.
-- 3D print the camera housing parts (base, hood, dust cap). Refer to the  3D models section of the documentation
+- 3D print the [Camera Housing](3d-models.md#camera-housing-recommended): the camera housing, the hood and the low mount (the dust cap is optional). To run PushNav on a Raspberry Pi 3A+ instead of a laptop, print the [Pi 3A+ mount and box](3d-models.md#pi-3a-mount-and-box-optional) in place of the low mount.
 - Secure the camera inside the housing base. Choice of adhesive depends on whether you want to remove the camera later:
     - **Hot glue gun.** Use if you may want to remove the camera to refit or reuse later. It's reversible (peels off with gentle prying), but the thick bead can introduce small alignment errors, so press the camera flat while the glue sets.
     - **Super glue (or other thin adhesives).** Use once you're satisfied with alignment and focus and don't plan to remove the camera. Thin adhesives give a much more precise, rigid bond with no alignment drift.

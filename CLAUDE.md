@@ -156,8 +156,13 @@ docs/                           # GitHub Pages documentation
   _config.yml                   # Jekyll config for GitHub Pages
   assets/                       # documentation images
 hardware/                       # 3D-printable mechanical designs (OpenSCAD)
-  3d_models/                    # OpenSCAD source and pre-built STLs
-    housing.scad                # camera housing (base+dovetail, hood+baffle, cap)
+  3d_models/                    # OpenSCAD source and pre-built STLs (README lists every part)
+    housing_v3.scad             # recommended camera housing, hood, cap and low (laptop) mount
+    housing_v4.scad             # optional Pi 3A+ mount and box for headless use (YAPP_Box)
+    housing_v2.scad, housing.scad  # deprecated v2 (threaded) and v1 (bolted) housings
+    laser_pointer_holder.scad   # 23 mm laser pointer cradle on a finder-shoe saddle
+    camera_base.scad            # spare for the camera module's white base
+    vendor/                     # threads.scad (CC0), YAPP_Box (MIT)
     stls/                       # pre-built STL files ready for printing
 marketing/                      # app branding assets (logo, in-app title)
 linux/                          # Linux desktop integration (pushnav.desktop)
@@ -177,6 +182,7 @@ scripts/                        # build and dev scripts
   run_mock_camera.sh            # launch mock camera for testing
   pushnav.iss                   # Inno Setup installer script (Windows)
   sync_catalog.py               # vendor objects.json from ~/Devel/Github/stargazing-buddy-site
+  render_3d_models.py           # render docs/assets/3d_model_*.png from the STLs (uv run, PyVista)
   test_stellarium_live.py       # manual Stellarium integration test
 tests/                          # test suite (pytest)
   samples/                      # plate-solve test images (a–d.png + targets/)

@@ -52,6 +52,8 @@ the same.
 - A [supported camera](hardware.md). The Waveshare, Arducam and DECXIN
   OV9281 USB modules are recognised automatically.
 - A phone, tablet or laptop to open PushNav in a browser.
+- Optionally, for a Pi 3A+: the 3D-printed [Pi 3A+ mount and box](3d-models.md#pi-3a-mount-and-box-optional),
+  which carries the Pi under the camera on the telescope's finder shoe.
 
 ## A. Install with apt
 
@@ -176,7 +178,8 @@ a green double blink and "camera unplugged while in use" is steady green.
 Good to know:
 
 - Some Pi cases hide the LEDs. A case with a window or light pipe over
-  them makes the status light visible.
+  them makes the status light visible; the PushNav Pi 3A+ box has a
+  window over them in its back wall.
 - While PushNav runs, the green LED no longer flickers with SD card
   activity. On a Pi 4, the red LED also stops warning about a weak power
   supply.

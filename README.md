@@ -326,19 +326,20 @@ specs/start/           Design specifications
 
 ## 3D-Printable Hardware
 
-The [`hardware/3d_models/`](hardware/3d_models/) directory contains OpenSCAD source and pre-built STLs for the camera housing and accessories. The hood, cap, and lens accessories print without supports; the base needs localised slicer supports at the USB cutout and (for the threaded variant) the back chord-flat. Any modern slicer places these automatically.
+![The PushNav camera on its low mount](docs/assets/3d_model_v3.png)
+
+The [`hardware/3d_models/`](hardware/3d_models/) directory contains OpenSCAD source and pre-built STLs. Everything prints without supports except the camera housing, which needs localised slicer supports at the USB cutout and the back chord-flat; any modern slicer places these automatically.
 
 | Part | Description |
 |------|-------------|
-| **PCB Base + Threaded Lip + Dovetail** (threaded, recommended) | Cylindrical 50 mm shell; internal 44 mm female thread accepts the hood; finder-shoe dovetail (`housing_v2_base.stl`). |
-| **Hood + Male Thread + Baffle** (threaded, recommended) | Matching male thread; stepped flange and baffled lens shroud (`housing_v2_hood.stl`). |
-| **Dust Cap** (threaded) | Friction-fit cap over the hood's narrow end (`housing_v2_cap.stl`). |
-| **PCB Base + Dovetail** (bolted, legacy) | Older design with two variants: self-tapping (2.7mm, `housing_base_selftap.stl`) or bolt-through (3.5mm, `housing_base_bolt.stl`). |
-| **Hood + Baffle** (bolted, legacy) | Hood with bolt-plate flange (`housing_hood.stl`). |
-| **Dust Cap** (bolted, legacy) | Original friction-fit cap (`housing_cap.stl`). |
+| **Camera Housing** (recommended) | The camera in a threaded housing on a rotation mount for the finder shoe: camera housing, hood and optional cap (`housing_v3_base.stl`, `housing_v3_hood.stl`, `housing_v3_cap.stl`) on the low mount (`housing_v3_mount.stl`), with the camera plugged into a laptop. |
+| **Pi 3A+ mount and box** (optional) | For running PushNav headless on a Raspberry Pi 3A+: a taller mount that carries the camera over a box for the Pi 3A+, in place of the low mount (`housing_v4_mount.stl`, `housing_v4_box_base.stl`, `housing_v4_box_lid.stl`). |
+| **Laser Pointer Holder** | Cradle for a 23 mm laser pointer on a finder-shoe saddle, with heat-set inserts for the clamp screws and a tripod mount (`laser_pointer_holder.stl`). |
+| **Spare Camera Base** | Replacement for the camera module's white base, fixed with hot glue (`camera_base.stl`). |
 | **M12 Lock Ring** | Secures the lens at the correct focus position (`lock_ring.stl`). |
+| **Camera Housings v2, v1** (deprecated) | Kept for existing builds: the v2 threaded housing (`housing_v2_*.stl`) and the v1 bolted housing (`housing_base_*.stl`, `housing_hood.stl`, `housing_cap.stl`). |
 
-Pre-built STLs are in [`hardware/3d_models/stls/`](hardware/3d_models/stls/). See the [3D models README](hardware/3d_models/README.md) for print settings and build instructions.
+Pre-built STLs are in [`hardware/3d_models/stls/`](hardware/3d_models/stls/). See the [3D models README](hardware/3d_models/README.md) for hardware, print settings and build instructions, or the [3D Models](https://meridianfield.github.io/pushnav/3d-models/) page on the website.
 
 ## License
 
