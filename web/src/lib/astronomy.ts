@@ -125,10 +125,11 @@ export function altAzFromRaDec({
     Math.sin(dec) * Math.sin(lat) + Math.cos(dec) * Math.cos(lat) * Math.cos(ha);
   const alt = Math.asin(clamp(sinAlt, -1, 1));
 
-  // azimuth (from north, eastward)
+  // azimuth (from north, eastward):
+  // tan(az) = -sin(ha) cos(dec) / (sin(dec) cos(lat) - cos(dec) sin(lat) cos(ha))
   const y = -Math.sin(ha) * Math.cos(dec);
-  const x = Math.sin(dec) - Math.sin(alt) * Math.sin(lat);
-  const az = Math.atan2(y, x * Math.cos(lat));
+  const x = Math.sin(dec) * Math.cos(lat) - Math.cos(dec) * Math.sin(lat) * Math.cos(ha);
+  const az = Math.atan2(y, x);
   const azDeg = wrap360(az * RAD2DEG);
 
   return { altDeg: alt * RAD2DEG, azDeg };
