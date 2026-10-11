@@ -262,6 +262,20 @@ scripts/smoke_test_headless_deb.sh   # install + run test on bookworm / trixie
 
 Build output goes to `build/`.
 
+**Label for a ready-made Pi**: a 50 × 20 mm label for the box, with a QR
+code that opens PushNav and the hotspot name and password, web address
+and SSH login. Give it the end of the Pi's hotspot name (`PushNav-3F2A`
+here). It writes `pushnav-label-3F2A.svg` and a 300 dpi
+`pushnav-label-3F2A.png` (`--dpi` for another resolution), taking the
+passwords and address from `packaging/headless/user-data` (`--user-data`
+for an edited copy). See
+[Label for a ready-made Pi](docs/rpi-headless.md#label-for-a-ready-made-pi):
+```bash
+uv run python scripts/make_pi_label.py 3F2A
+```
+
+![Example label for PushNav-3F2A](docs/assets/pi-label.png)
+
 ### macOS Gatekeeper note
 
 The macOS `.dmg` is built with an ad-hoc code signature, **not** an Apple
@@ -359,4 +373,9 @@ databases. Each lives under `data/catalogs/<name>/` with its upstream
 The build script `scripts/build_catalogs.py` trims these CSVs to the
 JSON projections under `web/src/data/`; those derived files inherit
 the CC-BY-SA licence.
+
+The Pi label script `scripts/make_pi_label.py` uses the
+[Atkinson Hyperlegible](https://github.com/googlefonts/atkinson-hyperlegible)
+font, kept in `scripts/fonts/` with its SIL Open Font License
+(`scripts/fonts/OFL.txt`).
 
