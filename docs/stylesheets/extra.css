@@ -4,3 +4,12 @@
 .md-nav--primary > .md-nav__title {
   display: none;
 }
+
+/* 3D Models page: renders of the smaller parts shown narrower than the
+   full-width v4 images, and centred */
+.md-typeset img.render-sm {
+  display: block;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+}

@@ -16,11 +16,26 @@
 // along with PushNav. If not, see <https://www.gnu.org/licenses/>.
 
 // ============================================================
-// PushNav Laser Pointer Holder v2
+// PushNav Laser Pointer Holder — v3 (formerly laser_pointer_v3.scad)
 // ============================================================
 //
 // 3D-printable holder for a cylindrical laser pointer, designed
 // to mount on a standard telescope finder shoe via a dovetail saddle.
+//
+// v3 changes from v2:
+//   - Replaced the captive 1/4-20 hex nut + Y-face insertion slot
+//     with a single heat-set brass insert bore in the bottom face
+//     (8mm OD × 8mm insert, 7.8mm bore for melt-in interference fit).
+//     No support material, no bridged slot ceiling, no orientation
+//     constraint at print time. Any screw matching the insert's
+//     internal thread can now mount the holder on a tripod QR plate.
+//   - Dovetail clamp: the captive M5 hex-nut pockets are gone too —
+//     two M4 brass heat-set inserts (5.8mm OD × 4mm) sit in the
+//     saddle's -X outer wall instead. M4 matches commercial finder
+//     shoe clamp screws. Both outer flanks are cut parallel to the
+//     dovetail channel walls (uniform 6mm thickness, symmetric
+//     trapezoid profile), so the inserts seat flush in the sloped
+//     face and the clamp screws meet the rail's flank square-on.
 //
 // v2 changes from v1:
 //   - V-groove block sits directly UNDER the saddle (no +X extension)
@@ -41,6 +56,8 @@
 //      up both sides of the block, over the laser pointer, and click shut.
 //   3. Repeat for the back slot.
 //   4. Slide the dovetail saddle onto the finder shoe rail.
+//   5. Tighten the two M4 clamp screws (threaded into the heat-set
+//      inserts in the sloped side wall) to lock the saddle on the rail.
 
 
 // ============================================================
@@ -69,9 +86,9 @@ groove_depth        = 15;        // depth of V cut from block top (mm) — bumpe
 groove_width        = groove_depth * 2 * tan(45);    // 90° V: 30mm
 groove_wall         = (saddle_size[0] - groove_width) / 2;  // 10mm each side
 block_width         = saddle_size[0];                       // 50mm — matches saddle footprint
-floor_thickness     = 10;        // solid material below V tip — bumped from v1's 8mm
-                                 // to host the captive 1/4-20 nut pocket without
-                                 // breaking through into the V cavity
+floor_thickness     = 10;        // solid material below V tip — hosts the
+                                 // 8mm-deep heat-set insert bore with ~1.5mm
+                                 // of retention floor above it before the V cavity
 block_height        = groove_depth + floor_thickness;  // 25mm
 block_length        = saddle_size[1];                  // 46mm — matches saddle
 
@@ -98,31 +115,60 @@ total_height     = saddle_z + saddle_size[2];        // 60.77
 cable_tie_slot_w    = 9.5;       // slot depth into block (Y) — fits 3.6mm standard tie
 cable_tie_slot_h    = 5;         // slot height (Z)
 
-/* Side clamping screws (M5) — engage the finder shoe rail inside the
-   dovetail channel. Same geometry as v1, positioned in the saddle. */
-screw_diameter = 5;
-nut_size       = [8.0, 4.7];    // M5 [across-flats, height]
-screw_z        = saddle_z + 15; // mirrors v1's Z=15 within its 18mm saddle
+/* Side clamp — two M4 screws thread into brass heat-set inserts in the
+   saddle's -X outer wall and press square onto the finder shoe rail's
+   dovetail flank. M4 is the commercial norm for finder-shoe clamp
+   screws; the smaller insert also lets the screw axis sit higher on
+   the rail flank than an M5 insert would allow.
+   Insert: M4 thread, 5.8mm knurled OD, 4mm long. */
+dovetail_angle     = atan(((channel_bottom_width - channel_top_width) / 2)
+                          / channel_depth);   // 29.5° from vertical
+clamp_wall_t       = 6;                       // wall thickness ⊥ to channel wall
+clamp_insert_od    = 5.8;
+clamp_insert_len   = 4.0;
+clamp_insert_bore  = clamp_insert_od - 0.4;   // 5.4mm — melt-in interference fit
+clamp_insert_depth = clamp_insert_len + 0.5;  // 4.5mm — flush seat + relief
+clamp_screw_clear  = 4.5;                     // M4 clearance bore behind the insert
+clamp_bite_frac    = 0.4;                     // screw-tip contact height on the rail
+                                              // flank: 0 = channel bottom, 1 = top.
+                                              // 0.4 is as high as the insert bore can
+                                              // sit while keeping ~1.8mm of material
+                                              // to the saddle's top edge.
 
-/* Captive 1/4-20 hex nut pocket — for mounting on a photography tripod
-   quick-release plate. Nut slides in from the -Y (front) face through a
-   slot, then sits in a hex pocket in the V-block floor. A clearance hole
-   from the bottom face lets the QR-plate screw thread up into the nut.
-   Insertion is from Y so that, with the part printed lying on its side
-   (XZ plane on the bed, Y axis vertical), the slot's ceiling is a tiny
-   bridge instead of a wide unsupported overhang.
-   Standard 1/4-20 hex nut: ~11.1mm across flats, ~5.6mm thick. */
-// Clearances are generous because the slot/pocket are printed vertically
-// (Y axis up) with supports — layer bulge and bridge sag eat into the
-// nominal dimensions, so we oversize before printing.
-tnut_af              = 11.1 + 0.6;   // 11.7mm — ~0.59mm clearance on flats
-tnut_thickness       = 5.6 + 0.7;    // 6.3mm  — ~0.74mm clearance on Z
-tnut_floor_below     = 1.5;          // retention floor between nut and bottom face
-tnut_screw_clearance = 7.5;          // 1.15mm dia clearance for a 6.35mm screw
-tnut_hex_r           = tnut_af / 2 / cos(30);   // circumscribed radius for $fn=6 hex
-tnut_x               = block_width / 2;          // pocket centred in X
-tnut_y               = block_length / 2;         // pocket centred in Y
-tnut_z               = tnut_floor_below;         // pocket bottom in Z
+/* Sloped outer wall planes — the channel walls pushed outward by
+   clamp_wall_t along their normals; both flanks are cut, giving the
+   saddle a symmetric trapezoid profile. (clamp_face_x, clamp_face_z)
+   is the shifted image of the -X channel wall's bottom edge; the plane
+   rises from there at dovetail_angle. Below the crease where it crosses
+   the vertical outer face the wall is left untouched. */
+clamp_face_x   = saddle_size[0] / 2 - channel_bottom_width / 2
+               - clamp_wall_t * cos(dovetail_angle);
+clamp_face_z   = saddle_z + saddle_size[2] - channel_depth
+               + clamp_wall_t * sin(dovetail_angle);
+/* Insert axis — placed so the screw tip lands clamp_bite_frac of the
+   way up the rail flank, then backed out perpendicular through the wall. */
+clamp_bite_x   = saddle_size[0] / 2 - channel_bottom_width / 2
+               + clamp_bite_frac * channel_depth * tan(dovetail_angle);
+clamp_bite_z   = saddle_z + saddle_size[2] - channel_depth
+               + clamp_bite_frac * channel_depth;
+clamp_center_x = clamp_bite_x - clamp_wall_t * cos(dovetail_angle);
+clamp_center_z = clamp_bite_z + clamp_wall_t * sin(dovetail_angle);
+
+/* Heat-set brass insert — for mounting on a photography tripod QR plate.
+   Insert is 8mm OD × 8mm long. Bore is a plain cylinder cut into the
+   bottom face; the insert is pushed in with a soldering iron from below,
+   melting the plastic around its knurled OD for a permanent fit.
+   The tripod screw threads up into the insert's internal thread.
+   Bore diameter is 0.2mm undersize (7.8mm) so the melted plastic can
+   flow into the knurls and lock the insert in place. Bore depth is 0.5mm
+   deeper than the insert so it seats flush and displaced material has
+   somewhere to escape. */
+insert_od         = 8.0;                     // your insert's outer diameter
+insert_length     = 8.0;                     // your insert's length
+insert_bore_dia   = insert_od - 0.2;         // 7.8mm — melt-in interference fit
+insert_bore_depth = insert_length + 0.5;     // 8.5mm — insert length + seating relief
+insert_x          = block_width / 2;         // bore centred in X
+insert_y          = block_length / 2;        // bore centred in Y
 
 
 // ============================================================
@@ -154,23 +200,6 @@ module v_groove_block() {
         translate([-1, block_length - cable_tie_slot_w, 0])
             cube([block_width + 2, cable_tie_slot_w + 1, cable_tie_slot_h]);
     }
-}
-
-
-module screw_insert() {
-    // Hex nut pocket with insertion slot toward -X
-    hull() {
-        linear_extrude(height = nut_size[1], twist = 0, center = false)
-            regular_polygon(6, nut_size[0] / 2 / cos(360 / (6 * 2)));
-        translate([-30, -nut_size[0] / 2, 0])
-            cube([nut_size[0], nut_size[0], nut_size[1]], center = false);
-    }
-}
-
-module regular_polygon(order = 4, r = 1) {
-    angles = [for (i = [0 : order - 1]) i * (360 / order)];
-    coords = [for (th = angles) [r * cos(th), r * sin(th)]];
-    polygon(coords);
 }
 
 
@@ -208,20 +237,31 @@ difference() {
                     [-channel_bottom_width / 2, channel_depth]
                 ]);
 
-    // Side clamping screws — enter from left wall, angled 15 deg downward
-    translate([0, saddle_size[1] / 2 - 15, screw_z])
-        rotate([0, 105, 0]) {
-            cylinder(h = 40, r = screw_diameter / 2, center = true);
-            translate([0, 0, 6])
-                screw_insert();
-        }
+    // Sloped outer walls — cut both saddle flanks parallel to the
+    // dovetail channel walls, leaving uniform clamp_wall_t of material
+    // and a symmetric trapezoid profile. Below the crease each plane
+    // sits outside the part, so the cutters remove nothing there and
+    // the walls stay vertical.
+    translate([clamp_face_x, -1, clamp_face_z])
+        rotate([0, dovetail_angle, 0])
+            translate([-100, 0, -50])
+                cube([100, block_length + 2, 100]);
+    translate([saddle_size[0] - clamp_face_x, -1, clamp_face_z])
+        rotate([0, -dovetail_angle, 0])
+            translate([0, 0, -50])
+                cube([100, block_length + 2, 100]);
 
-    translate([0, saddle_size[1] / 2 + 15, screw_z])
-        rotate([0, 105, 0]) {
-            cylinder(h = 40, r = screw_diameter / 2, center = true);
-            translate([0, 0, 6])
-                screw_insert();
-        }
+    // M4 clamp-insert bores — perpendicular to the -X sloped face, one
+    // near each Y end of the saddle. Insert bore at the face, M4
+    // clearance continuing through the wall into the channel.
+    for (y = [saddle_size[1] / 2 - 15, saddle_size[1] / 2 + 15])
+        translate([clamp_center_x, y, clamp_center_z])
+            rotate([0, 90 + dovetail_angle, 0]) {
+                translate([0, 0, -0.1])
+                    cylinder(d = clamp_insert_bore, h = clamp_insert_depth + 0.1);
+                translate([0, 0, -0.1])
+                    cylinder(d = clamp_screw_clear, h = clamp_wall_t + 3);
+            }
 
     // Top-edge cable tie slots — same shape as the V-block floor slots,
     // shifted up to the V-block top so they cut through the bottom of
@@ -235,23 +275,13 @@ difference() {
     translate([-1, block_length - cable_tie_slot_w, block_height])
         cube([block_width + 2, cable_tie_slot_w + 1, cable_tie_slot_h]);
 
-    // Captive 1/4-20 hex nut pocket — three cuts:
-    //   (a) hex pocket centred at (tnut_x, tnut_y, tnut_z), rotated 30°
-    //       so flats are perpendicular to the X axis (matching the slot
-    //       walls) and vertices sit on +Y/-Y. With Y vertical at print
-    //       time, the hex narrows to a point at top and bottom — no flat
-    //       overhang to bridge.
-    //   (b) rectangular insertion slot from the -Y (front) face into the
-    //       pocket. Slot ceiling at Y=tnut_y is a ~11.4mm bridge that
-    //       prints unsupported.
-    //   (c) clearance hole from the bottom face up through the floor
-    translate([tnut_x, tnut_y, tnut_z])
-        rotate([0, 0, 30])
-            cylinder($fn = 6, r = tnut_hex_r, h = tnut_thickness);
-    translate([tnut_x - tnut_af / 2, -1, tnut_z])
-        cube([tnut_af, tnut_y + 1, tnut_thickness]);
-    translate([tnut_x, tnut_y, -1])
-        cylinder(d = tnut_screw_clearance, h = floor_thickness + 2);
+    // Heat-set brass insert bore — plain cylinder cut into the bottom face,
+    // 7.8mm dia × 8.5mm deep. Insert is installed from below with a
+    // soldering iron; the tripod screw threads up into it from the QR plate.
+    // The tiny -0.01/+0.02 offsets on Z avoid coplanar-face rendering
+    // artefacts on the bottom skin.
+    translate([insert_x, insert_y, -0.01])
+        cylinder(d = insert_bore_dia, h = insert_bore_depth + 0.02);
 }
 
 // ============================================================
