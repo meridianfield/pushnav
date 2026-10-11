@@ -68,7 +68,7 @@ runcmd:
 
   # Install PushNav from the .deb on the boot partition (no internet needed).
   # Found up to two folders deep, and matches both a local build's name
-  # (…0.3.0~beta6-1…) and GitHub's download name (…0.3.0.beta6-1…).
+  # (…0.3.0~beta7-1…) and GitHub's download name (…0.3.0.beta7-1…).
   # This runs on the first boot only; install later .debs by hand.
   - >-
     DEB=$(find /boot/firmware -maxdepth 3 -name 'pushnav-headless_*_arm64.deb'

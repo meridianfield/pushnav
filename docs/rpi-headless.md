@@ -11,7 +11,7 @@ service, and you control it from a phone or laptop browser at
 installer, Linux AppImage) are separate and unchanged.
 
 !!! info "Where to get it"
-    The Pi package comes with the PushNav releases from `v0.3.0-beta6` on.
+    The Pi package comes with the PushNav releases from `v0.3.0-beta7` on.
     On the [releases page](https://github.com/meridianfield/pushnav/releases),
     pick the newest release that lists `pushnav-headless_<version>_arm64.deb`
     (it may be marked *Pre-release*). It sits next to `user-data`, which
@@ -262,8 +262,8 @@ that stays disabled.
 
 - **No internet needed:** the package depends only on `libjpeg62-turbo`,
   `adduser` and `libc6` (2.36 or newer), which Raspberry Pi OS already has.
-- **File names:** a release download is named `…0.3.0.beta6-1…` where a
-  local build is named `…0.3.0~beta6-1…`. Both are fine: apt reads the
+- **File names:** a release download is named `…0.3.0.beta7-1…` where a
+  local build is named `…0.3.0~beta7-1…`. Both are fine: apt reads the
   version from inside the file.
 
 ### More settings
