@@ -389,13 +389,19 @@ jobs:
         with:
           path: artifacts
 
+      # List bare file names, as downloaded, so `sha256sum -c` works in a
+      # folder of downloads. GitHub turns "~" in asset names into ".", so
+      # the .deb (0.3.0~beta7-1) is renamed to that form before hashing.
       - name: Generate checksums
         run: |
           cd artifacts
+          for f in PushNav-headless-deb/*~*.deb; do
+            [ -e "$f" ] && mv "$f" "${f//\~/.}"
+          done
           find . -type f \( -name "*.dmg" -o -name "*.tar.gz" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.exe" -o -name "*.deb" -o -name "user-data" \) \
             | sort \
             | while read -r f; do
-                sha256sum "$f"
+                (cd "$(dirname "$f")" && sha256sum "$(basename "$f")")
               done > ../checksums-sha256.txt
           cat ../checksums-sha256.txt
 
