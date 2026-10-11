@@ -46,7 +46,7 @@ Now pick a target, either from PushNav's built-in **What to See** tab or from wh
 
 For target picking, PushNav doesn't make you choose between simplicity and reach. The built-in **What to See** tab gives you both side by side.
 
-- **Buddy** — 161 hand-picked deep-sky objects with filters for equipment, light pollution and visual reward. The "what should I look at tonight?" answer for a new observer who doesn't know the sky yet.
+- **Buddy** — 161 hand-picked deep-sky objects with filters for equipment, light pollution and visual reward. The "what should I look at tonight?" answer for a new observer who doesn't know the sky yet. It lists what's more than 20° above the horizon at the chosen time. If it isn't fully dark yet at that time, a banner says when it will be, and **Show then** jumps the list to that time.
 - **Advanced** — fuzzy search across **12,522 NGC objects** (OpenNGC) and **8,825 bright stars** (HYG). The "give me M81" answer when you already know what you want.
 - **Manual coordinates** — RA/Dec entry for the rest: comets, asteroids, satellites, anything ephemeris-driven that no catalog covers.
 
