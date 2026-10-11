@@ -17,7 +17,7 @@ Grab the latest release from GitHub:
 | **Windows** | `PushNav-windows-x64-setup.exe` |
 | **macOS** (Apple Silicon, M1/M2/M3/M4) | `PushNav-macOS-arm64.dmg` |
 | **Linux** | `PushNav-linux-x86_64.AppImage` |
-| **Raspberry Pi 3A+ / 4 / 5** (headless, beta) | `pushnav-headless_<version>_arm64.deb`, from the next release; on `main` for now ([guide](rpi-headless.md)) |
+| **Raspberry Pi 3A+ / 4 / 5** (headless, beta) | `pushnav-headless_<version>_arm64.deb`, plus `user-data` for the ready-made SD card ([guide](rpi-headless.md)) |
 
 ---
 
@@ -133,9 +133,13 @@ Log out and back in for the change to take effect.
 
 On a Raspberry Pi 3A+, 4 or 5, install the `pushnav-headless` package
 (`pushnav-headless_<version>_arm64.deb`) instead of the Linux AppImage.
-Raspberry Pi support is on the `main` branch and isn't in a published
-release yet; until the next release, the guide shows how to build the
-package yourself.
+There are two ways:
+
+- **Install with apt** on a Pi you set up yourself, on your own Wi-Fi.
+- **Ready-made PushNav SD card:** flash Raspberry Pi OS Lite, copy the
+  release's `.deb` and `user-data` onto the card, and boot. The Pi becomes
+  a dedicated box with its own Wi-Fi hotspot.
+
 It has no window: it runs in the background as a service, and you use
 it from a phone browser over Wi-Fi. The Pi's LEDs show whether PushNav
 needs attention (red) or is working (green).

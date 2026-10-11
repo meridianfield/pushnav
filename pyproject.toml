@@ -37,6 +37,8 @@ dev = [
     # avoids the Sequoia AppleScript / Finder Automation regression that
     # breaks create-dmg's icon positioning). macOS-only at runtime.
     "dmgbuild>=1.6.5; sys_platform == 'darwin'",
+    # Tests parse packaging/headless/user-data; scripts/sync_catalog.py too.
+    "pyyaml>=6.0",
 ]
 docs = [
     "mkdocs-material>=9.5",

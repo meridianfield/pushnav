@@ -1,0 +1,78 @@
+#cloud-config
+#
+# PushNav: ready-made SD card for a Raspberry Pi (first-boot configuration)
+#
+# Turns a fresh Raspberry Pi OS Lite (64-bit, Trixie) card into a dedicated
+# PushNav device with its own Wi-Fi hotspot. No internet needed.
+#
+#   1. Flash Raspberry Pi OS Lite (64-bit) with Raspberry Pi Imager, without
+#      "OS customisation".
+#   2. Before the first boot, copy to the top level of the boot partition
+#      (bootfs), replacing the user-data file that's there:
+#        - this file, named exactly "user-data"
+#        - the PushNav .deb (pushnav-headless_<version>_arm64.deb)
+#   3. Boot the Pi and wait a few minutes for the first-boot setup.
+#
+# Result:
+#   Hotspot name : PushNav-XXXX       (XXXX = last 4 characters of the Pi's serial)
+#   Password     : pushnav123
+#   PushNav      : http://192.168.77.1:8765   (also http://pushnav.local:8765)
+#   SSH login    : pi / pushnav
+#
+# CHANGE BEFORE USE (search for "CHANGE"):
+#   - the Wi-Fi country code (IN = India)
+#   - the login and hotspot passwords, if others can be within Wi-Fi range
+#
+# Guide: https://meridianfield.github.io/pushnav/rpi-headless/
+
+hostname: pushnav
+manage_etc_hosts: true
+
+users:
+  - name: pi
+    groups: users,adm,dialout,audio,netdev,video,plugdev,input,gpio,spi,i2c,render,sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    plain_text_passwd: pushnav          # CHANGE: SSH login password
+
+ssh_pwauth: true
+
+runcmd:
+  # Access
+  - systemctl enable --now ssh
+
+  # Wi-Fi radio: the regulatory domain must be set, or wlan0 stays blocked.
+  # CHANGE: your 2-letter country code (e.g. US, GB, DE, AU, IN).
+  - raspi-config nonint do_wifi_country IN
+  - rfkill unblock wifi
+
+  # Unique, stable suffix from the board serial (e.g. PushNav-3F2A)
+  - >-
+    SUFFIX=$(tr -d '\0' < /sys/firmware/devicetree/base/serial-number
+    | tail -c 4 | tr 'a-f' 'A-F');
+    echo "PushNav-$SUFFIX" > /etc/pushnav-ssid
+
+  # Permanent hotspot on 192.168.77.1/24 (DHCP + gateway served by NetworkManager).
+  # CHANGE: the hotspot password "pushnav123" (8 characters or more).
+  - >-
+    nmcli con add type wifi ifname wlan0 con-name hotspot autoconnect yes
+    ssid "$(cat /etc/pushnav-ssid)"
+    802-11-wireless.mode ap 802-11-wireless.band bg
+    ipv4.method shared ipv4.addresses 192.168.77.1/24
+    ipv6.method disabled
+    wifi-sec.key-mgmt wpa-psk wifi-sec.psk "pushnav123"
+    wifi-sec.proto rsn wifi-sec.pairwise ccmp wifi-sec.group ccmp
+    wifi-sec.pmf disable
+  - nmcli con up hotspot
+
+  # Install PushNav from the .deb on the boot partition (no internet needed).
+  # Found up to two folders deep, and matches both a local build's name
+  # (…0.3.0~beta6-1…) and GitHub's download name (…0.3.0.beta6-1…).
+  # This runs on the first boot only; install later .debs by hand.
+  - >-
+    DEB=$(find /boot/firmware -maxdepth 3 -name 'pushnav-headless_*_arm64.deb'
+    | sort | tail -n 1);
+    if [ -n "$DEB" ]; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y "$DEB";
+    else echo "PushNav .deb not found on the boot partition" >&2; fi
