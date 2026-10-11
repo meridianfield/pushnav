@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkyDome } from "@/components/live-view/SkyDome";
+import { RetryCameraButton } from "@/components/RetryCameraButton";
 import type { EnginePayload } from "@/lib/types";
 import { SetupStep } from "./SetupStep";
 import { SyncStep } from "./SyncStep";
@@ -21,7 +22,17 @@ function StepCard({ state }: Props) {
     case "WARMING_UP":   return <WarmingUpStep state={state} />;
     case "TRACKING":     return <TrackingStep state={state} />;
     case "RECONNECTING": return <Card className="flex flex-col"><CardContent className="p-4">Reconnecting to camera…</CardContent></Card>;
-    case "ERROR":        return <Card className="flex flex-col"><CardContent className="p-4 text-destructive">Error — restart required</CardContent></Card>;
+    // ERROR only follows a failed camera recovery, and retry_camera() brings
+    // the engine back to SETUP, so offer the retry here rather than a restart.
+    case "ERROR":
+      return (
+        <Card className="flex flex-col">
+          <CardContent className="p-4 flex flex-col items-start gap-3">
+            <p className="text-destructive">Camera lost. Plug it back in, then retry.</p>
+            <RetryCameraButton />
+          </CardContent>
+        </Card>
+      );
     default:             return null;
   }
 }

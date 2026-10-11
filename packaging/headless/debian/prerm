@@ -1,0 +1,20 @@
+#!/bin/sh
+# pushnav-headless prerm
+set -e
+
+UNIT=pushnav-headless.service
+
+if [ -d /run/systemd/system ]; then
+    case "$1" in
+        remove)
+            systemctl stop "$UNIT" || true
+            systemctl disable "$UNIT" >/dev/null 2>&1 || true
+            ;;
+        upgrade|deconfigure)
+            # postinst restarts it with the new version.
+            systemctl stop "$UNIT" || true
+            ;;
+    esac
+fi
+
+exit 0

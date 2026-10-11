@@ -1,0 +1,47 @@
+[Unit]
+Description=PushNav headless plate-solving push-to (web UI on port 8765)
+Documentation=https://meridianfield.github.io/pushnav/rpi-headless/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=pushnav
+Group=pushnav
+SupplementaryGroups=video
+ExecStart=/usr/bin/pushnav-headless
+# Status LED: '+' runs just these steps as root, outside the sandbox. 'take'
+# saves the Pi LEDs' state, sets trigger=none and lets group pushnav write
+# brightness; 'restore' gives them back. ExecStopPost also runs after a
+# crash, so the LEDs never stay frozen on a PushNav pattern. Both always
+# exit 0, and 'take' honours led.enabled in config.json.
+ExecStartPre=+/usr/lib/pushnav-headless/python/bin/python3 -s -m evf.engine.led_helper take --group pushnav
+ExecStopPost=+/usr/lib/pushnav-headless/python/bin/python3 -s -m evf.engine.led_helper restore
+# Debug mode: a jumper from GPIO21 (pin 40) to GND (pin 39). This root step
+# reads the pin and creates /run/pushnav-headless/debug if it's jumpered;
+# PushNav turns debug mode on when that file exists. RuntimeDirectory=
+# removes the directory, flag included, whenever the service stops.
+RuntimeDirectory=pushnav-headless
+ExecStartPre=+/usr/lib/pushnav-headless/python/bin/python3 -s -m evf.engine.debug_pin
+# Config and logs live under /var/lib/pushnav-headless (created by systemd,
+# owned by the pushnav user, removed on `apt purge`).
+StateDirectory=pushnav-headless
+Environment=HOME=/var/lib/pushnav-headless
+Environment=XDG_CONFIG_HOME=/var/lib/pushnav-headless/config
+Environment=XDG_STATE_HOME=/var/lib/pushnav-headless/state
+# SIGTERM only the engine, which stops camera_server itself. The default
+# (control-group) would kill camera_server at the same moment, and the
+# engine would start camera recovery in the middle of shutting down.
+KillMode=mixed
+# shutdown() can wait out a camera retry already in flight (~30 s worst case).
+TimeoutStopSec=45
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

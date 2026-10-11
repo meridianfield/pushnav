@@ -9,7 +9,7 @@ interface Props {
   onApply: (offsetMin: number) => void;
 }
 
-const MAX_MIN = 360;  // 6 hours
+const MAX_MIN = 360;  // 6 hours (stretched when "Show then" jumps further)
 
 function formatOffset(min: number): string {
   if (min === 0) return "Now";
@@ -46,7 +46,7 @@ export function TimeControl({ appliedOffsetMin, onApply }: Props) {
       <div className="flex-1 min-w-0">
         <Slider
           min={0}
-          max={MAX_MIN}
+          max={Math.max(MAX_MIN, appliedOffsetMin)}
           step={5}
           value={[preview]}
           onValueChange={([v]) => setPreview(v)}

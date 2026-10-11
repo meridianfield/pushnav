@@ -1,0 +1,20 @@
+Package: pushnav-headless
+Version: @VERSION@
+Architecture: arm64
+Maintainer: Arun Venkataswamy <5359196+arunvenkataswamy@users.noreply.github.com>
+Installed-Size: @INSTALLED_SIZE@
+Depends: libc6 (>= 2.36), libjpeg62-turbo, adduser
+Section: science
+Priority: optional
+Homepage: https://github.com/meridianfield/pushnav
+Description: PushNav plate-solving push-to for Raspberry Pi (headless)
+ PushNav plate-solves live frames from a finder camera to show where a
+ manual telescope is pointing and guide it to a target (push-to).
+ .
+ This is the headless Raspberry Pi build: it runs as a systemd service
+ with no window, and is controlled from a phone or laptop browser at
+ http://<pi-ip>:8765. SkySafari / Stellarium Mobile connect over LX200
+ on port 4030, Stellarium desktop on port 10001.
+ .
+ It bundles its own Python 3.12 runtime under /usr/lib/pushnav-headless.
+ For a PC or laptop, use the regular PushNav desktop release instead.

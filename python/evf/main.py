@@ -31,6 +31,7 @@ import urllib.error
 import urllib.request
 
 from evf.config.manager import ConfigManager
+from evf.engine.debug_pin import debug_flag_set
 from evf.engine.engine import Engine
 
 logger = logging.getLogger(__name__)
@@ -100,7 +101,14 @@ def _check_single_instance(port: int) -> None:
     except (urllib.error.URLError, OSError, TimeoutError, json.JSONDecodeError):
         pass
 
-    if is_pushnav:
+    if is_pushnav and os.environ.get("PUSHNAV_ROOT"):
+        # pushnav-headless .deb: the other instance is almost always the service.
+        msg = (
+            f"PushNav is already running on port {port} "
+            f"(probably the pushnav-headless service).\n"
+            f"Stop it first with: sudo systemctl stop pushnav-headless"
+        )
+    elif is_pushnav:
         msg = (
             f"PushNav is already running on port {port}.\n"
             f"Close the existing window before launching another instance."
@@ -117,13 +125,18 @@ def _check_single_instance(port: int) -> None:
 
 def main() -> None:
     # PUSHNAV_DEBUG=1 / --dev toggles in-app dev features only (sample
-    # injection, frame capture, DebugPanel). Opening the webview's
-    # inspector is a separate opt-in via WEBVIEW_DEBUG=1: on Linux Qt,
-    # pywebview's debug=True starts QtWebEngine's remote-debugging server
-    # which truncates aiohttp static-file responses to ~440 bytes and
-    # leaves the React bundle unparseable, so we keep the inspector off
+    # injection, frame capture, DebugPanel). On the headless Pi a jumper
+    # from GPIO21 to GND does the same (evf.engine.debug_pin). Opening the
+    # webview's inspector is a separate opt-in via WEBVIEW_DEBUG=1: on
+    # Linux Qt, pywebview's debug=True starts QtWebEngine's remote-debugging
+    # server which truncates aiohttp static-file responses to ~440 bytes
+    # and leaves the React bundle unparseable, so we keep the inspector off
     # by default even in dev_mode.
-    dev_mode = "--dev" in sys.argv or os.environ.get("PUSHNAV_DEBUG") == "1"
+    dev_mode = (
+        "--dev" in sys.argv
+        or os.environ.get("PUSHNAV_DEBUG") == "1"
+        or debug_flag_set()
+    )
     webview_debug = os.environ.get("WEBVIEW_DEBUG") == "1"
     no_window = "--no-window" in sys.argv
     # --react is now the default; accept the flag as a no-op for back-compat
@@ -163,6 +176,10 @@ def main() -> None:
 
     if no_window:
         _start_camera()  # headless: no window to unblock, so start it inline
+        # No "Retry camera" click to rely on: keep retrying in the background
+        # so a camera plugged in after boot (or after recovery gave up) comes up.
+        engine.start_camera_watchdog()
+        engine.start_status_led()
         logger.info("Running headless (--no-window). Press Ctrl-C to exit.")
         stop = threading.Event()
         signal.signal(signal.SIGINT, lambda *_: stop.set())

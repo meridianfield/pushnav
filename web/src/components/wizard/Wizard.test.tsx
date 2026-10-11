@@ -39,6 +39,15 @@ describe("Wizard", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers a camera retry in ERROR state instead of a restart", () => {
+    render(<Wizard state={{ ...base, state: "ERROR" }} />);
+    expect(screen.getByText(/Camera lost/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /retry camera/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/restart/i)).not.toBeInTheDocument();
+  });
+
   it("renders LOCK badge when tracking is valid", () => {
     const s = { ...base, state: "TRACKING" as const,
       pointing: { ...base.pointing, valid: true, solve_age_s: 0.2 } };

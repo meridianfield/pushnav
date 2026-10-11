@@ -55,7 +55,27 @@ camera\windows\build.bat            :: Windows — C/DirectShow camera server (r
 scripts/build_mac.sh                # macOS — Nuitka → .app → .dmg
 scripts/build_linux.sh              # Linux — Nuitka standalone
 scripts/build_windows.bat           # Windows — Nuitka → Inno Setup installer
+scripts/build_headless_deb.sh       # Raspberry Pi — pushnav-headless .deb (arm64, bookworm container)
+scripts/smoke_test_headless_deb.sh  # install + run the .deb in clean bookworm / trixie containers
 ```
+
+The Raspberry Pi build is **always headless** and named `pushnav-headless` to
+keep it distinct from the Linux PC/laptop build. It bundles a standalone
+Python under `/usr/lib/pushnav-headless` without the `desktop` dependency
+group (no pywebview / PyQt6), runs as the `pushnav-headless` systemd service
+(user `pushnav`, state in `/var/lib/pushnav-headless`), and the launcher sets
+`PUSHNAV_ROOT` so `evf/paths.py` uses the Linux release layout. With
+`--no-window` the engine runs a camera watchdog that keeps retrying the
+camera in the background, and shows its status on the Pi's ACT/PWR LEDs
+(`evf/engine/status_led.py`), plus a brief green flash when a client
+connects or sends a target (the servers' `on_client_connected` callbacks
+and `GotoTarget` changes). The LEDs are only writable because the
+unit's `ExecStartPre=+`/`ExecStopPost=+` run `evf.engine.led_helper
+take`/`restore` as root; `led.enabled` in config.json turns it off.
+A jumper from GPIO21 (pin 40) to GND (pin 39) turns on debug mode on the Pi
+without environment variables: another root `ExecStartPre=+` step,
+`evf.engine.debug_pin`, reads the pin and creates `/run/pushnav-headless/debug`
+(in the unit's `RuntimeDirectory=`), which `main.py` treats like `PUSHNAV_DEBUG=1`.
 
 ### Running tests
 
@@ -141,11 +161,15 @@ hardware/                       # 3D-printable mechanical designs (OpenSCAD)
     stls/                       # pre-built STL files ready for printing
 marketing/                      # app branding assets (logo, in-app title)
 linux/                          # Linux desktop integration (pushnav.desktop)
+packaging/headless/             # pushnav-headless .deb: launcher, systemd unit, debian/ maintainer scripts,
+                                #   and user-data (first-boot config for the ready-made SD card, attached to releases)
 build/                          # build output (gitignored)
 scripts/                        # build and dev scripts
   build_mac.sh                  # macOS Nuitka build → .app/.dmg
   build_linux.sh                # Linux Nuitka build
   build_windows.bat             # Windows Nuitka + Inno Setup build
+  build_headless_deb.sh         # Raspberry Pi pushnav-headless .deb build
+  smoke_test_headless_deb.sh    # container install/run test for the .deb
   build_camera_mac.sh           # compile Swift camera server
   run_dev.sh                    # dev launch (macOS)
   run_dev_linux.sh              # dev launch (Linux)
@@ -162,16 +186,17 @@ specs/start/                    # design specifications
 ## Key Dependencies
 
 - **tetra3rs** — Rust (pyo3) plate-solver, installed from a prebuilt wheel (`tetra3rs==0.7.1`); no vendoring or Rust toolchain needed
-- **pywebview** — wraps the OS webview (WebKit/WebView2/GTK) for the desktop window
+- **pywebview** — wraps the OS webview (WebKit/WebView2/GTK) for the desktop window; lives in the `desktop` dependency group (default for `uv sync`, left out of the headless Pi package)
 - **React + Vite + TypeScript + Tailwind + shadcn/ui** — front-end stack (under `web/`)
 - **three** + **@react-three/fiber** + **@react-three/drei** — WebGL rendering for the always-visible Sky View 3D dome (`web/src/components/live-view/SkyDome/`). Labels use drei `<Html>` to stay offline; `<Text>` is intentionally avoided so troika-three-text's CDN font-resolver is never loaded
-- **numpy**, **scipy**, **Pillow** — image/array handling (numpy + Pillow in the solver wrapper; scipy bundled by the build)
+- **numpy**, **Pillow** — image/array handling (solver wrapper) and the sync rotation maths
 - **playsound3** — audio feedback for solve lock/lost events
 - **aiohttp** — HTTP + WebSocket server (serves the React build, /ws state, /frame.mjpg, /api/*)
-- **qrcode[pil]** — QR-code rendering for the LAN URL in the Settings panel
+- **qrcode.react** (npm) — QR-code rendering for the LAN URL in the Settings panel
 - **pyerfa** — IAU 2006 precession (J2000 ↔ JNow) for the LX200 protocol server
-- **pyyaml** — used only by `scripts/sync_catalog.py` to parse the buddy-site
-  markdown frontmatter when refreshing `web/src/data/objects.json`
+- **pyyaml** (dev group) — used by `scripts/sync_catalog.py` to parse the
+  buddy-site markdown frontmatter when refreshing `web/src/data/objects.json`,
+  and by `tests/test_headless_user_data.py` to check `packaging/headless/user-data`
 
 Dev dependencies: **nuitka** (builds), **pytest** (tests).
 Docs dependency group (`uv sync --group docs`): **mkdocs-material** for the

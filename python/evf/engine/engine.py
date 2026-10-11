@@ -24,6 +24,7 @@ Central coordinator that owns the lifecycle of every subsystem.
 import io
 import json
 import logging
+import re
 import threading
 import time
 from pathlib import Path
@@ -37,6 +38,7 @@ from evf.engine.goto_target import GotoTarget
 from evf.engine.pointing import PointingState
 from evf.engine.sample_injector import SampleInjector
 from evf.engine.state import EngineState, StateMachine
+from evf.engine.status_led import StatusLedController, find_leds
 from evf.solver.solver import PlateSolver
 import numpy as np
 
@@ -72,6 +74,30 @@ def _read_app_version() -> str:
         return "0.0.0"
 
 
+_V4L2_SYSFS = Path("/sys/class/video4linux")
+# A USB camera's sysfs device path runs through a root hub (".../usb3/3-2/...");
+# SoC video blocks (Pi ISP, HEVC decoder) sit under /platform/ with no /usbN/.
+_USB_DEVICE_PATH = re.compile(r"/usb\d+/")
+
+
+def _usb_video_device_present() -> bool:
+    """True if any USB video device is attached (Linux sysfs).
+
+    Lets the headless camera watchdog skip spawning camera_server — and
+    logging its failure — every few seconds while nothing is plugged in.
+    Returns True when sysfs is unavailable, so the caller just tries.
+    """
+    if not _V4L2_SYSFS.is_dir():
+        return True
+    for node in _V4L2_SYSFS.iterdir():
+        try:
+            if _USB_DEVICE_PATH.search(str((node / "device").resolve())):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 class Engine:
     """Central coordinator that owns all components and manages their lifecycle.
 
@@ -104,6 +130,15 @@ class Engine:
         self._solver_thread: SolverThread | None = None
         self._audio: AudioAlert | None = None
         self._subprocess_mgr: SubprocessManager | None = None
+        # Serializes camera (re)starts: the UI "Retry camera" button, the
+        # headless watchdog and shutdown must never race each other.
+        self._camera_lock = threading.Lock()
+        self._camera_watchdog: threading.Thread | None = None
+        self._status_led: StatusLedController | None = None
+        # Set once shutdown() begins; stops the watchdog and refuses retries.
+        self._shutting_down = threading.Event()
+        # "Waiting for camera" is logged once per absence, not every attempt.
+        self._camera_wait_logged = False
         self._stellarium: StellariumServer | None = None
         self._lx200: Lx200Server | None = None
         self._webserver: WebServer | None = None
@@ -396,7 +431,9 @@ class Engine:
         """Start Stellarium TCP server."""
         try:
             self._stellarium = StellariumServer(
-                self._pointing_state, goto_target=self._goto_target
+                self._pointing_state,
+                goto_target=self._goto_target,
+                on_client_connected=self._flash_status_led,
             )
             self._stellarium.start()
         except Exception as exc:
@@ -416,6 +453,7 @@ class Engine:
                 goto_target=self._goto_target,
                 app_version=self._app_version,
                 report_j2000=(self._config.lx200_epoch == "j2000"),
+                on_client_connected=self._flash_status_led,
             )
             self._lx200.start()
         except Exception as exc:
@@ -430,6 +468,7 @@ class Engine:
                 self._state_machine,
                 self._goto_target,
                 self._config,
+                on_client_connected=self._flash_status_led,
                 frame_buffer=self._frame_buffer,
                 stellarium_object=lambda: self.stellarium_object,
                 camera_controls=lambda: self.camera_controls,
@@ -486,13 +525,20 @@ class Engine:
         On first launch (config has no saved exposure/gain), each control is
         initialized to the midpoint of the range the camera reports — which
         differs by OS/camera backend, so we can't hardcode sensible defaults.
+
+        With no USB video device attached (Linux), skips spawning
+        camera_server — it would only fail and log its allowlist.
         """
+        if not _usb_video_device_present():
+            self._log_waiting_for_camera()
+            return
         try:
             self._subprocess_mgr = SubprocessManager(
                 self._frame_buffer, self._state_machine, self._config
             )
             hello = self._subprocess_mgr.start()
             logger.info("Camera connected: %s", hello)
+            self._camera_wait_logged = False
 
             client = self._subprocess_mgr.client
             if client:
@@ -532,16 +578,111 @@ class Engine:
         is identical to what already runs once at every launch.
         Returns the post-attempt camera_connected state.
         """
-        if self.camera_connected:
+        with self._camera_lock:
+            if self._shutting_down.is_set():
+                return False
+            if self.camera_connected:
+                return True
+            # Stop the stale manager (ends any recovery loop still running)
+            # and drop it so startup_camera builds a fresh one;
+            # _kill_stale_server inside SubprocessManager._spawn_process will
+            # reap any orphaned camera_server left over from the prior failure.
+            stale, self._subprocess_mgr = self._subprocess_mgr, None
+            if stale is not None:
+                try:
+                    stale.stop()
+                except Exception as exc:
+                    logger.warning("Error stopping stale camera manager: %s", exc)
+            self.startup_camera()
+            if not self.camera_connected:
+                return False
+            # Recovery may have left the engine in RECONNECTING / ERROR.
+            if self._state_machine.state in (
+                EngineState.RECONNECTING, EngineState.ERROR
+            ):
+                self._state_machine.transition(EngineState.SETUP)
+            if self._solver_thread is None:
+                self.startup_solver_thread()
             return True
-        # Drop the stale manager so startup_camera builds a fresh one;
-        # _kill_stale_server inside SubprocessManager._spawn_process will
-        # reap any orphaned camera_server left over from the prior failure.
-        self._subprocess_mgr = None
-        self.startup_camera()
-        if self.camera_connected and self._solver_thread is None:
-            self.startup_solver_thread()
-        return self.camera_connected
+
+    def start_camera_watchdog(self, interval_s: float = 10.0) -> None:
+        """Keep retrying the camera in the background (headless mode).
+
+        A headless Pi has no "Retry camera" click to fall back on: the
+        service may boot before the camera is plugged in, and the
+        SubprocessManager's own recovery gives up after 5 attempts. Every
+        `interval_s` this checks for a missing camera and, once a USB
+        video device is present, calls retry_camera(). It stays out of
+        the way while SubprocessManager is mid-recovery.
+        """
+        if self._camera_watchdog is not None:
+            return
+        self._camera_watchdog = threading.Thread(
+            target=self._camera_watchdog_loop,
+            args=(interval_s,),
+            name="camera-watchdog",
+            daemon=True,
+        )
+        self._camera_watchdog.start()
+
+    def start_status_led(self) -> None:
+        """Show engine status on the Pi's LEDs (headless mode).
+
+        Needs LEDs this process may write, which only the
+        pushnav-headless service's root helper (evf.engine.led_helper)
+        sets up; anywhere else this logs one line and does nothing.
+        """
+        if not self._config.led_enabled:
+            logger.info("Status LED: disabled in config (led.enabled)")
+            return
+        leds = find_leds()
+        if not leds:
+            logger.info("Status LED: no writable LEDs, not used")
+            return
+        self._status_led = StatusLedController(
+            lambda: (
+                self._state_machine.state,
+                self.camera_connected,
+                self.consecutive_failures,
+            ),
+            leds,
+        )
+        self._status_led.start()
+        self._goto_target.add_on_change(self._flash_on_new_target)
+        logger.info("Status LED: using %s", ", ".join(sorted(leds)))
+
+    def _flash_status_led(self) -> None:
+        """Brief LED flash for a client connecting or sending a target.
+
+        Called from the server threads; a no-op until start_status_led()
+        has found writable LEDs.
+        """
+        led = self._status_led
+        if led is not None:
+            led.flash()
+
+    def _flash_on_new_target(self) -> None:
+        # GotoTarget also fires on clear(); only a new target flashes.
+        if self._goto_target.read().active:
+            self._flash_status_led()
+
+    def _log_waiting_for_camera(self) -> None:
+        if not self._camera_wait_logged:
+            logger.info("Waiting for camera — plug it in to continue")
+            self._camera_wait_logged = True
+
+    def _camera_watchdog_loop(self, interval_s: float) -> None:
+        while not self._shutting_down.wait(interval_s):
+            mgr = self._subprocess_mgr
+            if self.camera_connected or (mgr is not None and mgr.recovering):
+                self._camera_wait_logged = False
+                continue
+            if not _usb_video_device_present():
+                self._log_waiting_for_camera()
+                continue
+            if self.retry_camera():
+                logger.info("Camera connected by watchdog")
+                self._camera_wait_logged = False
 
     def startup_solver_thread(self) -> None:
         """Create solver thread object (not started until user enables tracking)."""
@@ -749,6 +890,15 @@ class Engine:
     def shutdown(self) -> None:
         """Graceful shutdown. Each step with independent timeout."""
         logger.info("Shutting down")
+        self._shutting_down.set()
+
+        # 0a. Stop the status LED first so it can't show a stale state while
+        # subsystems go down (the service's ExecStopPost restores the LEDs).
+        if self._status_led:
+            try:
+                self._status_led.stop()
+            except Exception as exc:
+                logger.error("Error stopping status LED: %s", exc)
 
         # 0. Stop sample injector (so it stops writing frames before solver stops)
         try:
@@ -784,12 +934,19 @@ class Engine:
             except Exception as exc:
                 logger.error("Error stopping web server: %s", exc)
 
-        # 3. Terminate camera subprocess
-        if self._subprocess_mgr:
-            try:
-                self._subprocess_mgr.stop()
-            except Exception as exc:
-                logger.error("Error stopping camera: %s", exc)
+        # 3. Terminate camera subprocess. Taking _camera_lock waits out any
+        # retry already in flight (_shutting_down refuses new ones), so no
+        # camera_server can be spawned after we've stopped the manager.
+        locked = self._camera_lock.acquire(timeout=30)
+        try:
+            if self._subprocess_mgr:
+                try:
+                    self._subprocess_mgr.stop()
+                except Exception as exc:
+                    logger.error("Error stopping camera: %s", exc)
+        finally:
+            if locked:
+                self._camera_lock.release()
 
         # 4. Save config
         try:

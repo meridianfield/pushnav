@@ -46,7 +46,7 @@ Now pick a target, either from PushNav's built-in **What to See** tab or from wh
 
 For target picking, PushNav doesn't make you choose between simplicity and reach. The built-in **What to See** tab gives you both side by side.
 
-- **Buddy** — 161 hand-picked deep-sky objects with filters for equipment, light pollution and visual reward. The "what should I look at tonight?" answer for a new observer who doesn't know the sky yet.
+- **Buddy** — 161 hand-picked deep-sky objects with filters for equipment, light pollution and visual reward. The "what should I look at tonight?" answer for a new observer who doesn't know the sky yet. It lists what's more than 20° above the horizon at the chosen time. If it isn't fully dark yet at that time, a banner says when it will be, and **Show then** jumps the list to that time.
 - **Advanced** — fuzzy search across **12,522 NGC objects** (OpenNGC) and **8,825 bright stars** (HYG). The "give me M81" answer when you already know what you want.
 - **Manual coordinates** — RA/Dec entry for the rest: comets, asteroids, satellites, anything ephemeris-driven that no catalog covers.
 
@@ -93,6 +93,9 @@ When you're pushing a Dobsonian or a manual EQ, the laptop typically sits on a c
 
 No app to install, no Bluetooth pairing, no configuration. Your phone and laptop only need to be on the same Wi-Fi network. Multiple devices can connect at the same time too, so for outreach sessions or sharing the view with someone, just hand them their own phone and they'll see exactly what you see.
 
+!!! tip "On a Raspberry Pi"
+    With the headless Raspberry Pi package, the phone *is* the screen: open `http://<pi-address>:8765` (`http://192.168.77.1:8765` on the hotspot of a [ready-made SD card](rpi-headless.md#b-ready-made-pushnav-sd-card)). When the phone isn't open, the Pi's own LEDs show the status at a glance. See [Status light](rpi-headless.md#status-light).
+
 !!! tip "Prefer SkySafari or Stellarium Mobile?"
     PushNav also speaks the LX200 telescope protocol, so you can pick targets and see your scope's crosshair directly in **SkySafari**, **Stellarium Mobile PLUS**, **INDI** (KStars/Ekos), or **ASCOM** clients. See [SkySafari & Other Apps](skysafari-setup.md) for the one-time setup.
 
@@ -120,7 +123,7 @@ A few common scenarios and what to do.
 PushNav holds your last good position and shows a rising failure count in the side panel. Once stars are visible again, solves resume on their own. There's nothing to restart.
 
 **The camera disconnects (USB cable wiggle, computer sleep).**
-PushNav notices within a couple of seconds and tries to reconnect automatically with exponential backoff (1, 2, 4, 8, 15 seconds, up to 5 attempts). Plug the cable back in firmly and tracking picks up where it left off. If the retries exhaust, the app shows an error state and you'll need to relaunch PushNav.
+PushNav notices within a couple of seconds and tries to reconnect automatically with exponential backoff (1, 2, 4, 8, 15 seconds, up to 5 attempts). Plug the cable back in firmly and tracking picks up where it left off. If the retries exhaust, the app shows an error state: plug the camera back in and press **Retry camera**. On the Raspberry Pi package, PushNav keeps retrying by itself, and the Pi's LED shows a slow red blink until the camera is back.
 
 **You send a below-horizon target from Stellarium (or another planetarium app).**
 External apps don't enforce the horizon check, so the push arrows will try to point you through the ground. Clear the target and pick something currently above the horizon. PushNav's own **What to See** tab disables the **Set as target** button for below-horizon objects when a location is set.

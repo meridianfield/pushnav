@@ -109,7 +109,6 @@ uv run python -m nuitka \
     --macos-signed-app-name="com.pushnav.evf" \
     --macos-app-protected-resource="NSCameraUsageDescription:PushNav uses the camera to capture telescope finder images for plate solving." \
     --include-package=numpy \
-    --include-package=scipy \
     --include-package=PIL \
     --include-package=playsound3 \
     --include-package=tetra3rs \

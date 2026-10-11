@@ -214,7 +214,7 @@ class TestBodyFrameSync:
         d_body_true = np.array([0.02, 0.01, 1.0])
         d_body_true /= np.linalg.norm(d_body_true)
         # Target in celestial coords at sync time
-        target_vec = T_sync.apply(d_body_true)
+        target_vec = T_sync @ d_body_true
         target_ra, target_dec = vec_to_radec(target_vec)
 
         # Compute body-frame sync from the sync point
@@ -226,7 +226,7 @@ class TestBodyFrameSync:
         # Now apply at a different position and Roll=180 (meridian flip)
         track_ra, track_dec, track_roll = 200.0, -30.0, 180.0
         T_track = orientation_from_radec_roll(track_ra, track_dec, track_roll)
-        expected_vec = T_track.apply(d_body_true)
+        expected_vec = T_track @ d_body_true
         expected_ra, expected_dec = vec_to_radec(expected_vec)
 
         out_ra, out_dec = apply_body_frame_sync(
@@ -243,7 +243,7 @@ class TestBodyFrameSync:
         # Fixed body-frame offset
         d_body_true = np.array([-0.015, 0.025, 1.0])
         d_body_true /= np.linalg.norm(d_body_true)
-        target_vec = T_sync.apply(d_body_true)
+        target_vec = T_sync @ d_body_true
         target_ra, target_dec = vec_to_radec(target_vec)
 
         d_body = compute_body_frame_sync(
@@ -261,7 +261,7 @@ class TestBodyFrameSync:
         max_error = 0.0
         for ra, dec, roll in test_points:
             T = orientation_from_radec_roll(ra, dec, roll)
-            expected = vec_to_radec(T.apply(d_body_true))
+            expected = vec_to_radec(T @ d_body_true)
             got = apply_body_frame_sync(d_body, ra, dec, roll)
 
             v_exp = radec_to_vec(*expected)
@@ -293,7 +293,7 @@ class TestBodyFrameSync:
         sync_roll = 15.0
         T_sync = orientation_from_radec_roll(canopus_ra, canopus_dec, sync_roll)
         # Camera boresight points at Canopus; telescope (d_body_true) points at:
-        sync_target_vec = T_sync.apply(d_body_true)
+        sync_target_vec = T_sync @ d_body_true
         sync_target_ra, sync_target_dec = vec_to_radec(sync_target_vec)
 
         # Compute body-frame sync
@@ -305,7 +305,7 @@ class TestBodyFrameSync:
         # Now tracking near Capella with Roll=195° (large Roll change)
         track_roll = 195.0
         T_track = orientation_from_radec_roll(capella_ra, capella_dec, track_roll)
-        expected_vec = T_track.apply(d_body_true)
+        expected_vec = T_track @ d_body_true
         expected_ra, expected_dec = vec_to_radec(expected_vec)
 
         got_ra, got_dec = apply_body_frame_sync(

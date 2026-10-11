@@ -1,0 +1,20 @@
+#!/bin/sh
+# pushnav-headless postrm
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload || true
+fi
+
+if [ "$1" = "purge" ]; then
+    # Config, calibration and logs.
+    rm -rf /var/lib/pushnav-headless
+    if getent passwd pushnav >/dev/null; then
+        deluser --quiet --system pushnav || true
+    fi
+    if getent group pushnav >/dev/null; then
+        delgroup --quiet --system pushnav || true
+    fi
+fi
+
+exit 0

@@ -7,7 +7,6 @@ import { Wizard } from "@/components/wizard/Wizard";
 import { Settings } from "@/components/settings/Settings";
 import { Connectivity } from "@/components/settings/Connectivity";
 import { Splash } from "@/components/splash/Splash";
-import { ErrorModal } from "@/components/ErrorModal";
 import { StateHeader } from "@/components/StateHeader";
 import { StepIndicator } from "@/components/StepIndicator";
 import { DebugPanel } from "@/components/debug/DebugPanel";
@@ -32,7 +31,6 @@ export default function App() {
   return (
     <>
       <Splash state={state} />
-      <ErrorModal state={state} />
       {state && (
         <div className="bg-background text-foreground min-h-screen">
           {/* Header + grid always span at least one viewport height. The grid

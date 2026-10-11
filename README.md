@@ -10,7 +10,7 @@
 
 PushNav uses a live camera feed to continuously plate-solve and determine where your telescope is pointing, reporting coordinates to **Stellarium** on the desktop and to **SkySafari**, **Stellarium Mobile**, **INDI**, or **ASCOM** clients over Wi-Fi in real time. Audio cues for lock, lost, and target alerts let you stay at the eyepiece without watching the screen.
 
-PushNav is built around hardware you already own. The laptop you use every day handles the plate-solving and runs the desktop UI. The only new pieces are a USB camera and lens. That deliberate choice shortens the path to first light. You don't need to source, flash, configure, or troubleshoot a dedicated computer. The full desktop UI sits in one familiar window you can drag around on a table next to your scope. The live frame, Sky View dome, What to See catalog, and the planetarium-app servers are all on the same screen. A Raspberry Pi 4 headless appliance is on the roadmap, for observers who want a small dedicated box.
+PushNav is built around hardware you already own. The laptop you use every day handles the plate-solving and runs the desktop UI. The only new pieces are a USB camera and lens. That deliberate choice shortens the path to first light. You don't need to source, flash, configure, or troubleshoot a dedicated computer. The full desktop UI sits in one familiar window you can drag around on a table next to your scope. The live frame, Sky View dome, What to See catalog, and the planetarium-app servers are all on the same screen. For observers who want a small dedicated box, PushNav also runs [headless on a Raspberry Pi 3A+, 4 or 5](https://meridianfield.github.io/pushnav/rpi-headless/) (beta), controlled from a phone. Install it with apt on a Pi you already use, or turn a fresh SD card into a dedicated PushNav box with its own Wi-Fi hotspot ([which way?](https://meridianfield.github.io/pushnav/rpi-headless/#which-way-to-install)).
 
 PushNav can also run completely standalone, without a separate planetarium app. Pick targets from its built-in What to See catalog. It offers a curated short-list of 161 hand-picked objects, a search across more than 20,000 stars and deep-sky objects, or a manual RA/Dec panel. Follow the push direction and watch your scope's pointing on the on-screen Sky View dome. The curated short-list is sourced from [Stargazing Buddy](https://stargazingbuddy.com/), a companion observing guide by the same author.
 
@@ -52,7 +52,7 @@ If you already have a GOTO mount, or you want a phone-only experience with no la
 
 ## Cross platform from the ground up
 
-Supports **Windows**, **macOS**, and **Linux**. The core app is written in Python with a React UI hosted in a pywebview window (OS-native WebKit/WebView2/GTK), while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.
+Supports **Windows**, **macOS**, and **Linux**, plus a headless package for the **Raspberry Pi**. The core app is written in Python with a React UI hosted in a pywebview window (OS-native WebKit/WebView2/GTK), while the camera server is a native binary for each platform (Swift on macOS, C/V4L2 on Linux, C/DirectShow on Windows) to achieve maximum performance and compatibility with UVC cameras.
 
 ## How It Works
 
@@ -78,6 +78,9 @@ Supports **Windows**, **macOS**, and **Linux**. The core app is written in Pytho
 - Live activity indicators in the app showing when Stellarium or LX200 clients are talking
 - IAU 2006 J2000 ↔ JNow precession via `pyerfa` at the LX200 boundary (SkySafari expects JNow, PushNav stores J2000)
 - Audio feedback for lock/lost/GOTO events
+- **Raspberry Pi (headless):** the `pushnav-headless` package runs PushNav as a background service on a Pi 3A+, 4 or 5, controlled from your phone. With no screen attached, the Pi's own LEDs show the status: red when it needs attention (no camera, error), green when it's working (needs sync, tracking, lost the stars). See the [Pi guide](https://meridianfield.github.io/pushnav/rpi-headless/#status-light). Two ways to set it up:
+  - **Install with apt** on a Pi you set up yourself, on your own Wi-Fi.
+  - **Ready-made PushNav SD card:** flash Raspberry Pi OS Lite, copy the release's `.deb` and `user-data` onto the card, and boot. The Pi becomes a dedicated box with its own hotspot, `PushNav-XXXX`, at `http://192.168.77.1:8765`.
 - Always-visible **Sky View** — an interactive 3D hemispheric dome rendered alongside the wizard, showing where the scope is pointing (yellow marker + semi-transparent red telescope cylinder) and where the target sits (cream marker with name label), with solid/dashed lines from the dome centre. Useful as a spatial check during sync, roll calibration, and tracking alike.
 - Saves calibration for quick re-sync
 - Works from urban light-polluted skies with the right camera/lens combo (see hardware guide)
@@ -212,6 +215,9 @@ Two independent toggles:
   in-app dev features: the React DebugPanel, the `/api/dev/*` endpoints,
   sample-image injection, and frame capture. Works on macOS, Linux, and
   Windows.
+  On the headless Raspberry Pi package, a jumper from GPIO21 (pin 40)
+  to GND (pin 39) does the same without environment variables; see
+  [Debug mode](docs/rpi-headless.md#debug-mode).
 - **`WEBVIEW_DEBUG=1`** — opens the webview inspector inside the
   pywebview window (right-click → Inspect Element). Independent of
   `PUSHNAV_DEBUG`; set both when you want dev features *and* the
@@ -244,6 +250,14 @@ scripts/build_linux.sh
 **Windows**: produces a zip and Inno Setup installer:
 ```cmd
 scripts\build_windows.bat
+```
+
+**Raspberry Pi (headless)**: produces `pushnav-headless_<version>_arm64.deb`
+(no Nuitka: it bundles a standalone Python, built in a Debian bookworm
+arm64 container; see [docs/rpi-headless.md](docs/rpi-headless.md)):
+```bash
+scripts/build_headless_deb.sh
+scripts/smoke_test_headless_deb.sh   # install + run test on bookworm / trixie
 ```
 
 Build output goes to `build/`.

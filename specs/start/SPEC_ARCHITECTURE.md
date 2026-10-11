@@ -2,8 +2,8 @@
 
 Version: 2.0
 Status: Reflects Current Implementation
-Target: macOS, Linux, Windows
-Supports Future Headless Mode
+Target: macOS, Linux, Windows, Raspberry Pi (headless)
+Headless mode: `--no-window`, shipped for the Pi as the `pushnav-headless` .deb
 
 ---
 
@@ -676,7 +676,9 @@ Must not log per-frame failures at INFO level.
 
 Architecture must allow:
 
-- Headless mode (engine without UI)
+- Headless mode (engine without UI). Implemented: `--no-window`; the
+  Raspberry Pi `pushnav-headless` package adds a background camera
+  retry and status on the Pi's LEDs (`evf/engine/status_led.py`)
 - Additional planetarium protocols
 - INDI driver
 - Equatorial mount support

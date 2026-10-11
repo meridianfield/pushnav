@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { Html } from "@react-three/drei";
+import { LABEL_Z_INDEX_RANGE } from "./constants";
 
 const RADIUS = 2;
 
@@ -32,7 +33,12 @@ export function Marker({ altDeg, azDeg, color, label, size = 0.06 }: MarkerProps
         <meshBasicMaterial color={color} />
       </mesh>
       {label && (
-        <Html position={[0, size + 0.05, 0]} center pointerEvents="none">
+        <Html
+          position={[0, size + 0.05, 0]}
+          center
+          pointerEvents="none"
+          zIndexRange={LABEL_Z_INDEX_RANGE}
+        >
           <div
             style={{
               color,

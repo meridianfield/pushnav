@@ -4,6 +4,7 @@ import {
   CatalogFilters, SelectedFiltersLine, useCatalogFilters,
 } from "../CatalogFilters";
 import { CatalogTable } from "../CatalogTable";
+import { DarknessBanner } from "../DarknessBanner";
 import { TimeControl } from "../TimeControl";
 
 interface Props {
@@ -39,6 +40,15 @@ export function BuddyTab({
           onApply={setAppliedOffsetMin}
         />
       </div>
+
+      {location && (
+        <DarknessBanner
+          location={location}
+          evalAt={evalAt}
+          appliedOffsetMin={appliedOffsetMin}
+          onApply={setAppliedOffsetMin}
+        />
+      )}
 
       <div className="border-t border-border/60 -mx-3" />
 

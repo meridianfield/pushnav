@@ -19,8 +19,11 @@
 
 Dev mode:   repo root found by walking up from __file__ to pyproject.toml
 Release:    sys.executable sits inside Contents/MacOS/ -> Resources at ../../Resources/
+Headless:   PUSHNAV_ROOT (set by the pushnav-headless launcher) names a
+            directory laid out like the Linux release dir
 """
 
+import os
 import platform
 import sys
 from pathlib import Path
@@ -31,10 +34,16 @@ from pathlib import Path
 
 _exe = Path(sys.executable).resolve()
 _BUNDLE_MODE = _exe.parent.name == "MacOS" and _exe.parent.parent.name == "Contents"
+# The headless .deb runs a bundled interpreter that doesn't sit next to the
+# app files, so its launcher points PUSHNAV_ROOT at /usr/lib/pushnav-headless.
+_ENV_ROOT = os.environ.get("PUSHNAV_ROOT")
 _LINUX_RELEASE = (
     not _BUNDLE_MODE
     and platform.system() == "Linux"
-    and (_exe.parent / "data" / "VERSION.json").exists()
+    and (
+        _ENV_ROOT is not None
+        or (_exe.parent / "data" / "VERSION.json").exists()
+    )
 )
 _WINDOWS_RELEASE = (
     not _BUNDLE_MODE
@@ -49,7 +58,7 @@ if _BUNDLE_MODE:
     _RELEASE_ROOT = None
     _REPO_ROOT = None
 elif _LINUX_RELEASE or _WINDOWS_RELEASE:
-    _RELEASE_ROOT = _exe.parent
+    _RELEASE_ROOT = Path(_ENV_ROOT).resolve() if _LINUX_RELEASE and _ENV_ROOT else _exe.parent
     _CONTENTS = None
     _MACOS = None
     _RESOURCES = None

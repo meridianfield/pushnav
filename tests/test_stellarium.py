@@ -112,6 +112,22 @@ class TestStellariumServer:
         assert srv.port > 0
         srv.stop()
 
+    def test_on_client_connected_called_per_connection(self):
+        calls = []
+        srv = StellariumServer(PointingState(), port=0,
+                               on_client_connected=lambda: calls.append(1))
+        srv.start()
+        try:
+            a, b = _connect(srv.port), _connect(srv.port)
+            deadline = time.monotonic() + 3.0
+            while len(calls) < 2 and time.monotonic() < deadline:
+                time.sleep(0.05)
+            assert len(calls) == 2
+            a.close()
+            b.close()
+        finally:
+            srv.stop()
+
     def test_client_connect_and_receive(self):
         """Inject known RA/Dec, connect a client, verify received message."""
         ps = PointingState()

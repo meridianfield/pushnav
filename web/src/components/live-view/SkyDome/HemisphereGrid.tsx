@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Html, Line } from "@react-three/drei";
+import { LABEL_Z_INDEX_RANGE } from "./constants";
 import type { ThemeColors } from "./types";
 
 const RADIUS = 2;
@@ -119,6 +120,7 @@ export function HemisphereGrid({ colors }: { colors: ThemeColors }) {
             position={[pos.x, 0.02, pos.z]}
             center
             pointerEvents="none"
+            zIndexRange={LABEL_Z_INDEX_RANGE}
           >
             <div style={{ ...LABEL_STYLE, color: colors.gridLabels }}>
               {dir.label}
@@ -127,7 +129,12 @@ export function HemisphereGrid({ colors }: { colors: ThemeColors }) {
         );
       })}
 
-      <Html position={[0, RADIUS + 0.15, 0]} center pointerEvents="none">
+      <Html
+        position={[0, RADIUS + 0.15, 0]}
+        center
+        pointerEvents="none"
+        zIndexRange={LABEL_Z_INDEX_RANGE}
+      >
         <div style={{ ...LABEL_STYLE, color: colors.gridLabels }}>Z</div>
       </Html>
     </group>

@@ -229,8 +229,13 @@ See `SPEC_PROTOCOL_LX200.md`.
   against public-internet exposure relies on the bind address, the host
   firewall, and the concurrent-client cap below.
 - The Settings panel shows the LAN URL plus a QR code for scan-to-connect.
-- Falls back to "No LAN connection" in the UI when `local_ip()` can't find
-  a routable LAN address.
+  The URL is looked up on every update, so it follows the network coming up
+  after PushNav starts.
+- `local_ip()` uses the default-route interface's address. A Pi running its
+  own hotspot has no default route, so it then falls back to the address of
+  a Wi-Fi or Ethernet interface (Linux only).
+- Falls back to "No LAN IP detected" in the UI when neither finds a usable
+  LAN address.
 
 ## 5.4 UI surface
 
@@ -245,7 +250,13 @@ The header carries a two-tab segmented control:
   - **Buddy** sub-tab: 161 vendored deep-sky objects with equipment /
     light-pollution / visual-reward filters, an observation-time slider
     (Now → +6h), and a sortable table of objects above 20° altitude at
-    the chosen time.
+    the chosen time. When the Sun is above −18° at that time (daytime or
+    twilight, no astronomical darkness yet), a banner above the table says
+    when the sky gets dark, and its **Show then** button moves the
+    observation time there (the slider stretches past +6h if needed). At
+    high latitudes in summer, where it never gets fully dark, the banner
+    gives the darkest time instead. Visibility uses the phone or
+    computer's clock and the observer location.
   - **Advanced** sub-tab: a fuzzy-search input over two open catalogs
     trimmed to JSON under `web/src/data/`:
     - `openngc.json` — 12,522 NGC objects (OpenNGC v20260501, CC-BY-SA 4.0)
@@ -457,7 +468,6 @@ Verbose mode logs:
 # 12. Explicit Non-Goals
 
 - No multiple camera support
-- No headless mode (architecture supports future)
 - No multi-planetarium abstraction
 - No motion smoothing
 - No FOV auto-calibration

@@ -23,6 +23,7 @@ import select
 import socket
 import struct
 import threading
+from typing import Callable
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -85,11 +86,13 @@ class StellariumServer:
         host: str = _DEFAULT_HOST,
         port: int = _DEFAULT_PORT,
         goto_target: GotoTarget | None = None,
+        on_client_connected: Callable[[], None] | None = None,
     ) -> None:
         self._pointing = pointing
         self._host = host
         self._port = port
         self._goto_target = goto_target
+        self._on_client_connected = on_client_connected
         self._rc_port: int = 8090
         self._stellarium_status: dict | None = None
         self._stellarium_object: dict | None = None
@@ -175,6 +178,11 @@ class StellariumServer:
                 self._clients.append(client)
                 logger.info("Stellarium client connected from %s:%d", *addr)
                 _play_ack()
+                if self._on_client_connected is not None:
+                    try:
+                        self._on_client_connected()
+                    except Exception as exc:
+                        logger.debug("on_client_connected failed: %s", exc)
                 threading.Thread(
                     target=self._fetch_stellarium_status,
                     name="stellarium-rc-status",
